@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Editor Tweet Card</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Manrope:wght@400;700;800&family=DM+Sans:wght@400;700&family=Poppins:wght@400;700&family=Montserrat:wght@400;700&family=Space+Grotesk:wght@400;700&family=Work+Sans:wght@400;700&family=Kanit:wght@400;700&family=Barlow:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Manrope:wght@400;700;800&family=DM+Sans:wght@400;700&family=Poppins:wght@400;700&family=Montserrat:wght@400;700&family=Space+Grotesk:wght@400;700&family=Work+Sans:wght@400;700&family=Kanit:wght@400;700&family=Barlow:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Manrope:wght@400;700;800&family=DM+Sans:wght@400;700&family=Poppins:wght@400;700&family=Montserrat:wght@400;700&family=Space+Grotesk:wght@400;700&family=Work+Sans:wght@400;700&family=Kanit:wght@400;700&family=Barlow:wght@400;700&display=swap" rel="stylesheet"></noscript>
 <style>
-  :root { --ui-bg: #EDEAE5; --ui-line: #DDD9D2; --ui-ink: #1b1b1b; --accent: #1D9BF0; }
+  :root { --ui-bg: #EDEAE5; --ui-line: #DDD9D2; --ui-ink: #1b1b1b; --accent: #F97335; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; }
   body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--ui-bg); color: var(--ui-ink); -webkit-font-smoothing: antialiased; }
@@ -19,7 +19,8 @@
   .appbar h1 { font-size: 16px; font-weight: 700; letter-spacing: -.2px; margin-right: auto; }
   .btn { padding: 8px 14px; border-radius: 9px; border: 1px solid #c9c5be; background: #fff; font-size: 14px; font-weight: 500; white-space: nowrap; }
   .btn:hover { background: #f4f2ee; }
-  .btn.primary { background: #111; border-color: #111; color: #fff; }
+  .btn.primary { background: #F97335; border-color: #F97335; color: #fff; }
+  .btn.primary:hover { background: #E8621F; border-color: #E8621F; }
   .btn.small { padding: 5px 10px; font-size: 13px; }
   .btn:disabled { opacity: .4; cursor: not-allowed; }
   #status { font-size: 12px; color: #8a867f; }
@@ -53,7 +54,7 @@
   .presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
   .preset { position: relative; border: 1.5px solid var(--ui-line); background: #fff; border-radius: 10px; padding: 6px; display: flex; flex-direction: column; gap: 5px; align-items: stretch; font-size: 11px; font-weight: 500; text-align: center; cursor: pointer; }
   .preset:hover { border-color: #aaa; }
-  .preset.active { border-color: var(--accent); background: #f1f8fe; }
+  .preset.active { border-color: var(--accent); background: #FFF3EC; }
   .preset .sw { height: 40px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); }
   .preset .sw i { width: 62%; height: 62%; border-radius: 4px; display: block; }
   .preset .del { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; font-size: 13px; line-height: 20px; padding: 0; display: none; }
@@ -89,8 +90,8 @@
   .metrics b { font-weight: inherit; min-width: 1ch; outline: none; }
   .metrics svg { width: 42px; height: 42px; fill: none; stroke: var(--text); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
   .noline .line { display: none; }
-  .stage [contenteditable]:hover { outline: 2px dashed rgba(29,155,240,.35); outline-offset: 6px; border-radius: 4px; cursor: text; }
-  .stage [contenteditable]:focus { outline: 2px dashed rgba(29,155,240,.85); outline-offset: 6px; border-radius: 4px; }
+  .stage [contenteditable]:hover { outline: 2px dashed rgba(249,115,53,.35); outline-offset: 6px; border-radius: 4px; cursor: text; }
+  .stage [contenteditable]:focus { outline: 2px dashed rgba(249,115,53,.85); outline-offset: 6px; border-radius: 4px; }
   .stage .avatar, .stage .logo-wrap { cursor: pointer; }
 
   @media (max-width: 959px) {
@@ -102,26 +103,26 @@
   }
 
   /* ===== acabamento (design system do admin) ===== */
-  :root { --ui-bg: #F4F1EB; --ui-line: #E8E3D8; --accent: #1D9BF0; }
+  :root { --ui-bg: #F4F1EB; --ui-line: #E8E3D8; --accent: #F97335; }
   body { background: var(--ui-bg); }
   .appbar { background: rgba(255,255,255,.88); backdrop-filter: blur(12px); border-bottom-color: var(--ui-line); box-shadow: 0 1px 0 rgba(22,20,15,.03); }
   .appbar h1 { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-weight: 800; letter-spacing: -.03em; font-size: 17px; }
   .btn { border-radius: 11px; font-weight: 600; transition: background .15s, border-color .15s, transform .08s, box-shadow .15s; }
   .btn:hover { border-color: #c5bfae; }
   .btn:active { transform: translateY(1px); }
-  .btn.primary { box-shadow: 0 1px 2px rgba(22,20,15,.12); }
-  .btn.primary:hover { box-shadow: 0 6px 16px -6px rgba(22,20,15,.4); }
+  .btn.primary { box-shadow: 0 1px 2px rgba(249,115,53,.35); }
+  .btn.primary:hover { box-shadow: 0 8px 18px -8px rgba(249,115,53,.7); }
   .panel { background: #fff; gap: 0; padding: 18px 16px 40px; }
   .panel section { padding: 18px 0; border-bottom: 1px solid var(--ui-line); }
   .panel section:first-child { padding-top: 0; }
   .panel section:last-child { border-bottom: 0; }
   .panel h3 { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-size: 12px; letter-spacing: .08em; color: #8a857a; }
   .field input[type=text], .field select, .rt-toolbar select { border-radius: 11px; border-color: #D9D3C5; transition: border-color .15s, box-shadow .15s; }
-  .field input[type=text]:focus, .field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(29,155,240,.15); }
+  .field input[type=text]:focus, .field select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px rgba(249,115,53,.15); }
   .thumb { transition: transform .15s; }
   .thumb:hover { transform: translateY(-2px); }
   .thumb-box { border-radius: 8px; }
-  .thumb.active .thumb-box { box-shadow: 0 0 0 3px var(--accent), 0 8px 18px -6px rgba(29,155,240,.5); }
+  .thumb.active .thumb-box { box-shadow: 0 0 0 3px var(--accent), 0 8px 18px -6px rgba(249,115,53,.5); }
   .add-thumb { border-radius: 10px; border-color: #cfc8b7; transition: background .15s, border-color .15s; }
   .add-thumb:hover { border-color: #a9a28f; }
   .thumbs-col { background: #EFEBE3; }
@@ -521,6 +522,18 @@ function scheduleSave() {
 }
 
 /* =============== exportar =============== */
+/* html2canvas só é baixado quando o primeiro PNG é exportado (não bloqueia a abertura do editor) */
+let h2cPromise;
+function loadH2C() {
+  if (window.html2canvas) return Promise.resolve();
+  return h2cPromise || (h2cPromise = new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    sc.onload = resolve; sc.onerror = () => { h2cPromise = null; reject(new Error('html2canvas')); };
+    document.head.appendChild(sc);
+  }));
+}
+
 async function exportIdx(i) {
   const holder = document.createElement('div');
   holder.style.cssText = 'position:fixed;left:-99999px;top:0;width:1080px;height:1350px;';
@@ -528,6 +541,7 @@ async function exportIdx(i) {
   try {
     try { await document.fonts.load(`700 40px "${g.font}"`); await document.fonts.load(`400 40px "${g.font}"`); } catch (e) {}
     await document.fonts.ready; await new Promise(r => setTimeout(r, 150));
+    await loadH2C();
     const canvas = await html2canvas(el, { width: 1080, height: 1350, scale: 1, backgroundColor: g.colors.bg, useCORS: true });
     const a = document.createElement('a'); a.download = `slide-${String(i + 1).padStart(2, '0')}.png`; a.href = canvas.toDataURL('image/png'); a.click();
   } finally { holder.remove(); }

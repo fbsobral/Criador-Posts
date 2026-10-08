@@ -5,6 +5,7 @@ import { db } from '@/db';
 import { posts } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { IconBack } from '../../../icons';
+import { EditorFrame } from './editor-frame';
 import { RenameTitle } from './rename-title';
 
 export default async function PostEditor({ params }: { params: Promise<{ id: string }> }) {
@@ -21,7 +22,7 @@ export default async function PostEditor({ params }: { params: Promise<{ id: str
         <RenameTitle id={post.id} title={post.title} />
         <span className={`pill ${post.status}`}>{post.status === 'draft' ? 'Rascunho' : 'Publicado'}</span>
       </div>
-      <iframe src={`/editor?post=${post.id}`} title={post.title} />
+      <EditorFrame src={`/editor?post=${post.id}`} title={post.title} />
     </div>
   );
 }

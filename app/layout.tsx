@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ClerkProvider
       localization={ptBR}
       appearance={{
-        variables: { colorPrimary: '#16140F', borderRadius: '12px', fontFamily: 'var(--font-inter), system-ui, sans-serif' },
+        variables: { colorPrimary: '#F97335', borderRadius: '12px', fontFamily: 'var(--font-inter), system-ui, sans-serif' },
         elements: { card: { boxShadow: '0 18px 40px -12px rgba(22,20,15,.22)', border: '1px solid #E8E3D8' } },
       }}
     >
