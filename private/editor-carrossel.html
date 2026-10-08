@@ -113,7 +113,6 @@
   .ptitle + .profile { margin-top: 30px; }
   /* sem cabeçalho (tema e ano vazios): o conteúdo começa na mesma distância da borda que o rodapé */
   .slide > .ptitle:first-child, .slide > .profile:first-child { margin-top: 14px; }
-  .stage .ptitle [data-bind="title"]:empty::before { content: 'Título em caixa alta'; color: var(--muted); font-weight: 600; }
 
   /* perfil */
   .profile { display: flex; align-items: center; gap: 22px; margin-top: 44px; flex: none; }
@@ -277,10 +276,9 @@
 
     <section>
       <h3>Perfil e cabeçalho (todos os slides)</h3>
-      <div class="field"><label for="inTitle">Título (acima do perfil, em caixa alta)</label><input type="text" id="inTitle"></div>
       <div class="field"><label for="inName">Nome</label><input type="text" id="inName"></div>
       <div class="field"><label for="inHandle">@ usuário</label><input type="text" id="inHandle"></div>
-      <div class="field"><label for="inTopic">Tema (canto superior)</label><input type="text" id="inTopic"></div>
+      <div class="field"><label for="inTopic">Tema (acima do perfil, em caixa alta)</label><input type="text" id="inTopic"></div>
       <div class="field"><label for="inYear">Ano</label><input type="text" id="inYear"></div>
       <div class="field"><label for="inFont">Fonte do texto (todos os slides)</label><select id="inFont"></select></div>
       <div class="field">
@@ -379,7 +377,7 @@ const THEME_FIELDS = [
   ['slotA', 'Imagem vazia (início)'], ['slotB', 'Imagem vazia (fim)']
 ];
 const KEY = 'editor-carrossel-v1';
-let g = { title: '', name: 'Lorem Ipsum', handle: '@loremipsum', topic: 'Lorem ipsum dolor?', year: '2026', avatar: null, width: '860', font: 'Inter', theme: { ...THEMES.original } };
+let g = { name: 'Lorem Ipsum', handle: '@loremipsum', topic: 'Lorem ipsum dolor?', year: '2026', avatar: null, width: '860', font: 'Inter', theme: { ...THEMES.original } };
 let slides = [
   newSlide('cover'),
   newSlide('text', { html: '<h2>Lorem ipsum dolor sit amet:</h2><ul class="check"><li>Consectetur adipiscing elit</li><li>Eiusmod tempor incididunt</li><li>Labore et dolore magna</li></ul><p>Mesmo assim...</p><p>Ut enim ad minim veniam.</p>' }),
@@ -392,6 +390,8 @@ const HOST = window.CARROSSEL || null; // preenchido pelo servidor (post, templa
 try {
   const saved = HOST ? HOST.initial : JSON.parse(localStorage.getItem(KEY) || 'null');
   if (saved && saved.g) g = Object.assign(g, saved.g);
+  if (g.title && !g.topic) g.topic = g.title; // versões antigas tinham "título" separado do tema
+  delete g.title;
   if (saved && Array.isArray(saved.slides) && saved.slides.length) { slides = saved.slides; if (saved.v !== 2) slides.forEach(s => s.showProfile = true); }
 } catch (e) { /* sem storage: segue com o padrão */ }
 g.theme = Object.assign({}, THEMES.original, g.theme || {});
@@ -413,8 +413,8 @@ function buildSlide(s, editable) {
   applyThemeVars(el);
   const ce = editable ? 'contenteditable="true" spellcheck="false"' : '';
 
-  const ptitle = (s.showProfile && (g.title || editable)) ? `<div class="ptitle"><span data-bind="title" ${ce}>${esc(g.title)}</span><span data-bind="year" ${ce}>${esc(g.year)}</span></div>` : '';
-  const prof = s.showProfile ? `${ptitle}
+  const head = (g.topic || g.year) ? `<div class="ptitle"><span data-bind="topic" ${ce}>${esc(g.topic)}</span><span data-bind="year" ${ce}>${esc(g.year)}</span></div>` : '';
+  const prof = s.showProfile ? `
     <div class="profile">
       <div class="avatar" data-avatar ${editable ? 'title="Clique para trocar a foto"' : ''}>${g.avatar ? '' : ICON_PERSON}</div>
       <div class="who">
@@ -427,7 +427,7 @@ function buildSlide(s, editable) {
   const slot = f.image ? `<div class="img-slot" data-slot>${(!s.image && editable) ? `<div class="ph">${ICON_IMAGE}<span>Clique ou arraste uma imagem</span></div>` : ''}</div>` : '';
 
   el.innerHTML = `
-    ${(g.topic || g.year) ? `<div class="top"><span data-bind="topic" ${ce}>${esc(g.topic)}</span><span data-bind="year" ${ce}>${esc(g.year)}</span></div>` : ''}
+    ${head}
     ${prof}
     <div class="body">${stack}${slot}</div>
     <div class="bottom">
@@ -484,7 +484,7 @@ function mountEditor(el) {
   }
   const av = el.querySelector('[data-avatar]');
   if (av) av.addEventListener('click', () => openPicker('avatar'));
-  const inputOf = { title: 'inTitle', name: 'inName', handle: 'inHandle', topic: 'inTopic', year: 'inYear' };
+  const inputOf = { name: 'inName', handle: 'inHandle', topic: 'inTopic', year: 'inYear' };
   el.querySelectorAll('[data-bind][contenteditable]').forEach(n => {
     const key = n.dataset.bind;
     n.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); n.blur(); } });
@@ -577,7 +577,7 @@ function updatePanel() {
   $('btnSlotRm').disabled = !s.image;
 }
 function fillGlobalInputs() {
-  $('inTitle').value = g.title || ''; $('inName').value = g.name; $('inHandle').value = g.handle;
+  $('inName').value = g.name; $('inHandle').value = g.handle;
   $('inTopic').value = g.topic; $('inYear').value = g.year; $('inWidth').value = g.width; $('inFont').value = g.font; fillThemeInputs();
 }
 
@@ -597,14 +597,14 @@ $('btnAvatar').addEventListener('click', () => openPicker('avatar'));
 $('btnAvatarRm').addEventListener('click', () => { g.avatar = null; renderCurrent(); scheduleSave(); });
 
 function bindGlobal(key, val) {
-  const hadTop = !!scaler.querySelector('.top');
+  const hadTop = !!scaler.querySelector('.ptitle');
   g[key] = val;
   if ((key === 'topic' || key === 'year') && hadTop !== !!(g.topic || g.year)) { renderCurrent(); scheduleSave(); return; }
   if (key === 'width') { scaler.querySelector('.slide')?.style.setProperty('--tw', val + 'px'); checkOverflow(); }
   else scaler.querySelectorAll(`[data-bind="${key}"]`).forEach(n => n.textContent = val);
   renderThumbs(); scheduleSave();
 }
-[['title', 'inTitle'], ['name', 'inName'], ['handle', 'inHandle'], ['topic', 'inTopic'], ['year', 'inYear']].forEach(([k, id]) =>
+[['name', 'inName'], ['handle', 'inHandle'], ['topic', 'inTopic'], ['year', 'inYear']].forEach(([k, id]) =>
   $(id).addEventListener('input', e => bindGlobal(k, e.target.value)));
 $('inWidth').addEventListener('change', e => bindGlobal('width', e.target.value));
 
@@ -860,7 +860,7 @@ $('pickProject').addEventListener('change', e => {
     try {
       const d = JSON.parse(r.result);
       if (!Array.isArray(d.slides) || !d.slides.length) throw 0;
-      g = Object.assign(g, d.g); slides = d.slides; idx = 0; if (d.v !== 2) slides.forEach(s => s.showProfile = true);
+      g = Object.assign(g, d.g); if (g.title && !g.topic) g.topic = g.title; delete g.title; slides = d.slides; idx = 0; if (d.v !== 2) slides.forEach(s => s.showProfile = true);
       g.theme = Object.assign({}, THEMES.original, g.theme || {});
       fillGlobalInputs(); renderCurrent(); scheduleSave();
     } catch (err) { alert('Arquivo de projeto inválido.'); }

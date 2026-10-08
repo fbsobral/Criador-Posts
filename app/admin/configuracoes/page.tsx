@@ -36,7 +36,7 @@ export default async function SettingsPage() {
           <div className="two">
             <label className="field">Nome<input name="displayName" defaultValue={s.displayName} disabled={ro} /></label>
             <label className="field">@ usuário<input name="handle" defaultValue={s.handle} disabled={ro} placeholder="@suamarca" /></label>
-            <label className="field">Tema (canto superior)<input name="topic" defaultValue={s.topic} disabled={ro} /></label>
+            <label className="field">Tema (acima do perfil)<input name="topic" defaultValue={s.topic} disabled={ro} /></label>
             <label className="field">Ano<input name="year" defaultValue={s.year} disabled={ro} /></label>
           </div>
 
