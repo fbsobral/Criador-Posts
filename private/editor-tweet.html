@@ -79,6 +79,7 @@
   .line { height: 3px; background: var(--line); margin: 44px 0 36px; }
   .metrics { display: flex; gap: 52px; font-size: 40px; color: var(--text); letter-spacing: -.5px; }
   .metrics span { display: flex; align-items: center; gap: 14px; }
+  .metrics b { font-weight: inherit; min-width: 1ch; outline: none; }
   .metrics svg { width: 42px; height: 42px; fill: none; stroke: var(--text); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
   .noline .line { display: none; }
   .nologo .area { padding: 0 140px; }
@@ -129,15 +130,15 @@
       <div class="field" id="btnTextField"><label for="inButton">Texto do botão</label><input type="text" id="inButton"></div>
       <label class="check"><input type="checkbox" id="optMetrics"> Mostrar métricas</label>
       <div class="mini" id="metricsFields">
-        <div class="field"><label for="inC">Coment.</label><input type="text" id="inC"></div>
-        <div class="field"><label for="inR">Repost.</label><input type="text" id="inR"></div>
+        <div class="field"><label for="inC">Comentários</label><input type="text" id="inC"></div>
+        <div class="field"><label for="inR">Compart.</label><input type="text" id="inR"></div>
         <div class="field"><label for="inL">Curtidas</label><input type="text" id="inL"></div>
       </div>
       <div class="field">
         <label for="optSize">Tamanho do texto</label>
         <select id="optSize"><option value="42">Pequeno</option><option value="50">Padrão</option><option value="58">Grande</option><option value="68">Extra grande</option></select>
       </div>
-      <p style="font-size:12px;color:#8a867f;line-height:1.4">Clique no texto, no nome ou no @ direto no slide para editar.</p>
+      <p style="font-size:12px;color:#8a867f;line-height:1.4">Clique no texto, no nome, no @ ou nos números das métricas direto no slide para editar.</p>
     </section>
 
     <section>
@@ -245,7 +246,7 @@ function buildSlide(s, editable) {
       </div>
       <div class="tx" data-text ${ce}>${esc(s.text)}</div>
       ${s.showButton ? `<div class="btnc">${esc(s.button)}</div>` : ''}
-      ${s.showMetrics ? `<div class="line"></div><div class="metrics"><span>${ICO_COMMENT}${esc(s.c)}</span><span>${ICO_RETWEET}${esc(s.r)}</span><span>${ICO_HEART}${esc(s.l)}</span></div>` : ''}
+      ${s.showMetrics ? `<div class="line"></div><div class="metrics"><span>${ICO_COMMENT}<b data-metric="c" ${ce}>${esc(s.c)}</b></span><span>${ICO_RETWEET}<b data-metric="r" ${ce}>${esc(s.r)}</b></span><span>${ICO_HEART}<b data-metric="l" ${ce}>${esc(s.l)}</b></span></div>` : ''}
     </div></div>`;
   const av = el.querySelector('[data-avatar]');
   if (g.avatar) av.style.backgroundImage = `url("${g.avatar}")`;
@@ -266,6 +267,13 @@ function renderCurrent() {
     n.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); n.blur(); } });
     n.addEventListener('paste', e => { e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain').replace(/\s+/g, ' ')); });
     n.addEventListener('input', () => { g[key] = n.textContent; $(inputOf[key]).value = g[key]; scheduleAllThumbs(); scheduleSave(); });
+  });
+  const metricInput = { c: 'inC', r: 'inR', l: 'inL' };
+  el.querySelectorAll('[data-metric]').forEach(n => {
+    const k = n.dataset.metric;
+    n.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); n.blur(); } });
+    n.addEventListener('paste', e => { e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain').replace(/\s+/g, ' ')); });
+    n.addEventListener('input', () => { cur()[k] = n.textContent; $(metricInput[k]).value = n.textContent; checkOverflow(); scheduleThumb(); scheduleSave(); });
   });
   updatePanel(); renderThumbs(); checkOverflow();
 }
