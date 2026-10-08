@@ -81,6 +81,7 @@
   .metrics span { display: flex; align-items: center; gap: 14px; }
   .metrics svg { width: 42px; height: 42px; fill: none; stroke: var(--text); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
   .noline .line { display: none; }
+  .nologo .area { padding: 0 140px; }
   .stage [contenteditable]:hover { outline: 2px dashed rgba(29,155,240,.35); outline-offset: 6px; border-radius: 4px; cursor: text; }
   .stage [contenteditable]:focus { outline: 2px dashed rgba(29,155,240,.85); outline-offset: 6px; border-radius: 4px; }
   .stage .avatar, .stage .logo-wrap { cursor: pointer; }
@@ -141,6 +142,7 @@
 
     <section>
       <h3>Perfil e logo (todos os slides)</h3>
+      <label class="check"><input type="checkbox" id="optLogo"> Mostrar logo</label>
       <div class="field"><label for="inName">Nome</label><input type="text" id="inName"></div>
       <div class="field"><label for="inHandle">@ usuário</label><input type="text" id="inHandle"></div>
       <div class="field"><label for="inFont">Fonte</label><select id="inFont"></select></div>
@@ -202,7 +204,7 @@ const newSlide = (o = {}) => Object.assign({ text: 'Escreva aqui o texto do seu 
 
 const KEY = 'editor-tweet-v1';
 const HOST = window.CARROSSEL || null;
-let g = { name: 'Lorem Ipsum', handle: '@loremipsum', avatar: null, logo: null, font: 'Plus Jakarta Sans', colors: { ...DEF_COLORS } };
+let g = { name: 'Lorem Ipsum', handle: '@loremipsum', avatar: null, logo: null, showLogo: true, font: 'Plus Jakarta Sans', colors: { ...DEF_COLORS } };
 let slides = [
   newSlide({ text: 'Das 15 operações encerradas, 13 tiveram lucro; cada operação dura uma média de 100 dias (siga o fio 👉):' }),
   newSlide({ text: 'Toque no botão abaixo e acesse agora a estratégia. 👇', showButton: true, button: 'Quero acessar', c: '7K', r: '6K', l: '32K' })
@@ -211,7 +213,7 @@ let idx = 0;
 try {
   const saved = HOST ? HOST.initial : JSON.parse(localStorage.getItem(KEY) || 'null');
   if (saved && saved.g) {
-    ['name', 'handle', 'avatar', 'logo', 'font'].forEach(k => { if (saved.g[k] != null && !(k === 'font' && !FONTS.includes(saved.g[k]))) g[k] = saved.g[k]; });
+    ['name', 'handle', 'avatar', 'logo', 'showLogo', 'font'].forEach(k => { if (saved.g[k] != null && !(k === 'font' && !FONTS.includes(saved.g[k]))) g[k] = saved.g[k]; });
     if (saved.g.colors) g.colors = Object.assign({ ...DEF_COLORS }, saved.g.colors);
   }
   if (saved && Array.isArray(saved.slides) && saved.slides.length && saved.slides[0].text !== undefined) slides = saved.slides.map(s => newSlide(s));
@@ -226,7 +228,7 @@ const scaler = $('scaler');
 function buildSlide(s, editable) {
   const c = g.colors;
   const el = document.createElement('div');
-  el.className = 'slide';
+  el.className = 'slide' + (g.showLogo === false ? ' nologo' : '');
   el.style.setProperty('--font', '"' + g.font + '"');
   el.style.setProperty('--bg', c.bg); el.style.setProperty('--card', c.card); el.style.setProperty('--text', c.text);
   el.style.setProperty('--name', c.name); el.style.setProperty('--handle', c.handle); el.style.setProperty('--accent2', c.accent2);
@@ -235,7 +237,7 @@ function buildSlide(s, editable) {
   const ce = editable ? 'contenteditable="plaintext-only" spellcheck="false"' : '';
   const logo = g.logo ? `<img class="logo" src="${g.logo}" alt="">` : (editable ? `<div class="logo-ph">Clique para enviar o logo</div>` : '');
   el.innerHTML = `
-    <div class="logo-wrap" data-logo>${logo}</div>
+    ${g.showLogo === false ? '' : `<div class="logo-wrap" data-logo>${logo}</div>`}
     <div class="area"><div class="card ${s.showMetrics ? '' : 'noline'}">
       <div class="who">
         <div class="avatar" data-avatar>${g.avatar ? '' : ICON_PERSON}</div>
@@ -256,7 +258,7 @@ function renderCurrent() {
   const tx = el.querySelector('[data-text]');
   tx.addEventListener('input', () => { cur().text = tx.textContent; checkOverflow(); scheduleThumb(); scheduleSave(); });
   tx.addEventListener('paste', e => { e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain')); });
-  el.querySelector('[data-logo]').addEventListener('click', () => openPicker('logo'));
+  el.querySelector('[data-logo]')?.addEventListener('click', () => openPicker('logo'));
   el.querySelector('[data-avatar]').addEventListener('click', () => openPicker('avatar'));
   const inputOf = { name: 'inName', handle: 'inHandle' };
   el.querySelectorAll('[data-bind]').forEach(n => {
@@ -299,11 +301,13 @@ function updatePanel() {
   $('optButton').checked = s.showButton; $('inButton').value = s.button; $('btnTextField').style.display = s.showButton ? 'flex' : 'none';
   $('optMetrics').checked = s.showMetrics; $('metricsFields').style.display = s.showMetrics ? 'grid' : 'none';
   $('inC').value = s.c; $('inR').value = s.r; $('inL').value = s.l; $('optSize').value = s.size;
+  $('optLogo').checked = g.showLogo !== false; $('btnLogo').disabled = $('btnLogoRm').disabled = g.showLogo === false;
   $('inName').value = g.name; $('inHandle').value = g.handle; $('inFont').value = g.font;
   document.querySelectorAll('#colors input').forEach(i => { i.value = g.colors[i.dataset.key]; });
   markPresets();
 }
 const change = () => { renderCurrent(); scheduleSave(); };
+$('optLogo').addEventListener('change', e => { g.showLogo = e.target.checked; change(); });
 $('optButton').addEventListener('change', e => { cur().showButton = e.target.checked; change(); });
 $('optMetrics').addEventListener('change', e => { cur().showMetrics = e.target.checked; change(); });
 $('optSize').addEventListener('change', e => { cur().size = e.target.value; change(); });
