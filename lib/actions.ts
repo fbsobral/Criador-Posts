@@ -40,6 +40,22 @@ export async function createPost(formData: FormData) {
   redirect(`/admin/posts/${post.id}`);
 }
 
+/** Duplica um post da marca ativa (sempre como rascunho). */
+export async function duplicatePost(formData: FormData) {
+  const c = await need();
+  const [src] = await db.select().from(posts).where(and(eq(posts.id, String(formData.get('id'))), eq(posts.brandId, c.brandId)));
+  if (!src) throw new Error('Post não encontrado');
+  await db.insert(posts).values({
+    brandId: c.brandId,
+    title: `${src.title} (cópia)`,
+    status: 'draft',
+    data: structuredClone(src.data),
+    createdBy: c.userId,
+    updatedBy: c.userId,
+  });
+  revalidatePath('/admin/posts');
+}
+
 export async function deletePost(formData: FormData) {
   const c = await need();
   await db.delete(posts).where(and(eq(posts.id, String(formData.get('id'))), eq(posts.brandId, c.brandId)));

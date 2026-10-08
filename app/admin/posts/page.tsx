@@ -3,7 +3,7 @@ import { desc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { posts, users } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
-import { createPost, deletePost, setPostStatus } from '@/lib/actions';
+import { createPost, deletePost, duplicatePost, setPostStatus } from '@/lib/actions';
 
 export default async function PostsPage() {
   const c = (await getCtx())!;
@@ -41,7 +41,11 @@ export default async function PostsPage() {
                 </td>
                 <td>{p.data.slides?.length ?? 0}</td>
                 <td className="muted">{p.updatedAt.toLocaleString('pt-BR')}{author ? ` · ${author}` : ''}</td>
-                <td className="right">
+                <td className="right actions">
+                  <form action={duplicatePost}>
+                    <input type="hidden" name="id" value={p.id} />
+                    <button className="btn small">Duplicar</button>
+                  </form>
                   <form action={deletePost}>
                     <input type="hidden" name="id" value={p.id} />
                     <button className="btn small danger">Excluir</button>
