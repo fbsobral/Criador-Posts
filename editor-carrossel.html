@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor de Carrossel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@400;700&family=Montserrat:wght@400;700&family=DM+Sans:wght@400;700&family=Manrope:wght@400;700&family=Space+Grotesk:wght@400;700&family=Work+Sans:wght@400;700&family=Raleway:wght@400;700&family=Oswald:wght@400;700&family=Playfair+Display:wght@400;700&family=Lora:wght@400;700&family=Merriweather:wght@400;700&family=Libre+Baskerville:wght@400;700&family=Roboto+Slab:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root {
+    --bg: #FAF8F5; --ink: #0A0A0A; --body: #1A1A1A; --muted: #BDBAB5;
+    --ui-bg: #EDEAE5; --ui-line: #DDD9D2; --ui-ink: #1b1b1b; --accent: #1D9BF0;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--ui-bg); color: var(--ui-ink); -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+
+  /* ================= APP SHELL ================= */
+  .appbar { height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: #fff; border-bottom: 1px solid var(--ui-line); position: sticky; top: 0; z-index: 20; }
+  .appbar h1 { font-size: 16px; font-weight: 700; letter-spacing: -.2px; margin-right: auto; }
+  .btn { padding: 8px 14px; border-radius: 9px; border: 1px solid #c9c5be; background: #fff; font-size: 14px; font-weight: 500; white-space: nowrap; }
+  .btn:hover { background: #f4f2ee; }
+  .btn.primary { background: #111; border-color: #111; color: #fff; }
+  .btn.primary:hover { background: #2a2a2a; }
+  .btn.small { padding: 5px 10px; font-size: 13px; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  #status { font-size: 12px; color: #8a867f; }
+
+  .app { display: grid; grid-template-columns: 168px minmax(0, 1fr) 300px; height: calc(100vh - 56px); }
+  .thumbs-col { overflow: auto; padding: 14px; background: #F6F4F0; border-right: 1px solid var(--ui-line); display: flex; flex-direction: column; gap: 14px; align-items: center; }
+  .main { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  .panel { overflow: auto; padding: 16px; background: #fff; border-left: 1px solid var(--ui-line); display: flex; flex-direction: column; gap: 20px; }
+
+  /* ================= THUMBS ================= */
+  .thumb { background: none; border: 0; display: flex; flex-direction: column; gap: 6px; align-items: center; flex: none; }
+  .thumb-box { width: 135px; height: 169px; position: relative; overflow: hidden; border-radius: 4px; box-shadow: 0 0 0 1px rgba(0,0,0,.12); pointer-events: none; }
+  .thumb.active .thumb-box { box-shadow: 0 0 0 3px var(--accent); }
+  .thumb-box .scaler { transform: scale(.125); }
+  .thumb .lab { font-size: 12px; color: #6d6962; }
+  .thumb.active .lab { color: #111; font-weight: 600; }
+  .add-thumb { width: 135px; height: 169px; flex: none; border: 2px dashed #bdb8af; border-radius: 6px; background: transparent; display: flex; flex-direction: column; gap: 6px; align-items: center; justify-content: center; font-size: 13px; color: #6d6962; }
+  .add-thumb:hover { background: #ece9e3; }
+  .add-thumb b { font-size: 26px; font-weight: 400; line-height: 1; }
+
+  /* ================= RICH TOOLBAR ================= */
+  .rt-toolbar { display: flex; gap: 4px; align-items: center; padding: 8px 12px; background: #fff; border-bottom: 1px solid var(--ui-line); overflow-x: auto; flex: none; position: sticky; top: 56px; z-index: 15; }
+  .rt-toolbar.off { opacity: .4; pointer-events: none; }
+  .rt-toolbar button { height: 34px; min-width: 34px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px; background: transparent; font-size: 14px; white-space: nowrap; }
+  .rt-toolbar button:hover { background: #f0eee9; }
+  .rt-toolbar button.on { background: #e3eefb; border-color: #b7d5f5; }
+  .rt-toolbar select { height: 34px; border: 1px solid var(--ui-line); border-radius: 8px; padding: 0 8px; font: inherit; font-size: 14px; background: #fff; max-width: 150px; flex: none; }
+  .rt-toolbar .sep { width: 1px; height: 22px; background: var(--ui-line); margin: 0 6px; flex: none; }
+  .slidebar { display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 13px; color: #6d6962; flex: none; flex-wrap: wrap; }
+  .slidebar .grow { margin-right: auto; }
+  #warn { color: #b3261e; font-weight: 600; display: none; }
+
+  /* ================= STAGE ================= */
+  .stage { flex: 1; min-height: 0; overflow: auto; display: flex; justify-content: center; padding: 8px 24px 24px; }
+  .slide-box { margin: auto; width: calc(1080px * var(--s, .4)); height: calc(1350px * var(--s, .4)); position: relative; box-shadow: 0 6px 30px rgba(0,0,0,.14); flex: none; }
+  .scaler { position: absolute; top: 0; left: 0; width: 1080px; height: 1350px; transform-origin: top left; transform: scale(var(--s, .4)); }
+
+  /* ================= PANEL ================= */
+  .panel h3 { font-size: 12px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #8a867f; margin-bottom: 10px; }
+  .fmt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .fmt { border: 1.5px solid var(--ui-line); background: #fff; border-radius: 10px; padding: 8px 6px 6px; display: flex; flex-direction: column; gap: 4px; align-items: center; font-size: 12px; font-weight: 500; }
+  .fmt svg { width: 38px; height: 48px; }
+  .fmt:hover { border-color: #aaa; }
+  .fmt.active { border-color: var(--accent); background: #f1f8fe; }
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; font-size: 13px; }
+  .field input[type=text], .field select { padding: 8px 10px; border: 1px solid #c9c5be; border-radius: 8px; font: inherit; font-size: 14px; background: #fff; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 8px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .preset { border: 1.5px solid var(--ui-line); background: #fff; border-radius: 10px; padding: 6px; display: flex; flex-direction: column; gap: 5px; align-items: stretch; font-size: 11px; font-weight: 500; text-align: center; }
+  .preset:hover { border-color: #aaa; }
+  .preset.active { border-color: var(--accent); background: #f1f8fe; }
+  .preset .sw { height: 40px; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); font-size: 15px; }
+  .preset .sw i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+  .colors { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cfield { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #55524c; }
+  .cfield input[type=color] { width: 100%; height: 34px; padding: 2px; border: 1px solid #c9c5be; border-radius: 8px; background: #fff; cursor: pointer; }
+
+  /* ================= MODAL ================= */
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+  .modal.open { display: flex; }
+  .modal .card { background: #fff; border-radius: 16px; padding: 20px; width: min(420px, 100%); }
+  .modal h2 { font-size: 17px; margin-bottom: 14px; }
+  .modal .fmt-grid { grid-template-columns: repeat(4, 1fr); }
+  .modal .close { margin-top: 14px; width: 100%; }
+
+  /* ================= SLIDE (1080 x 1350) ================= */
+  .slide { width: 1080px; height: 1350px; background: var(--bg); padding: 58px 90px; display: flex; flex-direction: column; overflow: hidden; position: relative; font-family: var(--font, 'Inter'), system-ui, sans-serif; color: var(--ink); caret-color: var(--ink); }
+  .slide .top, .slide .bottom { height: 34px; flex: none; display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-weight: 500; }
+  .slide .top { font-size: 25px; letter-spacing: -.1px; }
+  .slide .bottom { font-size: 24px; font-weight: 600; }
+  .slide .bottom .more { display: flex; align-items: center; gap: 12px; }
+  .slide .bottom .more svg { width: 30px; height: 30px; }
+
+  .slide .body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 30px 0 24px; }
+  .slide .stack { margin: auto 0; }
+  .slide.fmt-cover .body { padding-top: 44px; }
+  .slide.fmt-cover .stack { margin: 0; }
+  .slide.fmt-text-image .stack { margin: 0 0 36px; }
+  .slide.fmt-image .stack { margin: 0 0 36px; }
+
+  /* perfil */
+  .profile { display: flex; align-items: center; gap: 22px; margin-top: 44px; flex: none; }
+  .avatar { width: 112px; height: 112px; border-radius: 50%; flex: none; overflow: hidden; background: linear-gradient(135deg, #F8D84E 0%, #F7B23E 45%, #F4743B 100%); background-size: cover; background-position: center; display: flex; align-items: flex-end; justify-content: center; }
+  .avatar svg { width: 82%; height: 82%; }
+  .who .name { display: block; font-size: 29px; font-weight: 800; letter-spacing: -.5px; line-height: 1.15; }
+  .who .handle { display: flex; align-items: center; gap: 10px; font-size: 23px; font-weight: 500; color: var(--handle, #7a7773); margin-top: 4px; }
+  .who .handle svg { width: 26px; height: 26px; }
+
+  /* texto rico */
+  .rt { max-width: var(--tw, 860px); outline: none; font-size: 36px; line-height: 1.42; letter-spacing: -.4px; color: var(--body); min-height: 1.4em; word-wrap: break-word; }
+  .rt h2 { font-size: 46px; font-weight: 800; letter-spacing: -1.3px; line-height: 1.17; color: var(--ink); margin: 0 0 30px; }
+  .slide.fmt-cover .rt h2 { font-size: 60px; letter-spacing: -2px; line-height: 1.16; margin-bottom: 44px; }
+  .slide.fmt-cover .rt { font-size: 38px; }
+  .rt p, .rt div { margin: 0 0 1.3em; }
+  .rt b, .rt strong { font-weight: 700; color: var(--ink); }
+  .rt ul { margin: 0 0 1.3em; }
+  .rt ul.check, .rt ul.arrow { list-style: none; padding: 0; }
+  .rt ul.check li::before { content: "✔"; margin-right: 14px; color: var(--marker, #3A3A3A); font-weight: 800; font-size: .95em; }
+  .rt ul.arrow li::before { content: "→"; margin-right: 14px; font-weight: 500; color: var(--marker, inherit); }
+  .rt ul.dot, .rt ul:not(.check):not(.arrow) { list-style: disc; padding-left: 1.2em; }
+  .rt img.inline { display: block; width: 100%; height: auto; border-radius: 26px; margin: 30px 0; }
+  .rt > :last-child { margin-bottom: 0; }
+
+  /* imagem do slide */
+  .img-slot { border-radius: 26px; overflow: hidden; background: linear-gradient(120deg, var(--slotA, #d9d9dc) 0%, var(--slotB, #F3E7B6) 100%) center / cover no-repeat; display: flex; align-items: center; justify-content: center; flex: none; }
+  .slide.fmt-cover .img-slot { height: 450px; margin-top: auto; }
+  .slide.fmt-text-image .img-slot, .slide.fmt-image .img-slot { flex: 1; min-height: 260px; }
+  .img-slot .ph { display: flex; flex-direction: column; align-items: center; gap: 14px; color: var(--muted, #9a968f); font-size: 24px; font-weight: 500; cursor: pointer; }
+  .img-slot .ph svg { width: 84px; height: 84px; opacity: .7; }
+  .stage .img-slot, .stage .avatar { cursor: pointer; }
+  .stage .rt:focus { outline: 2px dashed rgba(29,155,240,.55); outline-offset: 10px; border-radius: 4px; }
+  .stage [data-bind][contenteditable] { outline: none; cursor: text; min-width: 1ch; }
+  .stage [data-bind][contenteditable]:hover { outline: 2px dashed rgba(29,155,240,.35); outline-offset: 4px; border-radius: 4px; }
+  .stage [data-bind][contenteditable]:focus { outline: 2px dashed rgba(29,155,240,.85); outline-offset: 4px; border-radius: 4px; }
+  .stage .img-slot.drag { outline: 4px dashed var(--accent); outline-offset: -4px; }
+
+  input[type=file] { display: none; }
+
+  /* ================= MOBILE ================= */
+  @media (max-width: 959px) {
+    .app { display: flex; flex-direction: column; height: auto; }
+    .thumbs-col { order: 1; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--ui-line); padding: 10px; }
+    .main { order: 2; }
+    .panel { order: 3; border-left: 0; border-top: 1px solid var(--ui-line); }
+    .stage { overflow: visible; padding: 8px 12px 20px; }
+    .appbar .hide-m { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <h1>Editor de Carrossel</h1>
+  <span id="status"></span>
+  <button class="btn primary" id="btnNew">+ Novo slide</button>
+  <button class="btn hide-m" id="btnAll">Baixar todos (PNG)</button>
+</div>
+
+<div class="app">
+  <!-- Miniaturas -->
+  <aside class="thumbs-col" id="thumbsCol">
+    <div id="thumbs" style="display:contents"></div>
+    <button class="add-thumb" id="btnNew2"><b>+</b>Novo slide</button>
+  </aside>
+
+  <!-- Editor -->
+  <main class="main">
+    <div class="rt-toolbar" id="rtbar">
+      <button data-act="h2" title="Título"><b>Título</b></button>
+      <button data-act="p" title="Parágrafo">Parágrafo</button>
+      <span class="sep"></span>
+      <select id="fontSel" title="Fonte do trecho selecionado"><option value="">Fonte…</option></select>
+      <button data-act="bold" title="Negrito"><b>B</b></button>
+      <button data-act="italic" title="Itálico"><i>I</i></button>
+      <button data-act="underline" title="Sublinhado"><u>U</u></button>
+      <span class="sep"></span>
+      <button data-act="list-check" title="Lista com ✔">✔ Lista</button>
+      <button data-act="list-arrow" title="Lista com →">→ Lista</button>
+      <button data-act="list-dot" title="Lista com marcadores">• Lista</button>
+      <span class="sep"></span>
+      <button data-act="image" title="Inserir imagem no texto">🖼 Imagem</button>
+      <button data-act="clean" title="Limpar formatação">Limpar</button>
+      <span class="sep"></span>
+      <button data-act="undo" title="Desfazer">↶</button>
+      <button data-act="redo" title="Refazer">↷</button>
+    </div>
+
+    <div class="slidebar">
+      <span class="grow" id="slideInfo">Slide 1 de 1</span>
+      <span id="warn">⚠ O texto excede o espaço do slide</span>
+      <button class="btn small" id="btnUp" title="Mover para cima / antes">↑ Mover</button>
+      <button class="btn small" id="btnDown" title="Mover para baixo / depois">↓ Mover</button>
+      <button class="btn small" id="btnDup">Duplicar</button>
+      <button class="btn small" id="btnDel">Excluir</button>
+    </div>
+
+    <div class="stage" id="stage">
+      <div class="slide-box"><div class="scaler" id="scaler"></div></div>
+    </div>
+  </main>
+
+  <!-- Painel -->
+  <aside class="panel">
+    <section>
+      <h3>Formato do slide</h3>
+      <div class="fmt-grid" id="fmtGrid"></div>
+    </section>
+
+    <section>
+      <h3>Opções do slide</h3>
+      <label class="check"><input type="checkbox" id="optProfile"> Mostrar perfil</label>
+      <label class="check"><input type="checkbox" id="optMore"> Mostrar “Veja mais”</label>
+      <div id="imgControls">
+        <div class="row" style="margin:12px 0 10px">
+          <button class="btn small" id="btnSlotUp">Enviar imagem</button>
+          <button class="btn small" id="btnSlotRm">Remover</button>
+        </div>
+        <div class="field">
+          <label for="optFit">Ajuste da imagem</label>
+          <select id="optFit"><option value="cover">Preencher (cortar)</option><option value="contain">Mostrar inteira</option></select>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h3>Perfil e cabeçalho (todos os slides)</h3>
+      <div class="field"><label for="inName">Nome</label><input type="text" id="inName"></div>
+      <div class="field"><label for="inHandle">@ usuário</label><input type="text" id="inHandle"></div>
+      <div class="field"><label for="inTopic">Tema (canto superior)</label><input type="text" id="inTopic"></div>
+      <div class="field"><label for="inYear">Ano</label><input type="text" id="inYear"></div>
+      <div class="field"><label for="inFont">Fonte do texto (todos os slides)</label><select id="inFont"></select></div>
+      <div class="field">
+        <label for="inWidth">Largura do texto</label>
+        <select id="inWidth"><option value="760">Estreita</option><option value="860">Padrão</option><option value="900">Larga</option></select>
+      </div>
+      <div class="row">
+        <button class="btn small" id="btnAvatar">Trocar foto</button>
+        <button class="btn small" id="btnAvatarRm">Remover foto</button>
+      </div>
+      <p style="font-size:12px;color:#8a867f;margin-top:10px;line-height:1.4">Você também pode clicar na foto, no nome, no @, no tema e no ano direto no slide para editar.</p>
+    </section>
+
+    <section>
+      <h3>Cores do template</h3>
+      <div class="presets" id="presets"></div>
+      <div class="colors" id="colors"></div>
+    </section>
+
+    <section>
+      <h3>Exportar e projeto</h3>
+      <div class="row">
+        <button class="btn small" id="btnOne">Baixar este (PNG)</button>
+        <button class="btn small" id="btnAll2">Baixar todos</button>
+        <button class="btn small" id="btnSave">Salvar projeto</button>
+        <button class="btn small" id="btnOpen">Abrir projeto</button>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<!-- Modal: novo slide -->
+<div class="modal" id="modal">
+  <div class="card">
+    <h2>Escolha o formato do novo slide</h2>
+    <div class="fmt-grid" id="modalGrid"></div>
+    <button class="btn close" id="modalClose">Cancelar</button>
+  </div>
+</div>
+
+<input type="file" id="pickImg" accept="image/*">
+<input type="file" id="pickProject" accept="application/json,.json">
+
+<script>
+/* =============== ícones =============== */
+const iconVerified = () => `<svg viewBox="0 0 24 24"><path fill="${g.theme.badge}" d="M22.5 12.5c0-1.58-.88-2.95-2.18-3.66.54-1.4.24-3.05-.88-4.17-1.12-1.12-2.76-1.42-4.17-.88C14.57 2.5 13.2 1.62 11.62 1.62S8.67 2.5 7.96 3.8c-1.4-.54-3.05-.24-4.17.88-1.12 1.12-1.42 2.77-.88 4.17C1.6 9.55.72 10.92.72 12.5s.88 2.95 2.19 3.66c-.54 1.4-.24 3.05.88 4.17 1.12 1.12 2.77 1.42 4.17.88.71 1.3 2.08 2.18 3.66 2.18s2.95-.88 3.66-2.18c1.4.54 3.05.24 4.17-.88 1.12-1.12 1.42-2.77.88-4.17 1.3-.71 2.18-2.08 2.18-3.66z"/><path fill="${g.theme.bg}" d="M10.4 16.9l-3.3-3.3 1.4-1.4 1.9 1.9 5-5 1.4 1.4z"/></svg>`;
+const iconArrow = () => `<svg viewBox="0 0 24 24" fill="none" stroke="${g.theme.muted}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10.2"/><path d="M7.5 12h9M12.5 8l4 4-4 4"/></svg>`;
+const ICON_PERSON = `<svg viewBox="0 0 100 100"><circle cx="50" cy="38" r="20" fill="#5b4a40"/><path d="M12 100c2-24 18-36 38-36s36 12 38 36z" fill="#6c6f78"/></svg>`;
+const ICON_IMAGE = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg>`;
+
+const FMT_ICONS = {
+  cover: `<svg viewBox="0 0 40 50" fill="none" stroke="#777" stroke-width="1.5"><rect x="1" y="1" width="38" height="48" rx="3"/><circle cx="8" cy="9" r="3" fill="#bbb" stroke="none"/><path d="M14 8h14M6 17h24M6 21h18"/><rect x="5" y="29" width="30" height="15" rx="2" fill="#e5e5e5"/></svg>`,
+  text: `<svg viewBox="0 0 40 50" fill="none" stroke="#777" stroke-width="1.5"><rect x="1" y="1" width="38" height="48" rx="3"/><circle cx="8" cy="16" r="3" fill="#bbb" stroke="none"/><path d="M14 15h14M6 25h26M6 30h20"/></svg>`,
+  'text-image': `<svg viewBox="0 0 40 50" fill="none" stroke="#777" stroke-width="1.5"><rect x="1" y="1" width="38" height="48" rx="3"/><path d="M6 9h26M6 14h18"/><rect x="5" y="21" width="30" height="23" rx="2" fill="#e5e5e5"/></svg>`,
+  image: `<svg viewBox="0 0 40 50" fill="none" stroke="#777" stroke-width="1.5"><rect x="1" y="1" width="38" height="48" rx="3"/><rect x="5" y="7" width="30" height="36" rx="2" fill="#e5e5e5"/></svg>`
+};
+
+/* =============== modelo =============== */
+const FORMATS = {
+  cover:        { name: 'Capa',           profile: true,  text: true,  image: true  },
+  text:         { name: 'Texto',          profile: true,  text: true,  image: false },
+  'text-image': { name: 'Texto + imagem', profile: true,  text: true,  image: true  },
+  image:        { name: 'Imagem',         profile: true,  text: false, image: true  }
+};
+const DEFAULT_HTML = {
+  cover: '<h2>Lorem ipsum dolor sit amet consectetur...</h2><p>"Lorem ipsum dolor sit amet, consectetur adipiscing elit?"</p><p>Ut enim ad minim veniam, quis nostrud.</p>',
+  text: '<h2>Lorem ipsum dolor sit amet.</h2><p>Consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore.</p>',
+  'text-image': '<h2>Lorem ipsum dolor sit amet.</h2><p>Consectetur adipiscing elit sed do eiusmod.</p>',
+  image: ''
+};
+function newSlide(format, over = {}) {
+  return Object.assign({
+    format, html: DEFAULT_HTML[format], image: null, fit: 'cover',
+    showProfile: FORMATS[format].profile, showMore: true
+  }, over);
+}
+
+const THEMES = {
+  original: { name: 'Original',      bg: '#FAF8F5', title: '#0A0A0A', text: '#1A1A1A', muted: '#BDBAB5', handle: '#7A7773', marker: '#3A3A3A', badge: '#1D9BF0', slotA: '#D9D9DC', slotB: '#F3E7B6' },
+  mono:     { name: 'P&B',           bg: '#FFFFFF', title: '#000000', text: '#111111', muted: '#9A9A9A', handle: '#555555', marker: '#000000', badge: '#000000', slotA: '#E6E6E6', slotB: '#CFCFCF' },
+  dark:     { name: 'Escuro',        bg: '#121212', title: '#F5F5F5', text: '#D9D9D9', muted: '#6B6B6B', handle: '#9A9A9A', marker: '#F5F5F5', badge: '#1D9BF0', slotA: '#2A2A2A', slotB: '#3A3320' },
+  night:    { name: 'Azul noite',    bg: '#0B1B33', title: '#FFFFFF', text: '#D6E2F5', muted: '#5C7396', handle: '#8FA7C9', marker: '#5BB0FF', badge: '#5BB0FF', slotA: '#16325C', slotB: '#1F4A85' },
+  forest:   { name: 'Floresta',      bg: '#F1F5EC', title: '#12301F', text: '#20382B', muted: '#9FB3A3', handle: '#5E7A67', marker: '#2F7A4D', badge: '#2F7A4D', slotA: '#D3DECF', slotB: '#EAD9A8' },
+  clay:     { name: 'Terracota',     bg: '#FBEFE6', title: '#3B1A0E', text: '#4A2A1C', muted: '#D2A98F', handle: '#9A6A52', marker: '#C4542B', badge: '#C4542B', slotA: '#EBCDB8', slotB: '#F6DDA0' },
+  violet:   { name: 'Violeta',       bg: '#1B1030', title: '#FFFFFF', text: '#E5DAF7', muted: '#7A66A6', handle: '#A892D4', marker: '#FF7AC6', badge: '#FF7AC6', slotA: '#33205C', slotB: '#5A2A7A' }
+};
+const THEME_FIELDS = [
+  ['bg', 'Fundo'], ['title', 'Títulos e nome'], ['text', 'Texto'], ['muted', 'Cabeçalho e rodapé'],
+  ['handle', '@ usuário'], ['marker', 'Marcadores de lista'], ['badge', 'Selo verificado'],
+  ['slotA', 'Imagem vazia (início)'], ['slotB', 'Imagem vazia (fim)']
+];
+const KEY = 'editor-carrossel-v1';
+let g = { name: 'Lorem Ipsum', handle: '@loremipsum', topic: 'Lorem ipsum dolor?', year: '2026', avatar: null, width: '860', font: 'Inter', theme: { ...THEMES.original } };
+let slides = [
+  newSlide('cover'),
+  newSlide('text', { html: '<h2>Lorem ipsum dolor sit amet:</h2><ul class="check"><li>Consectetur adipiscing elit</li><li>Eiusmod tempor incididunt</li><li>Labore et dolore magna</li></ul><p>Mesmo assim...</p><p>Ut enim ad minim veniam.</p>' }),
+  newSlide('text-image'),
+  newSlide('text', { html: '<h2>No fim da conversa, lorem ipsum dolor sit amet:</h2><p>A modalidade lorem não é a ipsum dolor.</p><p>É a que melhor sit amet consectetur.</p>', showMore: false })
+];
+let idx = 0;
+
+try {
+  const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+  if (saved && Array.isArray(saved.slides) && saved.slides.length) { g = Object.assign(g, saved.g); slides = saved.slides; if (saved.v !== 2) slides.forEach(s => s.showProfile = true); }
+} catch (e) { /* sem storage: segue com o padrão */ }
+g.theme = Object.assign({}, THEMES.original, g.theme || {});
+
+/* =============== util =============== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const cur = () => slides[idx];
+const scaler = $('scaler');
+const curRT = () => scaler.querySelector('.rt');
+
+/* =============== construção do slide =============== */
+function buildSlide(s, editable) {
+  const f = FORMATS[s.format];
+  const el = document.createElement('div');
+  el.className = 'slide fmt-' + s.format;
+  el.style.setProperty('--tw', g.width + 'px');
+  el.style.setProperty('--font', '"' + g.font + '"');
+  applyThemeVars(el);
+  const ce = editable ? 'contenteditable="true" spellcheck="false"' : '';
+
+  const prof = s.showProfile ? `
+    <div class="profile">
+      <div class="avatar" data-avatar ${editable ? 'title="Clique para trocar a foto"' : ''}>${g.avatar ? '' : ICON_PERSON}</div>
+      <div class="who">
+        <span class="name" data-bind="name" ${ce}>${esc(g.name)}</span>
+        <span class="handle"><span data-bind="handle" ${ce}>${esc(g.handle)}</span>${iconVerified()}</span>
+      </div>
+    </div>` : '';
+  const rt = f.text ? `<div class="rt" ${editable ? 'contenteditable="true" spellcheck="false"' : ''}>${s.html}</div>` : '';
+  const stack = rt ? `<div class="stack">${rt}</div>` : '';
+  const slot = f.image ? `<div class="img-slot" data-slot>${(!s.image && editable) ? `<div class="ph">${ICON_IMAGE}<span>Clique ou arraste uma imagem</span></div>` : ''}</div>` : '';
+
+  el.innerHTML = `
+    <div class="top"><span data-bind="topic" ${ce}>${esc(g.topic)}</span><span data-bind="year" ${ce}>${esc(g.year)}</span></div>
+    ${prof}
+    <div class="body">${stack}${slot}</div>
+    <div class="bottom">
+      <span data-bind="handle" ${ce}>${esc(g.handle)}</span>
+      ${s.showMore ? `<span class="more">Veja mais ${iconArrow()}</span>` : ''}
+    </div>`;
+
+  const slotEl = el.querySelector('[data-slot]');
+  if (slotEl && s.image) {
+    slotEl.style.backgroundImage = `url("${s.image}")`;
+    slotEl.style.backgroundSize = s.fit;
+  }
+  const av = el.querySelector('[data-avatar]');
+  if (av && g.avatar) av.style.backgroundImage = `url("${g.avatar}")`;
+  return el;
+}
+
+/* =============== render principal =============== */
+function renderCurrent() {
+  const s = cur();
+  const el = buildSlide(s, true);
+  scaler.innerHTML = '';
+  scaler.appendChild(el);
+  mountEditor(el);
+  lastRange = null;
+  $('rtbar').classList.toggle('off', !FORMATS[s.format].text);
+  updatePanel();
+  renderThumbs();
+  checkOverflow();
+  updateToolbarState();
+}
+
+function mountEditor(el) {
+  const rt = el.querySelector('.rt');
+  if (rt) {
+    rt.addEventListener('focus', () => { try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {} });
+    rt.addEventListener('input', onRtInput);
+    rt.addEventListener('paste', e => {
+      e.preventDefault();
+      const t = (e.clipboardData || window.clipboardData).getData('text/plain');
+      document.execCommand('insertText', false, t);
+    });
+  }
+  const slot = el.querySelector('[data-slot]');
+  if (slot) {
+    slot.addEventListener('click', () => openPicker('slot'));
+    slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('drag'); });
+    slot.addEventListener('dragleave', () => slot.classList.remove('drag'));
+    slot.addEventListener('drop', async e => {
+      e.preventDefault(); slot.classList.remove('drag');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) { cur().image = await readImage(file); afterChange(true); }
+    });
+  }
+  const av = el.querySelector('[data-avatar]');
+  if (av) av.addEventListener('click', () => openPicker('avatar'));
+  const inputOf = { name: 'inName', handle: 'inHandle', topic: 'inTopic', year: 'inYear' };
+  el.querySelectorAll('[data-bind][contenteditable]').forEach(n => {
+    const key = n.dataset.bind;
+    n.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); n.blur(); } });
+    n.addEventListener('paste', e => {
+      e.preventDefault();
+      const t = (e.clipboardData || window.clipboardData).getData('text/plain').replace(/\s+/g, ' ');
+      document.execCommand('insertText', false, t);
+    });
+    n.addEventListener('input', () => {
+      g[key] = n.textContent;
+      scaler.querySelectorAll(`[data-bind="${key}"]`).forEach(o => { if (o !== n) o.textContent = g[key]; });
+      if (inputOf[key]) $(inputOf[key]).value = g[key];
+      scheduleAllThumbs(); scheduleSave();
+    });
+  });
+}
+
+function onRtInput() {
+  const rt = curRT(); if (!rt) return;
+  cur().html = rt.innerHTML;
+  checkOverflow();
+  scheduleThumb(); scheduleSave();
+}
+function sync() { onRtInput(); updateToolbarState(); }
+
+function afterChange(rerender) {
+  if (rerender) renderCurrent(); else { refreshThumb(idx); }
+  scheduleSave();
+}
+
+function checkOverflow() {
+  const body = scaler.querySelector('.body');
+  $('warn').style.display = (body && body.scrollHeight > body.clientHeight + 2) ? 'inline' : 'none';
+}
+
+/* =============== miniaturas =============== */
+function renderThumbs() {
+  const box = $('thumbs');
+  box.innerHTML = '';
+  slides.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.className = 'thumb' + (i === idx ? ' active' : '');
+    const tb = document.createElement('div'); tb.className = 'thumb-box';
+    const sc = document.createElement('div'); sc.className = 'scaler';
+    sc.appendChild(buildSlide(s, false));
+    tb.appendChild(sc);
+    const lab = document.createElement('div'); lab.className = 'lab';
+    lab.textContent = `${i + 1} · ${FORMATS[s.format].name}`;
+    b.append(tb, lab);
+    b.addEventListener('click', () => select(i));
+    box.appendChild(b);
+  });
+  const active = box.children[idx];
+  if (active) active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  $('slideInfo').textContent = `Slide ${idx + 1} de ${slides.length}`;
+  $('btnUp').disabled = idx === 0;
+  $('btnDown').disabled = idx === slides.length - 1;
+  $('btnDel').disabled = slides.length === 1;
+}
+function refreshThumb(i) {
+  const sc = $('thumbs').children[i]?.querySelector('.scaler');
+  if (sc) { sc.innerHTML = ''; sc.appendChild(buildSlide(slides[i], false)); }
+}
+let thumbT;
+function scheduleThumb() { clearTimeout(thumbT); thumbT = setTimeout(() => refreshThumb(idx), 200); }
+
+let thumbsT;
+function scheduleAllThumbs() { clearTimeout(thumbsT); thumbsT = setTimeout(renderThumbs, 250); }
+
+function select(i) { idx = i; renderCurrent(); }
+
+/* =============== painel =============== */
+function buildFmtGrid(container, onPick) {
+  container.innerHTML = '';
+  Object.entries(FORMATS).forEach(([key, f]) => {
+    const b = document.createElement('button');
+    b.className = 'fmt'; b.dataset.fmt = key;
+    b.innerHTML = `${FMT_ICONS[key]}<span>${f.name}</span>`;
+    b.addEventListener('click', () => onPick(key));
+    container.appendChild(b);
+  });
+}
+function updatePanel() {
+  const s = cur(), f = FORMATS[s.format];
+  document.querySelectorAll('#fmtGrid .fmt').forEach(b => b.classList.toggle('active', b.dataset.fmt === s.format));
+  $('optProfile').checked = s.showProfile;
+  $('optMore').checked = s.showMore;
+  $('imgControls').style.display = f.image ? 'block' : 'none';
+  $('optFit').value = s.fit;
+  $('btnSlotRm').disabled = !s.image;
+}
+function fillGlobalInputs() {
+  $('inName').value = g.name; $('inHandle').value = g.handle;
+  $('inTopic').value = g.topic; $('inYear').value = g.year; $('inWidth').value = g.width; $('inFont').value = g.font; fillThemeInputs();
+}
+
+buildFmtGrid($('fmtGrid'), key => {
+  const s = cur();
+  s.format = key;
+  s.showProfile = FORMATS[key].profile;
+  if (FORMATS[key].text && !s.html.trim()) s.html = DEFAULT_HTML[key];
+  afterChange(true);
+});
+$('optProfile').addEventListener('change', e => { cur().showProfile = e.target.checked; afterChange(true); });
+$('optMore').addEventListener('change', e => { cur().showMore = e.target.checked; afterChange(true); });
+$('optFit').addEventListener('change', e => { cur().fit = e.target.value; afterChange(true); });
+$('btnSlotUp').addEventListener('click', () => openPicker('slot'));
+$('btnSlotRm').addEventListener('click', () => { cur().image = null; afterChange(true); });
+$('btnAvatar').addEventListener('click', () => openPicker('avatar'));
+$('btnAvatarRm').addEventListener('click', () => { g.avatar = null; renderCurrent(); scheduleSave(); });
+
+function bindGlobal(key, val) {
+  g[key] = val;
+  if (key === 'width') { scaler.querySelector('.slide')?.style.setProperty('--tw', val + 'px'); checkOverflow(); }
+  else scaler.querySelectorAll(`[data-bind="${key}"]`).forEach(n => n.textContent = val);
+  renderThumbs(); scheduleSave();
+}
+[['name', 'inName'], ['handle', 'inHandle'], ['topic', 'inTopic'], ['year', 'inYear']].forEach(([k, id]) =>
+  $(id).addEventListener('input', e => bindGlobal(k, e.target.value)));
+$('inWidth').addEventListener('change', e => bindGlobal('width', e.target.value));
+
+/* cores do template */
+function applyThemeVars(el) {
+  const t = g.theme;
+  el.style.setProperty('--bg', t.bg); el.style.setProperty('--ink', t.title); el.style.setProperty('--body', t.text);
+  el.style.setProperty('--muted', t.muted); el.style.setProperty('--handle', t.handle); el.style.setProperty('--marker', t.marker);
+  el.style.setProperty('--slotA', t.slotA); el.style.setProperty('--slotB', t.slotB);
+}
+const sameTheme = (a, b) => THEME_FIELDS.every(([k]) => String(a[k]).toLowerCase() === String(b[k]).toLowerCase());
+function markPresets() {
+  document.querySelectorAll('#presets .preset').forEach(b => b.classList.toggle('active', sameTheme(g.theme, THEMES[b.dataset.key])));
+}
+function fillThemeInputs() {
+  document.querySelectorAll('#colors input[type=color]').forEach(i => { i.value = g.theme[i.dataset.key]; });
+  markPresets();
+}
+let themeT;
+function buildThemeUI() {
+  const pr = $('presets'); pr.innerHTML = '';
+  Object.entries(THEMES).forEach(([key, t]) => {
+    const b = document.createElement('button');
+    b.className = 'preset'; b.dataset.key = key; b.title = t.name;
+    b.innerHTML = `<span class="sw" style="background:${t.bg};color:${t.title}"><b>Aa</b><i style="background:${t.marker}"></i></span><span>${t.name}</span>`;
+    b.addEventListener('click', () => { g.theme = { ...t }; fillThemeInputs(); renderCurrent(); scheduleSave(); });
+    pr.appendChild(b);
+  });
+  const cf = $('colors'); cf.innerHTML = '';
+  THEME_FIELDS.forEach(([k, label]) => {
+    const l = document.createElement('label'); l.className = 'cfield';
+    l.innerHTML = `<span>${label}</span><input type="color" data-key="${k}">`;
+    cf.appendChild(l);
+  });
+  cf.addEventListener('input', e => {
+    const k = e.target.dataset.key; if (!k) return;
+    g.theme[k] = e.target.value;
+    const el = scaler.querySelector('.slide'); if (el) applyThemeVars(el);
+    markPresets(); scheduleSave();
+    clearTimeout(themeT); themeT = setTimeout(renderCurrent, 200);
+  });
+}
+
+/* fontes */
+const FONTS = ['Inter', 'Poppins', 'Montserrat', 'DM Sans', 'Manrope', 'Space Grotesk', 'Work Sans', 'Raleway', 'Oswald', 'Playfair Display', 'Lora', 'Merriweather', 'Libre Baskerville', 'Roboto Slab'];
+function fillFontSelects() {
+  FONTS.forEach(f => {
+    ['fontSel', 'inFont'].forEach(id => {
+      const o = document.createElement('option');
+      o.value = f; o.textContent = f; o.style.fontFamily = `"${f}"`;
+      $(id).appendChild(o);
+    });
+  });
+}
+$('inFont').addEventListener('change', e => {
+  g.font = e.target.value;
+  scaler.querySelector('.slide')?.style.setProperty('--font', `"${g.font}"`);
+  checkOverflow(); renderThumbs(); scheduleSave();
+});
+$('fontSel').addEventListener('change', e => {
+  const f = e.target.value; e.target.value = '';
+  if (!f || !restoreSel()) return;
+  document.execCommand('styleWithCSS', false, true);
+  document.execCommand('fontName', false, f);
+  document.execCommand('styleWithCSS', false, false);
+  sync();
+});
+
+/* =============== novo slide / ações =============== */
+const modal = $('modal');
+buildFmtGrid($('modalGrid'), key => {
+  slides.splice(idx + 1, 0, newSlide(key));
+  modal.classList.remove('open');
+  select(idx + 1); scheduleSave();
+});
+$('btnNew').addEventListener('click', () => modal.classList.add('open'));
+$('btnNew2').addEventListener('click', () => modal.classList.add('open'));
+$('modalClose').addEventListener('click', () => modal.classList.remove('open'));
+modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
+
+$('btnUp').addEventListener('click', () => { if (idx > 0) { [slides[idx - 1], slides[idx]] = [slides[idx], slides[idx - 1]]; idx--; renderCurrent(); scheduleSave(); } });
+$('btnDown').addEventListener('click', () => { if (idx < slides.length - 1) { [slides[idx + 1], slides[idx]] = [slides[idx], slides[idx + 1]]; idx++; renderCurrent(); scheduleSave(); } });
+$('btnDup').addEventListener('click', () => { slides.splice(idx + 1, 0, JSON.parse(JSON.stringify(cur()))); select(idx + 1); scheduleSave(); });
+$('btnDel').addEventListener('click', () => {
+  if (slides.length === 1) return;
+  if (!confirm('Excluir este slide?')) return;
+  slides.splice(idx, 1); idx = Math.min(idx, slides.length - 1); renderCurrent(); scheduleSave();
+});
+
+/* =============== barra de texto rico =============== */
+let lastRange = null;
+document.addEventListener('selectionchange', () => {
+  const sel = getSelection(); if (!sel.rangeCount) return;
+  const r = sel.getRangeAt(0), rt = curRT();
+  if (rt && rt.contains(r.commonAncestorContainer)) { lastRange = r.cloneRange(); updateToolbarState(); }
+});
+function restoreSel() {
+  const rt = curRT(); if (!rt) return false;
+  rt.focus();
+  if (lastRange && rt.contains(lastRange.commonAncestorContainer)) {
+    const sel = getSelection(); sel.removeAllRanges(); sel.addRange(lastRange);
+  }
+  return true;
+}
+function closestInRT(tag) {
+  const sel = getSelection(); if (!sel.rangeCount) return null;
+  let n = sel.anchorNode; if (n && n.nodeType === 3) n = n.parentNode;
+  const el = n && n.closest ? n.closest(tag) : null;
+  return el && curRT().contains(el) ? el : null;
+}
+function setList(kind) {
+  let ul = closestInRT('ul');
+  if (ul) {
+    if (ul.classList.contains(kind)) document.execCommand('insertUnorderedList');
+    else ul.className = kind;
+  } else {
+    document.execCommand('insertUnorderedList');
+    ul = closestInRT('ul'); if (ul) ul.className = kind;
+  }
+}
+function updateToolbarState() {
+  ['bold', 'italic', 'underline'].forEach(c => {
+    const b = document.querySelector(`#rtbar [data-act="${c}"]`);
+    let on = false; try { on = document.queryCommandState(c); } catch (e) {}
+    if (b) b.classList.toggle('on', on && !!lastRange);
+  });
+}
+function act(a) {
+  if (!restoreSel()) return;
+  switch (a) {
+    case 'h2': document.execCommand('formatBlock', false, 'h2'); break;
+    case 'p': document.execCommand('formatBlock', false, 'p'); break;
+    case 'bold': case 'italic': case 'underline': case 'undo': case 'redo': document.execCommand(a); break;
+    case 'list-check': setList('check'); break;
+    case 'list-arrow': setList('arrow'); break;
+    case 'list-dot': setList('dot'); break;
+    case 'clean': document.execCommand('removeFormat'); document.execCommand('formatBlock', false, 'p'); break;
+    case 'image': openPicker('inline'); return;
+  }
+  sync();
+}
+$('rtbar').addEventListener('mousedown', e => { if (e.target.closest('button')) e.preventDefault(); });
+$('rtbar').addEventListener('click', e => { const b = e.target.closest('button[data-act]'); if (b) act(b.dataset.act); });
+
+/* =============== upload de imagens =============== */
+const picker = $('pickImg');
+let pickTarget = null;
+function openPicker(t) { pickTarget = t; picker.click(); }
+
+function readImage(file, max = 1600) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onerror = reject;
+    fr.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const r = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.9));
+      };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+picker.addEventListener('change', async () => {
+  const file = picker.files[0]; picker.value = '';
+  if (!file) return;
+  let data; try { data = await readImage(file); } catch (e) { alert('Não foi possível ler essa imagem.'); return; }
+  if (pickTarget === 'slot') { cur().image = data; afterChange(true); }
+  else if (pickTarget === 'avatar') { g.avatar = data; renderCurrent(); scheduleSave(); }
+  else if (pickTarget === 'inline') {
+    if (!restoreSel()) return;
+    document.execCommand('insertHTML', false, `<img class="inline" src="${data}"><p><br></p>`);
+    sync();
+  }
+});
+
+/* =============== escala do palco =============== */
+const stage = $('stage');
+const desktop = window.matchMedia('(min-width: 960px)');
+function fit() {
+  const W = stage.clientWidth, H = stage.clientHeight;
+  let s;
+  if (desktop.matches) s = Math.min((W - 48) / 1080, (H - 32) / 1350);
+  else s = (W - 24) / 1080;
+  s = Math.max(0.15, s);
+  document.documentElement.style.setProperty('--s', s.toFixed(4));
+}
+new ResizeObserver(fit).observe(stage);
+window.addEventListener('resize', fit);
+
+/* =============== salvar / abrir =============== */
+let saveT;
+function status(t) { $('status').textContent = t; }
+function scheduleSave() {
+  clearTimeout(saveT);
+  saveT = setTimeout(() => {
+    try { localStorage.setItem(KEY, JSON.stringify({ v: 2, g, slides })); status('Salvo no navegador'); }
+    catch (e) { status('Auto-save indisponível — use “Salvar projeto”'); }
+  }, 500);
+}
+$('btnSave').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify({ v: 2, g, slides })], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'carrossel.json'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+$('btnOpen').addEventListener('click', () => $('pickProject').click());
+$('pickProject').addEventListener('change', e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!Array.isArray(d.slides) || !d.slides.length) throw 0;
+      g = Object.assign(g, d.g); slides = d.slides; idx = 0; if (d.v !== 2) slides.forEach(s => s.showProfile = true);
+      g.theme = Object.assign({}, THEMES.original, g.theme || {});
+      fillGlobalInputs(); renderCurrent(); scheduleSave();
+    } catch (err) { alert('Arquivo de projeto inválido.'); }
+  };
+  r.readAsText(f);
+});
+
+/* =============== exportar PNG =============== */
+async function exportIdx(i) {
+  const holder = document.createElement('div');
+  holder.style.cssText = 'position:fixed;left:-99999px;top:0;width:1080px;height:1350px;';
+  const el = buildSlide(slides[i], false);
+  holder.appendChild(el); document.body.appendChild(holder);
+  try {
+    try { await document.fonts.load(`700 40px "${g.font}"`); await document.fonts.load(`400 40px "${g.font}"`); } catch (e) {}
+    await document.fonts.ready;
+    await new Promise(r => setTimeout(r, 150));
+    const canvas = await html2canvas(el, { width: 1080, height: 1350, scale: 1, backgroundColor: g.theme.bg, useCORS: true });
+    const a = document.createElement('a');
+    a.download = `slide-${String(i + 1).padStart(2, '0')}.png`;
+    a.href = canvas.toDataURL('image/png'); a.click();
+  } finally { holder.remove(); }
+}
+$('btnOne').addEventListener('click', () => exportIdx(idx));
+async function exportAll() {
+  for (let i = 0; i < slides.length; i++) { status(`Exportando ${i + 1}/${slides.length}…`); await exportIdx(i); await new Promise(r => setTimeout(r, 400)); }
+  status('Exportação concluída');
+}
+$('btnAll').addEventListener('click', exportAll);
+$('btnAll2').addEventListener('click', exportAll);
+
+/* =============== início =============== */
+fillFontSelects();
+buildThemeUI();
+fillGlobalInputs();
+renderCurrent();
+fit();
+</script>
+</body>
+</html>
