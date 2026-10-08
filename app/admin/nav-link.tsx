@@ -3,11 +3,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export function NavLink({ href, indent, children }: { href: string; indent?: boolean; children: React.ReactNode }) {
+export function NavLink({ href, icon, children }: { href: string; icon: React.ReactNode; children: React.ReactNode }) {
   const active = usePathname().startsWith(href);
   return (
-    <Link href={href} className={`nav${indent ? ' indent' : ''}${active ? ' active' : ''}`}>
-      {children}
+    <Link href={href} className={`nav${active ? ' active' : ''}`} aria-current={active ? 'page' : undefined}>
+      {icon}
+      <span>{children}</span>
     </Link>
   );
 }

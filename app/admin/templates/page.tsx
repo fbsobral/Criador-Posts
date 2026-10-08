@@ -4,6 +4,8 @@ import { templates } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { createTemplate, deleteTemplate } from '@/lib/actions';
 import { EDITORS } from '@/lib/editors';
+import { IconPlus, IconTrash } from '../../icons';
+import { TemplateArt } from '../template-art';
 
 export default async function TemplatesPage() {
   const c = (await getCtx())!;
@@ -11,17 +13,26 @@ export default async function TemplatesPage() {
   const canDelete = (brandId: string | null) => (brandId === null ? c.isPlatformAdmin : c.isBrandAdmin);
 
   return (
-    <>
-      <div className="page-head"><h1>Templates</h1></div>
-      <p className="muted">Um template é o <b>formato do post</b>. Você escolhe um ao criar cada post em Posts.</p>
+    <div className="page">
+      <div className="page-head">
+        <div>
+          <h1>Templates</h1>
+          <p>Um template é o <b>formato do post</b>. Você escolhe um ao criar cada post em Posts.</p>
+        </div>
+      </div>
+
       <div className="cards">
         {rows.map((t) => (
-          <div className="card" key={t.id}>
-            <div className="card-foot"><b>{t.name}</b><span className="pill">{t.brandId === null ? 'Global' : 'Da marca'}</span></div>
-            <p className="muted">{t.description || '—'}</p>
-            <p className="muted">Editor: {EDITORS[t.editor as keyof typeof EDITORS]?.label ?? t.editor}</p>
+          <div className="card-surface tpl-card" key={t.id}>
+            <div className="tpl-art"><TemplateArt editor={t.editor} /></div>
+            <h3>{t.name}<span className={`pill ${t.brandId === null ? 'dark' : 'brand'}`}>{t.brandId === null ? 'Global' : 'Da marca'}</span></h3>
+            <p>{t.description || 'Formato de post.'}</p>
+            <p style={{ fontSize: 12 }}>Editor: {EDITORS[t.editor as keyof typeof EDITORS]?.label ?? t.editor}</p>
             {canDelete(t.brandId) && (
-              <form action={deleteTemplate}><input type="hidden" name="id" value={t.id} /><button className="btn small danger">Excluir</button></form>
+              <form action={deleteTemplate}>
+                <input type="hidden" name="id" value={t.id} />
+                <button className="btn small danger"><IconTrash /> Excluir</button>
+              </form>
             )}
           </div>
         ))}
@@ -29,17 +40,17 @@ export default async function TemplatesPage() {
 
       {c.isPlatformAdmin && (
         <>
-          <h2 style={{ marginTop: 32 }}>Novo template <span className="pill">super-admin</span></h2>
-          <form action={createTemplate} className="stack-form">
-            <label>Nome<input name="name" required /></label>
-            <label>Descrição<input name="description" /></label>
-            <label>Editor
+          <div className="section-title"><h2>Novo template</h2><span className="pill dark">super-admin</span></div>
+          <form action={createTemplate} className="card-surface form-card" style={{ maxWidth: 560 }}>
+            <label className="field">Nome<input name="name" required /></label>
+            <label className="field">Descrição<input name="description" /></label>
+            <label className="field">Editor
               <select name="editor">{Object.entries(EDITORS).map(([k, e]) => <option key={k} value={k}>{e.label}</option>)}</select>
             </label>
-            <button className="btn primary">Criar template</button>
+            <div><button className="btn primary"><IconPlus /> Criar template</button></div>
           </form>
         </>
       )}
-    </>
+    </div>
   );
 }

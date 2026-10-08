@@ -1,10 +1,13 @@
 import Link from 'next/link';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { posts, templates, users } from '@/db/schema';
-import { isNull, or, sql } from 'drizzle-orm';
 import { getCtx } from '@/lib/ctx';
 import { createPost, deletePost, duplicatePost, setPostStatus } from '@/lib/actions';
+import { timeAgo } from '@/lib/format';
+import { IconCopy, IconPlus, IconTrash } from '../../icons';
+import { PostPreview } from '../post-preview';
+import { TemplateArt } from '../template-art';
 
 export default async function PostsPage() {
   const c = (await getCtx())!;
@@ -12,8 +15,12 @@ export default async function PostsPage() {
     .select({
       p: { id: posts.id, title: posts.title, status: posts.status, updatedAt: posts.updatedAt },
       slides: sql<number>`case when jsonb_typeof(${posts.data}->'slides') = 'array' then jsonb_array_length(${posts.data}->'slides') else 0 end`,
+      theme: sql<Record<string, string> | null>`${posts.data}->'g'->'theme'`,
+      colors: sql<Record<string, string> | null>`${posts.data}->'g'->'colors'`,
+      text: sql<string | null>`coalesce(left(${posts.data}->'slides'->0->>'html', 900), left(${posts.data}->'slides'->0->>'text', 400))`,
       author: users.name,
       format: templates.name,
+      editor: templates.editor,
     })
     .from(posts)
     .leftJoin(users, eq(users.id, posts.updatedBy))
@@ -24,51 +31,69 @@ export default async function PostsPage() {
   const formats = await db.select().from(templates).where(or(isNull(templates.brandId), eq(templates.brandId, c.brandId))).orderBy(templates.name);
 
   return (
-    <>
+    <div className="page">
       <div className="page-head">
-        <h1>Posts</h1>
-        <form action={createPost} className="inline">
-          <input name="title" placeholder="Título do novo post" required />
-          <select name="templateId" required title="Template (formato do post)">
-            {formats.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-          <button className="btn primary">+ Novo post</button>
-        </form>
+        <div>
+          <h1>Posts</h1>
+          <p>{rows.length === 0 ? 'Crie o primeiro post da marca.' : `${rows.length} ${rows.length === 1 ? 'post' : 'posts'} em ${c.brandName}.`}</p>
+        </div>
       </div>
+
+      <form action={createPost} className="card-surface new-post">
+        <h2>Novo post</h2>
+        <p className="muted">Escolha o formato e dê um nome. Você edita o conteúdo no passo seguinte.</p>
+        <div className="tpl-opts" style={{ marginTop: 14 }}>
+          {formats.map((t, i) => (
+            <label className="tpl-opt" key={t.id}>
+              <input type="radio" name="templateId" value={t.id} defaultChecked={i === 0} required />
+              <TemplateArt editor={t.editor} className="art" />
+              <span><b>{t.name}</b><small>{t.description || 'Formato de post'}</small></span>
+            </label>
+          ))}
+        </div>
+        <div className="row1" style={{ margin: 0, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <input name="title" placeholder="Título do post (ex.: 5 erros ao financiar um imóvel)" required style={{ flex: 1, minWidth: 220 }} />
+          <button className="btn primary"><IconPlus /> Criar post</button>
+        </div>
+      </form>
+
       {rows.length === 0 ? (
-        <p className="muted">Nenhum post ainda. Crie o primeiro acima.</p>
+        <div className="empty"><b>Nenhum post ainda</b>Use o formulário acima para criar o primeiro.</div>
       ) : (
-        <table>
-          <thead><tr><th>Título</th><th>Template</th><th>Status</th><th>Slides</th><th>Atualizado</th><th></th></tr></thead>
-          <tbody>
-            {rows.map(({ p, slides, author, format }) => (
-              <tr key={p.id}>
-                <td><Link href={`/admin/posts/${p.id}`}><b>{p.title}</b></Link></td>
-                <td className="muted">{format ?? '—'}</td>
-                <td>
-                  <form action={setPostStatus}>
-                    <input type="hidden" name="id" value={p.id} />
-                    <input type="hidden" name="status" value={p.status === 'draft' ? 'published' : 'draft'} />
-                    <button className={`pill ${p.status}`} title="Alternar status">{p.status === 'draft' ? 'Rascunho' : 'Publicado'}</button>
-                  </form>
-                </td>
-                <td>{slides}</td>
-                <td className="muted">{p.updatedAt.toLocaleString('pt-BR')}{author ? ` · ${author}` : ''}</td>
-                <td className="right actions">
-                  <form action={duplicatePost}>
-                    <input type="hidden" name="id" value={p.id} />
-                    <button className="btn small">Duplicar</button>
-                  </form>
-                  <form action={deletePost}>
-                    <input type="hidden" name="id" value={p.id} />
-                    <button className="btn small danger">Excluir</button>
-                  </form>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="grid-posts">
+          {rows.map(({ p, slides, theme, colors, text, author, format, editor }) => (
+            <article className="card-surface post-card" key={p.id}>
+              <Link href={`/admin/posts/${p.id}`} className="post-thumb" aria-label={`Abrir ${p.title}`}>
+                <span className="badge">{slides || 1} {slides === 1 || !slides ? 'slide' : 'slides'}</span>
+                <PostPreview editor={editor ?? 'carrossel'} theme={theme} colors={colors} text={text} />
+              </Link>
+              <div className="post-body">
+                <Link href={`/admin/posts/${p.id}`} className="post-title">{p.title}</Link>
+                <div className="post-meta">
+                  <span>{format ?? 'Carrossel'}</span><span>·</span><span>{timeAgo(p.updatedAt)}</span>
+                  {author && <><span>·</span><span>{author}</span></>}
+                </div>
+              </div>
+              <div className="post-actions">
+                <form action={setPostStatus}>
+                  <input type="hidden" name="id" value={p.id} />
+                  <input type="hidden" name="status" value={p.status === 'draft' ? 'published' : 'draft'} />
+                  <button className={`pill ${p.status}`} title="Alternar status">{p.status === 'draft' ? 'Rascunho' : 'Publicado'}</button>
+                </form>
+                <span className="spacer" />
+                <form action={duplicatePost}>
+                  <input type="hidden" name="id" value={p.id} />
+                  <button className="btn small ghost" title="Duplicar" aria-label="Duplicar"><IconCopy /></button>
+                </form>
+                <form action={deletePost}>
+                  <input type="hidden" name="id" value={p.id} />
+                  <button className="btn small ghost danger" title="Excluir" aria-label="Excluir"><IconTrash /></button>
+                </form>
+              </div>
+            </article>
+          ))}
+        </div>
       )}
-    </>
+    </div>
   );
 }
