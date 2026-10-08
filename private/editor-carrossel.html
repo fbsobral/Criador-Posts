@@ -271,6 +271,8 @@
           <label for="optFit">Ajuste da imagem</label>
           <select id="optFit"><option value="cover">Preencher (cortar)</option><option value="contain">Mostrar inteira</option></select>
         </div>
+        <label class="check"><input type="checkbox" id="optHAuto"> Altura automática</label>
+        <div class="field" id="hField"><label for="optH">Altura: <b id="hVal"></b> px</label><input type="range" id="optH" min="150" max="1100" step="10"></div>
       </div>
     </section>
 
@@ -440,6 +442,7 @@ function buildSlide(s, editable) {
     slotEl.style.backgroundImage = `url("${s.image}")`;
     slotEl.style.backgroundSize = s.fit;
   }
+  if (slotEl && s.imgH) { slotEl.style.height = s.imgH + 'px'; slotEl.style.flex = 'none'; slotEl.style.minHeight = '0'; }
   const av = el.querySelector('[data-avatar]');
   if (av && g.avatar) av.style.backgroundImage = `url("${g.avatar}")`;
   return el;
@@ -574,6 +577,7 @@ function updatePanel() {
   $('optMore').checked = s.showMore;
   $('imgControls').style.display = f.image ? 'block' : 'none';
   $('optFit').value = s.fit;
+  $('optHAuto').checked = !s.imgH; $('hField').style.display = s.imgH ? 'flex' : 'none'; if (s.imgH) { $('optH').value = s.imgH; $('hVal').textContent = s.imgH; }
   $('btnSlotRm').disabled = !s.image;
 }
 function fillGlobalInputs() {
@@ -591,6 +595,17 @@ buildFmtGrid($('fmtGrid'), key => {
 $('optProfile').addEventListener('change', e => { cur().showProfile = e.target.checked; afterChange(true); });
 $('optMore').addEventListener('change', e => { cur().showMore = e.target.checked; afterChange(true); });
 $('optFit').addEventListener('change', e => { cur().fit = e.target.value; afterChange(true); });
+$('optHAuto').addEventListener('change', e => {
+  if (e.target.checked) cur().imgH = null;
+  else { const slot = scaler.querySelector('[data-slot]'); cur().imgH = Math.min(1100, Math.max(150, Math.round((slot && slot.offsetHeight) || 450))); }
+  afterChange(true);
+});
+$('optH').addEventListener('input', e => {
+  const h = +e.target.value; cur().imgH = h; $('hVal').textContent = h;
+  const slot = scaler.querySelector('[data-slot]');
+  if (slot) { slot.style.height = h + 'px'; slot.style.flex = 'none'; slot.style.minHeight = '0'; }
+  checkOverflow(); scheduleThumb(); scheduleSave();
+});
 $('btnSlotUp').addEventListener('click', () => openPicker('slot'));
 $('btnSlotRm').addEventListener('click', () => { cur().image = null; afterChange(true); });
 $('btnAvatar').addEventListener('click', () => openPicker('avatar'));
