@@ -106,7 +106,7 @@
   .slide.fmt-image .stack { margin: 0 0 36px; }
 
   /* título acima do perfil */
-  .ptitle { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; margin-top: 44px; flex: none; font-size: 30px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; line-height: 1.2; color: var(--ink); }
+  .ptitle { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; margin-top: 44px; flex: none; font-size: 25px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; line-height: 1.2; color: var(--eyebrow, var(--marker)); }
   .ptitle + .profile { margin-top: 26px; }
   .stage .ptitle [data-bind="title"]:empty::before { content: 'Título em caixa alta'; color: var(--muted); font-weight: 600; }
 
@@ -318,17 +318,17 @@ function newSlide(format, over = {}) {
 }
 
 const THEMES = {
-  original: { name: 'Original',      bg: '#FAF8F5', title: '#0A0A0A', text: '#1A1A1A', muted: '#BDBAB5', handle: '#7A7773', marker: '#3A3A3A', badge: '#1D9BF0', slotA: '#D9D9DC', slotB: '#F3E7B6' },
-  mono:     { name: 'P&B',           bg: '#FFFFFF', title: '#000000', text: '#111111', muted: '#9A9A9A', handle: '#555555', marker: '#000000', badge: '#000000', slotA: '#E6E6E6', slotB: '#CFCFCF' },
-  dark:     { name: 'Escuro',        bg: '#121212', title: '#F5F5F5', text: '#D9D9D9', muted: '#6B6B6B', handle: '#9A9A9A', marker: '#F5F5F5', badge: '#1D9BF0', slotA: '#2A2A2A', slotB: '#3A3320' },
-  night:    { name: 'Azul noite',    bg: '#0B1B33', title: '#FFFFFF', text: '#D6E2F5', muted: '#5C7396', handle: '#8FA7C9', marker: '#5BB0FF', badge: '#5BB0FF', slotA: '#16325C', slotB: '#1F4A85' },
-  forest:   { name: 'Floresta',      bg: '#F1F5EC', title: '#12301F', text: '#20382B', muted: '#9FB3A3', handle: '#5E7A67', marker: '#2F7A4D', badge: '#2F7A4D', slotA: '#D3DECF', slotB: '#EAD9A8' },
-  clay:     { name: 'Terracota',     bg: '#FBEFE6', title: '#3B1A0E', text: '#4A2A1C', muted: '#D2A98F', handle: '#9A6A52', marker: '#C4542B', badge: '#C4542B', slotA: '#EBCDB8', slotB: '#F6DDA0' },
-  violet:   { name: 'Violeta',       bg: '#1B1030', title: '#FFFFFF', text: '#E5DAF7', muted: '#7A66A6', handle: '#A892D4', marker: '#FF7AC6', badge: '#FF7AC6', slotA: '#33205C', slotB: '#5A2A7A' }
+  original: { name: 'Original',      bg: '#FAF8F5', title: '#0A0A0A', text: '#1A1A1A', muted: '#BDBAB5', handle: '#7A7773', marker: '#3A3A3A', badge: '#1D9BF0', eyebrow: '#1D9BF0', slotA: '#D9D9DC', slotB: '#F3E7B6' },
+  mono:     { name: 'P&B',           bg: '#FFFFFF', title: '#000000', text: '#111111', muted: '#9A9A9A', handle: '#555555', marker: '#000000', badge: '#000000', eyebrow: '#000000', slotA: '#E6E6E6', slotB: '#CFCFCF' },
+  dark:     { name: 'Escuro',        bg: '#121212', title: '#F5F5F5', text: '#D9D9D9', muted: '#6B6B6B', handle: '#9A9A9A', marker: '#F5F5F5', badge: '#1D9BF0', eyebrow: '#1D9BF0', slotA: '#2A2A2A', slotB: '#3A3320' },
+  night:    { name: 'Azul noite',    bg: '#0B1B33', title: '#FFFFFF', text: '#D6E2F5', muted: '#5C7396', handle: '#8FA7C9', marker: '#5BB0FF', badge: '#5BB0FF', eyebrow: '#5BB0FF', slotA: '#16325C', slotB: '#1F4A85' },
+  forest:   { name: 'Floresta',      bg: '#F1F5EC', title: '#12301F', text: '#20382B', muted: '#9FB3A3', handle: '#5E7A67', marker: '#2F7A4D', badge: '#2F7A4D', eyebrow: '#2F7A4D', slotA: '#D3DECF', slotB: '#EAD9A8' },
+  clay:     { name: 'Terracota',     bg: '#FBEFE6', title: '#3B1A0E', text: '#4A2A1C', muted: '#D2A98F', handle: '#9A6A52', marker: '#C4542B', badge: '#C4542B', eyebrow: '#C4542B', slotA: '#EBCDB8', slotB: '#F6DDA0' },
+  violet:   { name: 'Violeta',       bg: '#1B1030', title: '#FFFFFF', text: '#E5DAF7', muted: '#7A66A6', handle: '#A892D4', marker: '#FF7AC6', badge: '#FF7AC6', eyebrow: '#FF7AC6', slotA: '#33205C', slotB: '#5A2A7A' }
 };
 const THEME_FIELDS = [
   ['bg', 'Fundo'], ['title', 'Títulos e nome'], ['text', 'Texto'], ['muted', 'Cabeçalho e rodapé'],
-  ['handle', '@ usuário'], ['marker', 'Marcadores de lista'], ['badge', 'Selo verificado'],
+  ['handle', '@ usuário'], ['marker', 'Marcadores de lista'], ['badge', 'Selo verificado'], ['eyebrow', 'Título acima do perfil'],
   ['slotA', 'Imagem vazia (início)'], ['slotB', 'Imagem vazia (fim)']
 ];
 const KEY = 'editor-carrossel-v1';
@@ -563,7 +563,7 @@ $('inWidth').addEventListener('change', e => bindGlobal('width', e.target.value)
 function applyThemeVars(el) {
   const t = g.theme;
   el.style.setProperty('--bg', t.bg); el.style.setProperty('--ink', t.title); el.style.setProperty('--body', t.text);
-  el.style.setProperty('--muted', t.muted); el.style.setProperty('--handle', t.handle); el.style.setProperty('--marker', t.marker);
+  el.style.setProperty('--eyebrow', t.eyebrow); el.style.setProperty('--muted', t.muted); el.style.setProperty('--handle', t.handle); el.style.setProperty('--marker', t.marker);
   el.style.setProperty('--slotA', t.slotA); el.style.setProperty('--slotB', t.slotB);
 }
 const sameTheme = (a, b) => THEME_FIELDS.every(([k]) => String(a[k]).toLowerCase() === String(b[k]).toLowerCase());
