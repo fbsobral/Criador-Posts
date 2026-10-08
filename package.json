@@ -6,7 +6,7 @@
     "build": "next build",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:seed": "tsx db/seed.ts",
+    "db:seed": "tsx db/seed.ts", "org:create": "tsx scripts/create-org.ts",
     "start": "next start"
   },
   "dependencies": {
