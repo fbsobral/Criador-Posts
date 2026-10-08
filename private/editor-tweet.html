@@ -77,6 +77,11 @@
   .names .name svg { width: 36px; height: 36px; flex: none; }
   .names .handle { display: block; font-size: 30px; font-weight: 500; color: var(--handle); margin-top: 4px; }
   .tx { font-size: var(--fs, 50px); line-height: 1.22; letter-spacing: -1.2px; color: var(--text); white-space: pre-wrap; word-wrap: break-word; outline: none; min-height: 1.2em; }
+  .pic { margin-top: 36px; border-radius: 24px; overflow: hidden; background: rgba(0,0,0,.06); display: flex; align-items: center; justify-content: center; }
+  .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .pic.orig img { height: auto; }
+  .pic .ph { font-size: 26px; color: var(--ph); padding: 60px 20px; text-align: center; cursor: pointer; }
+  .pic.drag { outline: 4px dashed #1D9BF0; outline-offset: -4px; }
   .btnc { margin-top: 44px; background: var(--accent2); color: var(--btntext); font-weight: 800; font-size: 36px; text-transform: uppercase; letter-spacing: -.6px; text-align: center; padding: 28px 24px; border-radius: 6px; line-height: 1.15; }
   .line { height: 3px; background: var(--line); margin: 44px 0 36px; }
   .metrics { display: flex; gap: 52px; font-size: 40px; color: var(--text); letter-spacing: -.5px; }
@@ -127,6 +132,16 @@
   <aside class="panel">
     <section>
       <h3>Este slide</h3>
+      <label class="check"><input type="checkbox" id="optImage"> Mostrar imagem (entre o texto e as métricas)</label>
+      <div id="imageFields">
+        <div class="row" style="margin-bottom:10px">
+          <button class="btn small" id="btnPic">Enviar imagem</button>
+          <button class="btn small" id="btnPicRm">Remover</button>
+        </div>
+        <div class="field"><label for="optRatio">Formato da imagem</label>
+          <select id="optRatio"><option value="orig">Original</option><option value="16/9">Paisagem 16:9</option><option value="4/3">Paisagem 4:3</option><option value="1/1">Quadrada 1:1</option></select>
+        </div>
+      </div>
       <label class="check"><input type="checkbox" id="optButton"> Mostrar botão</label>
       <div class="field" id="btnTextField"><label for="inButton">Texto do botão</label><input type="text" id="inButton"></div>
       <label class="check"><input type="checkbox" id="optMetrics"> Mostrar métricas</label>
@@ -202,7 +217,7 @@ const THEMES = {
 };
 const COLOR_FIELDS = [['bg', 'Fundo'], ['card', 'Card'], ['text', 'Texto'], ['name', 'Nome'], ['handle', '@ usuário'], ['accent2', 'Botão'], ['btntext', 'Texto do botão'], ['line', 'Linha divisória'], ['badge', 'Selo verificado']];
 const FONTS = ['Plus Jakarta Sans', 'Inter', 'Manrope', 'DM Sans', 'Poppins', 'Montserrat', 'Space Grotesk', 'Work Sans', 'Kanit', 'Barlow'];
-const newSlide = (o = {}) => Object.assign({ text: 'Escreva aqui o texto do seu post.', showButton: false, button: 'Quero acessar agora', showMetrics: true, c: '754', r: '2641', l: '25K', size: '50' }, o);
+const newSlide = (o = {}) => Object.assign({ text: 'Escreva aqui o texto do seu post.', showButton: false, button: 'Quero acessar agora', showImage: false, image: null, ratio: 'orig', showMetrics: true, c: '754', r: '2641', l: '25K', size: '50' }, o);
 
 const KEY = 'editor-tweet-v1';
 const HOST = window.CARROSSEL || null;
@@ -246,6 +261,7 @@ function buildSlide(s, editable) {
         <div class="names"><span class="name"><span data-bind="name" ${ce}>${esc(g.name)}</span>${iconVerified(c)}</span><span class="handle" data-bind="handle" ${ce}>${esc(g.handle)}</span></div>
       </div>
       <div class="tx" data-text ${ce}>${esc(s.text)}</div>
+      ${s.showImage && (s.image || editable) ? `<div class="pic ${s.ratio === 'orig' && s.image ? 'orig' : ''}" data-pic style="${s.ratio !== 'orig' || !s.image ? `aspect-ratio:${({ '16/9': '16/9', '4/3': '4/3', '1/1': '1/1', orig: '16/9' })[s.ratio] || '16/9'};` : ''}">${s.image ? `<img src="${s.image}" alt="">` : `<div class="ph">Clique ou arraste uma imagem</div>`}</div>` : ''}
       ${s.showButton ? `<div class="btnc">${esc(s.button)}</div>` : ''}
       ${s.showMetrics ? `<div class="line"></div><div class="metrics"><span>${ICO_COMMENT}<b data-metric="c" ${ce}>${esc(s.c)}</b></span><span>${ICO_RETWEET}<b data-metric="r" ${ce}>${esc(s.r)}</b></span><span>${ICO_HEART}<b data-metric="l" ${ce}>${esc(s.l)}</b></span></div>` : ''}
     </div></div>
@@ -263,6 +279,17 @@ function renderCurrent() {
   tx.addEventListener('paste', e => { e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain')); });
   el.querySelector('[data-logo]')?.addEventListener('click', () => openPicker('logo'));
   el.querySelector('[data-avatar]').addEventListener('click', () => openPicker('avatar'));
+  const pic = el.querySelector('[data-pic]');
+  if (pic) {
+    pic.addEventListener('click', () => openPicker('pic'));
+    pic.addEventListener('dragover', e => { e.preventDefault(); pic.classList.add('drag'); });
+    pic.addEventListener('dragleave', () => pic.classList.remove('drag'));
+    pic.addEventListener('drop', async e => {
+      e.preventDefault(); pic.classList.remove('drag');
+      const f = e.dataTransfer.files[0];
+      if (f && f.type.startsWith('image/')) { cur().image = await readImage(f, 1600); change(); }
+    });
+  }
   const inputOf = { name: 'inName', handle: 'inHandle' };
   el.querySelectorAll('[data-bind]').forEach(n => {
     const key = n.dataset.bind;
@@ -308,6 +335,7 @@ function scheduleAllThumbs() { clearTimeout(thumbsT); thumbsT = setTimeout(rende
 /* =============== painel =============== */
 function updatePanel() {
   const s = cur();
+  $('optImage').checked = s.showImage; $('imageFields').style.display = s.showImage ? 'block' : 'none'; $('btnPicRm').disabled = !s.image; $('optRatio').value = s.ratio;
   $('optButton').checked = s.showButton; $('inButton').value = s.button; $('btnTextField').style.display = s.showButton ? 'flex' : 'none';
   $('optMetrics').checked = s.showMetrics; $('metricsFields').style.display = s.showMetrics ? 'grid' : 'none';
   $('inC').value = s.c; $('inR').value = s.r; $('inL').value = s.l; $('optSize').value = s.size;
@@ -318,6 +346,10 @@ function updatePanel() {
 }
 const change = () => { renderCurrent(); scheduleSave(); };
 $('optLogo').addEventListener('change', e => { g.showLogo = e.target.checked; change(); });
+$('optImage').addEventListener('change', e => { cur().showImage = e.target.checked; change(); });
+$('optRatio').addEventListener('change', e => { cur().ratio = e.target.value; change(); });
+$('btnPic').addEventListener('click', () => openPicker('pic'));
+$('btnPicRm').addEventListener('click', () => { cur().image = null; change(); });
 $('optButton').addEventListener('change', e => { cur().showButton = e.target.checked; change(); });
 $('optMetrics').addEventListener('change', e => { cur().showMetrics = e.target.checked; change(); });
 $('optSize').addEventListener('change', e => { cur().size = e.target.value; change(); });
@@ -406,8 +438,9 @@ function readImage(file, max) {
 }
 picker.addEventListener('change', async () => {
   const file = picker.files[0]; picker.value = ''; if (!file) return;
-  let data; try { data = await readImage(file, pickTarget === 'logo' ? 1200 : 600); } catch (e) { alert('Não foi possível ler essa imagem.'); return; }
-  g[pickTarget === 'logo' ? 'logo' : 'avatar'] = data; change();
+  let data; try { data = await readImage(file, pickTarget === 'pic' ? 1600 : pickTarget === 'logo' ? 1200 : 600); } catch (e) { alert('Não foi possível ler essa imagem.'); return; }
+  if (pickTarget === 'pic') { cur().image = data; cur().showImage = true; } else g[pickTarget === 'logo' ? 'logo' : 'avatar'] = data;
+  change();
 });
 $('btnAvatar').addEventListener('click', () => openPicker('avatar'));
 $('btnLogo').addEventListener('click', () => openPicker('logo'));
