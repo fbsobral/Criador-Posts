@@ -2,14 +2,19 @@ import Link from 'next/link';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { posts, templates, users } from '@/db/schema';
-import { isNull, or } from 'drizzle-orm';
+import { isNull, or, sql } from 'drizzle-orm';
 import { getCtx } from '@/lib/ctx';
 import { createPost, deletePost, duplicatePost, setPostStatus } from '@/lib/actions';
 
 export default async function PostsPage() {
   const c = (await getCtx())!;
   const rows = await db
-    .select({ p: posts, author: users.name, format: templates.name })
+    .select({
+      p: { id: posts.id, title: posts.title, status: posts.status, updatedAt: posts.updatedAt },
+      slides: sql<number>`case when jsonb_typeof(${posts.data}->'slides') = 'array' then jsonb_array_length(${posts.data}->'slides') else 0 end`,
+      author: users.name,
+      format: templates.name,
+    })
     .from(posts)
     .leftJoin(users, eq(users.id, posts.updatedBy))
     .leftJoin(templates, eq(templates.id, posts.templateId))
@@ -36,7 +41,7 @@ export default async function PostsPage() {
         <table>
           <thead><tr><th>Título</th><th>Template</th><th>Status</th><th>Slides</th><th>Atualizado</th><th></th></tr></thead>
           <tbody>
-            {rows.map(({ p, author, format }) => (
+            {rows.map(({ p, slides, author, format }) => (
               <tr key={p.id}>
                 <td><Link href={`/admin/posts/${p.id}`}><b>{p.title}</b></Link></td>
                 <td className="muted">{format ?? '—'}</td>
@@ -47,7 +52,7 @@ export default async function PostsPage() {
                     <button className={`pill ${p.status}`} title="Alternar status">{p.status === 'draft' ? 'Rascunho' : 'Publicado'}</button>
                   </form>
                 </td>
-                <td>{p.data.slides?.length ?? 0}</td>
+                <td>{slides}</td>
                 <td className="muted">{p.updatedAt.toLocaleString('pt-BR')}{author ? ` · ${author}` : ''}</td>
                 <td className="right actions">
                   <form action={duplicatePost}>
