@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { db } from '@/db';
-import { brandSettings, posts, templates, type Style } from '@/db/schema';
+import { brandSettings, colorPalettes, posts, templates } from '@/db/schema';
 import { getCtx, getBrandSettings } from './ctx';
 import { DEFAULT_STYLE, GLOBAL_PRESETS } from './themes';
 import { EDITORS, type EditorKey } from './editors';
@@ -81,13 +81,18 @@ export async function saveSettings(formData: FormData) {
   const c = await need();
   if (!c.isBrandAdmin) throw new Error('Apenas admins da marca');
   const f = (k: string) => String(formData.get(k) ?? '').trim();
-  const preset = GLOBAL_PRESETS.find((p) => p.name === f('colors'));
+  const choice = f('colors');
+  let theme = GLOBAL_PRESETS.find((p) => p.name === choice)?.theme;
+  if (choice.startsWith('p:')) {
+    const [saved] = await db.select().from(colorPalettes).where(and(eq(colorPalettes.id, choice.slice(2)), eq(colorPalettes.brandId, c.brandId)));
+    theme = saved?.theme;
+  }
   const current = (await getBrandSettings(c.brandId))?.style ?? DEFAULT_STYLE;
   await db
     .update(brandSettings)
     .set({
       displayName: f('displayName'), handle: f('handle'), topic: f('topic'), year: f('year'),
-      style: preset ? { ...current, theme: preset.theme } : current,
+      style: theme ? { ...current, theme } : current,
       updatedAt: new Date(),
     })
     .where(eq(brandSettings.brandId, c.brandId));

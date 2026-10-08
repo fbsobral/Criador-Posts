@@ -1,3 +1,6 @@
+import { eq } from 'drizzle-orm';
+import { db } from '@/db';
+import { colorPalettes } from '@/db/schema';
 import { getBrandSettings, getCtx } from '@/lib/ctx';
 import { saveSettings } from '@/lib/actions';
 import { GLOBAL_PRESETS } from '@/lib/themes';
@@ -5,7 +8,11 @@ import { GLOBAL_PRESETS } from '@/lib/themes';
 export default async function SettingsPage() {
   const c = (await getCtx())!;
   const s = (await getBrandSettings(c.brandId))!;
-  const current = GLOBAL_PRESETS.find((p) => s.style && JSON.stringify(p.theme) === JSON.stringify(s.style.theme));
+  const saved = await db.select().from(colorPalettes).where(eq(colorPalettes.brandId, c.brandId)).orderBy(colorPalettes.name);
+  const same = (t: unknown) => !!s.style && JSON.stringify(t) === JSON.stringify(s.style.theme);
+  const current = saved.find((p) => same(p.theme))?.id
+    ? `p:${saved.find((p) => same(p.theme))!.id}`
+    : (GLOBAL_PRESETS.find((p) => same(p.theme))?.name ?? 'Original');
   const ro = !c.isBrandAdmin;
 
   return (
@@ -18,8 +25,15 @@ export default async function SettingsPage() {
         <label>Tema (canto superior)<input name="topic" defaultValue={s.topic} disabled={ro} /></label>
         <label>Ano<input name="year" defaultValue={s.year} disabled={ro} /></label>
         <label>Cores padrão
-          <select name="colors" defaultValue={current?.name ?? 'Original'} disabled={ro}>
-            {GLOBAL_PRESETS.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
+          <select name="colors" defaultValue={current} disabled={ro}>
+            <optgroup label="Temas prontos">
+              {GLOBAL_PRESETS.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
+            </optgroup>
+            {saved.length > 0 && (
+              <optgroup label="Cores salvas">
+                {saved.map((p) => <option key={p.id} value={`p:${p.id}`}>{p.name}</option>)}
+              </optgroup>
+            )}
           </select>
         </label>
         {!ro && <button className="btn primary">Salvar</button>}

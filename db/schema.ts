@@ -60,6 +60,20 @@ export const templates = pgTable(
   (t) => [index('templates_brand_idx').on(t.brandId)],
 );
 
+/** Conjuntos de cores salvos pela marca (aparecem em "Cores do template" no editor). */
+export const colorPalettes = pgTable(
+  'color_palettes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    theme: jsonb('theme').$type<Theme>().notNull(),
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [index('color_palettes_brand_idx').on(t.brandId)],
+);
+
 export const postStatus = pgEnum('post_status', ['draft', 'published']);
 
 export const posts = pgTable(

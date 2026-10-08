@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { posts, templates } from '@/db/schema';
+import { colorPalettes, posts, templates } from '@/db/schema';
 import { editorFile } from '@/lib/editors';
 import { getCtx } from '@/lib/ctx';
 
@@ -20,9 +20,13 @@ export async function GET(req: Request) {
 
   const [tpl] = post.templateId ? await db.select().from(templates).where(eq(templates.id, post.templateId)) : [];
 
+  const palettes = await db.select().from(colorPalettes).where(eq(colorPalettes.brandId, c.brandId)).orderBy(colorPalettes.name);
+
   const host = {
     initial: post.data,
     saveUrl: `/api/posts/${post.id}`,
+    palettesUrl: '/api/palettes',
+    palettes: palettes.map((p) => ({ id: p.id, name: p.name, theme: p.theme, canDelete: c.isBrandAdmin || p.createdBy === c.userId })),
   };
   // "<" escapado para o JSON não conseguir fechar a tag <script>
   const json = JSON.stringify(host).replace(/</g, '\\u003c');

@@ -76,6 +76,9 @@
   .preset { border: 1.5px solid var(--ui-line); background: #fff; border-radius: 10px; padding: 6px; display: flex; flex-direction: column; gap: 5px; align-items: stretch; font-size: 11px; font-weight: 500; text-align: center; }
   .preset:hover { border-color: #aaa; }
   .preset.active { border-color: var(--accent); background: #f1f8fe; }
+  .preset { position: relative; }
+  .preset .del { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; font-size: 13px; line-height: 20px; padding: 0; display: none; }
+  .preset:hover .del { display: block; }
   .preset .sw { height: 40px; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); font-size: 15px; }
   .preset .sw i { width: 10px; height: 10px; border-radius: 50%; display: block; }
   .colors { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -258,7 +261,13 @@
     <section>
       <h3>Cores do template</h3>
       <div class="presets" id="presets"></div>
+      <div id="hostPal" style="display:none">
+        <h3 style="margin-top:4px">Cores salvas</h3>
+        <div class="presets" id="palList"></div>
+        <p id="palEmpty" style="font-size:12px;color:#8a867f;margin:-4px 0 10px">Nenhuma ainda. Ajuste as cores abaixo e salve.</p>
+      </div>
       <div class="colors" id="colors"></div>
+      <button class="btn small" id="btnSavePal" style="margin-top:14px;display:none">Salvar cores como template</button>
     </section>
 
     <section>
@@ -603,6 +612,36 @@ function buildThemeUI() {
   });
 }
 
+/* cores salvas no servidor */
+function buildPalettes() {
+  if (!HOST || !HOST.palettes) return;
+  $('hostPal').style.display = 'block'; $('btnSavePal').style.display = 'inline-block';
+  const box = $('palList'); box.innerHTML = '';
+  $('palEmpty').style.display = HOST.palettes.length ? 'none' : 'block';
+  HOST.palettes.forEach(p => {
+    const t = Object.assign({}, THEMES.original, p.theme);
+    const b = document.createElement('div');
+    b.className = 'preset'; b.title = p.name; b.style.cursor = 'pointer';
+    b.innerHTML = `<span class="sw" style="background:${esc(t.bg)};color:${esc(t.title)}"><b>Aa</b><i style="background:${esc(t.marker)}"></i></span><span>${esc(p.name)}</span>${p.canDelete ? '<button class="del" title="Excluir cores salvas">×</button>' : ''}`;
+    b.addEventListener('click', () => { g.theme = t; fillThemeInputs(); renderCurrent(); scheduleSave(); });
+    const del = b.querySelector('.del');
+    if (del) del.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm(`Excluir as cores salvas "${p.name}"?`)) return;
+      const r = await fetch(`${HOST.palettesUrl}/${p.id}`, { method: 'DELETE' });
+      if (!r.ok) { alert('Não foi possível excluir.'); return; }
+      HOST.palettes = HOST.palettes.filter(x => x.id !== p.id); buildPalettes();
+    });
+    box.appendChild(b);
+  });
+}
+$('btnSavePal').addEventListener('click', async () => {
+  const name = prompt('Nome para estas cores:'); if (!name || !name.trim()) return;
+  const r = await fetch(HOST.palettesUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, theme: g.theme }) });
+  if (!r.ok) { alert('Não foi possível salvar.'); return; }
+  HOST.palettes.push(await r.json()); HOST.palettes.sort((a, b) => a.name.localeCompare(b.name)); buildPalettes();
+});
+
 /* fontes */
 const FONTS = ['Inter', 'Poppins', 'Montserrat', 'DM Sans', 'Manrope', 'Space Grotesk', 'Work Sans', 'Raleway', 'Oswald', 'Playfair Display', 'Lora', 'Merriweather', 'Libre Baskerville', 'Roboto Slab'];
 function fillFontSelects() {
@@ -820,6 +859,7 @@ $('btnAll2').addEventListener('click', exportAll);
 /* =============== início =============== */
 fillFontSelects();
 buildThemeUI();
+buildPalettes();
 fillGlobalInputs();
 renderCurrent();
 fit();
