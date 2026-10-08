@@ -106,9 +106,9 @@
   .slide.fmt-image .stack { margin: 0 0 36px; }
 
   /* título acima do perfil */
-  .ptitle { margin-top: 44px; flex: none; font-size: 30px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; line-height: 1.2; color: var(--ink); }
+  .ptitle { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; margin-top: 44px; flex: none; font-size: 30px; font-weight: 800; letter-spacing: 2.5px; text-transform: uppercase; line-height: 1.2; color: var(--ink); }
   .ptitle + .profile { margin-top: 26px; }
-  .stage .ptitle:empty::before { content: 'Título em caixa alta'; color: var(--muted); font-weight: 600; }
+  .stage .ptitle [data-bind="title"]:empty::before { content: 'Título em caixa alta'; color: var(--muted); font-weight: 600; }
 
   /* perfil */
   .profile { display: flex; align-items: center; gap: 22px; margin-top: 44px; flex: none; }
@@ -366,7 +366,7 @@ function buildSlide(s, editable) {
   applyThemeVars(el);
   const ce = editable ? 'contenteditable="true" spellcheck="false"' : '';
 
-  const ptitle = (s.showProfile && (g.title || editable)) ? `<div class="ptitle" data-bind="title" ${ce}>${esc(g.title)}</div>` : '';
+  const ptitle = (s.showProfile && (g.title || editable)) ? `<div class="ptitle"><span data-bind="title" ${ce}>${esc(g.title)}</span><span data-bind="year" ${ce}>${esc(g.year)}</span></div>` : '';
   const prof = s.showProfile ? `${ptitle}
     <div class="profile">
       <div class="avatar" data-avatar ${editable ? 'title="Clique para trocar a foto"' : ''}>${g.avatar ? '' : ICON_PERSON}</div>
