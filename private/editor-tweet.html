@@ -139,8 +139,9 @@
           <button class="btn small" id="btnPicRm">Remover</button>
         </div>
         <div class="field"><label for="optRatio">Formato da imagem</label>
-          <select id="optRatio"><option value="orig">Original</option><option value="16/9">Paisagem 16:9</option><option value="4/3">Paisagem 4:3</option><option value="1/1">Quadrada 1:1</option></select>
+          <select id="optRatio"><option value="orig">Original</option><option value="16/9">Paisagem 16:9</option><option value="4/3">Paisagem 4:3</option><option value="1/1">Quadrada 1:1</option><option value="custom">Altura personalizada</option></select>
         </div>
+        <div class="field" id="hField"><label for="optH">Altura: <b id="hVal"></b> px</label><input type="range" id="optH" min="120" max="900" step="10"></div>
       </div>
       <label class="check"><input type="checkbox" id="optButton"> Mostrar botão</label>
       <div class="field" id="btnTextField"><label for="inButton">Texto do botão</label><input type="text" id="inButton"></div>
@@ -217,7 +218,7 @@ const THEMES = {
 };
 const COLOR_FIELDS = [['bg', 'Fundo'], ['card', 'Card'], ['text', 'Texto'], ['name', 'Nome'], ['handle', '@ usuário'], ['accent2', 'Botão'], ['btntext', 'Texto do botão'], ['line', 'Linha divisória'], ['badge', 'Selo verificado']];
 const FONTS = ['Plus Jakarta Sans', 'Inter', 'Manrope', 'DM Sans', 'Poppins', 'Montserrat', 'Space Grotesk', 'Work Sans', 'Kanit', 'Barlow'];
-const newSlide = (o = {}) => Object.assign({ text: 'Escreva aqui o texto do seu post.', showButton: false, button: 'Quero acessar agora', showImage: false, image: null, ratio: 'orig', showMetrics: true, c: '754', r: '2641', l: '25K', size: '50' }, o);
+const newSlide = (o = {}) => Object.assign({ text: 'Escreva aqui o texto do seu post.', showButton: false, button: 'Quero acessar agora', showImage: false, image: null, ratio: 'orig', h: 400, showMetrics: true, c: '754', r: '2641', l: '25K', size: '50' }, o);
 
 const KEY = 'editor-tweet-v1';
 const HOST = window.CARROSSEL || null;
@@ -242,6 +243,11 @@ const cur = () => slides[idx];
 const scaler = $('scaler');
 
 /* =============== slide =============== */
+function picStyle(s) {
+  if (s.ratio === 'custom') return `height:${+s.h || 400}px;`;
+  if (s.ratio === 'orig' && s.image) return '';
+  return `aspect-ratio:${s.ratio === 'orig' ? '16/9' : s.ratio};`;
+}
 function buildSlide(s, editable) {
   const c = g.colors;
   const el = document.createElement('div');
@@ -261,7 +267,7 @@ function buildSlide(s, editable) {
         <div class="names"><span class="name"><span data-bind="name" ${ce}>${esc(g.name)}</span>${iconVerified(c)}</span><span class="handle" data-bind="handle" ${ce}>${esc(g.handle)}</span></div>
       </div>
       <div class="tx" data-text ${ce}>${esc(s.text)}</div>
-      ${s.showImage && (s.image || editable) ? `<div class="pic ${s.ratio === 'orig' && s.image ? 'orig' : ''}" data-pic style="${s.ratio !== 'orig' || !s.image ? `aspect-ratio:${({ '16/9': '16/9', '4/3': '4/3', '1/1': '1/1', orig: '16/9' })[s.ratio] || '16/9'};` : ''}">${s.image ? `<img src="${s.image}" alt="">` : `<div class="ph">Clique ou arraste uma imagem</div>`}</div>` : ''}
+      ${s.showImage && (s.image || editable) ? `<div class="pic ${s.ratio === 'orig' && s.image ? 'orig' : ''}" data-pic style="${picStyle(s)}">${s.image ? `<img src="${s.image}" alt="">` : `<div class="ph">Clique ou arraste uma imagem</div>`}</div>` : ''}
       ${s.showButton ? `<div class="btnc">${esc(s.button)}</div>` : ''}
       ${s.showMetrics ? `<div class="line"></div><div class="metrics"><span>${ICO_COMMENT}<b data-metric="c" ${ce}>${esc(s.c)}</b></span><span>${ICO_RETWEET}<b data-metric="r" ${ce}>${esc(s.r)}</b></span><span>${ICO_HEART}<b data-metric="l" ${ce}>${esc(s.l)}</b></span></div>` : ''}
     </div></div>
@@ -335,7 +341,7 @@ function scheduleAllThumbs() { clearTimeout(thumbsT); thumbsT = setTimeout(rende
 /* =============== painel =============== */
 function updatePanel() {
   const s = cur();
-  $('optImage').checked = s.showImage; $('imageFields').style.display = s.showImage ? 'block' : 'none'; $('btnPicRm').disabled = !s.image; $('optRatio').value = s.ratio;
+  $('optImage').checked = s.showImage; $('imageFields').style.display = s.showImage ? 'block' : 'none'; $('btnPicRm').disabled = !s.image; $('optRatio').value = s.ratio; $('hField').style.display = s.ratio === 'custom' ? 'flex' : 'none'; $('optH').value = s.h; $('hVal').textContent = s.h;
   $('optButton').checked = s.showButton; $('inButton').value = s.button; $('btnTextField').style.display = s.showButton ? 'flex' : 'none';
   $('optMetrics').checked = s.showMetrics; $('metricsFields').style.display = s.showMetrics ? 'grid' : 'none';
   $('inC').value = s.c; $('inR').value = s.r; $('inL').value = s.l; $('optSize').value = s.size;
@@ -348,6 +354,11 @@ const change = () => { renderCurrent(); scheduleSave(); };
 $('optLogo').addEventListener('change', e => { g.showLogo = e.target.checked; change(); });
 $('optImage').addEventListener('change', e => { cur().showImage = e.target.checked; change(); });
 $('optRatio').addEventListener('change', e => { cur().ratio = e.target.value; change(); });
+$('optH').addEventListener('input', e => {
+  cur().h = +e.target.value; $('hVal').textContent = cur().h;
+  const p = scaler.querySelector('[data-pic]'); if (p) p.style.cssText = picStyle(cur());
+  checkOverflow(); scheduleThumb(); scheduleSave();
+});
 $('btnPic').addEventListener('click', () => openPicker('pic'));
 $('btnPicRm').addEventListener('click', () => { cur().image = null; change(); });
 $('optButton').addEventListener('change', e => { cur().showButton = e.target.checked; change(); });
