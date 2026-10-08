@@ -108,6 +108,8 @@
   /* título acima do perfil */
   .ptitle { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; margin-top: 44px; flex: none; font-size: 25px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; line-height: 1.2; color: var(--eyebrow, var(--marker)); }
   .ptitle + .profile { margin-top: 10px; }
+  /* sem cabeçalho (tema e ano vazios): o conteúdo começa na mesma distância da borda que o rodapé */
+  .slide > .ptitle:first-child, .slide > .profile:first-child { margin-top: 0; }
   .stage .ptitle [data-bind="title"]:empty::before { content: 'Título em caixa alta'; color: var(--muted); font-weight: 600; }
 
   /* perfil */
@@ -380,7 +382,7 @@ function buildSlide(s, editable) {
   const slot = f.image ? `<div class="img-slot" data-slot>${(!s.image && editable) ? `<div class="ph">${ICON_IMAGE}<span>Clique ou arraste uma imagem</span></div>` : ''}</div>` : '';
 
   el.innerHTML = `
-    <div class="top"><span data-bind="topic" ${ce}>${esc(g.topic)}</span><span data-bind="year" ${ce}>${esc(g.year)}</span></div>
+    ${(g.topic || g.year) ? `<div class="top"><span data-bind="topic" ${ce}>${esc(g.topic)}</span><span data-bind="year" ${ce}>${esc(g.year)}</span></div>` : ''}
     ${prof}
     <div class="body">${stack}${slot}</div>
     <div class="bottom">
@@ -550,7 +552,9 @@ $('btnAvatar').addEventListener('click', () => openPicker('avatar'));
 $('btnAvatarRm').addEventListener('click', () => { g.avatar = null; renderCurrent(); scheduleSave(); });
 
 function bindGlobal(key, val) {
+  const hadTop = !!scaler.querySelector('.top');
   g[key] = val;
+  if ((key === 'topic' || key === 'year') && hadTop !== !!(g.topic || g.year)) { renderCurrent(); scheduleSave(); return; }
   if (key === 'width') { scaler.querySelector('.slide')?.style.setProperty('--tw', val + 'px'); checkOverflow(); }
   else scaler.querySelectorAll(`[data-bind="${key}"]`).forEach(n => n.textContent = val);
   renderThumbs(); scheduleSave();
