@@ -63,10 +63,12 @@
 
   /* ===== slide 1080 x 1350 ===== */
   .slide { text-align: left; width: 1080px; height: 1350px; background: var(--bg); display: flex; flex-direction: column; overflow: hidden; position: relative; font-family: var(--font, 'Plus Jakarta Sans'), system-ui, sans-serif; }
-  .logo-wrap { height: 250px; flex: none; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 36px; }
-  .logo { max-height: 120px; max-width: 520px; object-fit: contain; display: block; }
+  .logo-wrap { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+  .logo-spacer { flex: 1; }
+  .logo { max-height: min(150px, 100%); max-width: 560px; object-fit: contain; display: block; }
   .logo-ph { font-size: 26px; color: var(--ph); border: 3px dashed var(--ph); border-radius: 16px; padding: 22px 36px; cursor: pointer; }
-  .area { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0 140px 120px; }
+  .area { flex: none; padding: 0 140px; }
+  .nologo .area { margin: auto 0; }
   .card { width: 100%; background: var(--card); border-radius: 36px; padding: 52px 52px 46px; color: var(--text); }
   .who { display: flex; align-items: center; gap: 26px; margin-bottom: 40px; }
   .avatar { width: 112px; height: 112px; border-radius: 50%; flex: none; background: #cfd8d3 center / cover no-repeat; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
@@ -82,7 +84,6 @@
   .metrics b { font-weight: inherit; min-width: 1ch; outline: none; }
   .metrics svg { width: 42px; height: 42px; fill: none; stroke: var(--text); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
   .noline .line { display: none; }
-  .nologo .area { padding: 0 140px; }
   .stage [contenteditable]:hover { outline: 2px dashed rgba(29,155,240,.35); outline-offset: 6px; border-radius: 4px; cursor: text; }
   .stage [contenteditable]:focus { outline: 2px dashed rgba(29,155,240,.85); outline-offset: 6px; border-radius: 4px; }
   .stage .avatar, .stage .logo-wrap { cursor: pointer; }
@@ -247,7 +248,8 @@ function buildSlide(s, editable) {
       <div class="tx" data-text ${ce}>${esc(s.text)}</div>
       ${s.showButton ? `<div class="btnc">${esc(s.button)}</div>` : ''}
       ${s.showMetrics ? `<div class="line"></div><div class="metrics"><span>${ICO_COMMENT}<b data-metric="c" ${ce}>${esc(s.c)}</b></span><span>${ICO_RETWEET}<b data-metric="r" ${ce}>${esc(s.r)}</b></span><span>${ICO_HEART}<b data-metric="l" ${ce}>${esc(s.l)}</b></span></div>` : ''}
-    </div></div>`;
+    </div></div>
+    ${g.showLogo === false ? '' : '<div class="logo-spacer"></div>'}`;
   const av = el.querySelector('[data-avatar]');
   if (g.avatar) av.style.backgroundImage = `url("${g.avatar}")`;
   return el;
@@ -279,7 +281,7 @@ function renderCurrent() {
 }
 function checkOverflow() {
   const area = scaler.querySelector('.area'), card = scaler.querySelector('.card');
-  $('warn').style.display = (area && card && card.offsetHeight > area.clientHeight - 120 + 1 && card.offsetHeight > 1350 - 250 - 20) ? 'inline' : 'none';
+  $('warn').style.display = (card && card.offsetHeight > (g.showLogo === false ? 1250 : 1000)) ? 'inline' : 'none';
 }
 
 /* =============== miniaturas =============== */
