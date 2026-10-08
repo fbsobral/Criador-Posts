@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { colorPalettes } from '@/db/schema';
 import { getBrandSettings, getCtx } from '@/lib/ctx';
@@ -8,7 +8,7 @@ import { GLOBAL_PRESETS } from '@/lib/themes';
 export default async function SettingsPage() {
   const c = (await getCtx())!;
   const s = (await getBrandSettings(c.brandId))!;
-  const saved = await db.select().from(colorPalettes).where(eq(colorPalettes.brandId, c.brandId)).orderBy(colorPalettes.name);
+  const saved = await db.select().from(colorPalettes).where(and(eq(colorPalettes.brandId, c.brandId), eq(colorPalettes.editor, 'carrossel'))).orderBy(colorPalettes.name);
   const same = (t: unknown) => !!s.style && JSON.stringify(t) === JSON.stringify(s.style.theme);
   const current = saved.find((p) => same(p.theme))?.id
     ? `p:${saved.find((p) => same(p.theme))!.id}`

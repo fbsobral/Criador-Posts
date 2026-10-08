@@ -66,6 +66,7 @@ export const colorPalettes = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+    editor: text('editor').notNull().default('carrossel'),
     name: text('name').notNull(),
     theme: jsonb('theme').$type<Theme>().notNull(),
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),

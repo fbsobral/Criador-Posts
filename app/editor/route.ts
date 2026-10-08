@@ -6,7 +6,7 @@ import { colorPalettes, posts, templates } from '@/db/schema';
 import { editorFile } from '@/lib/editors';
 import { getCtx } from '@/lib/ctx';
 
-const HOST_MARK = '<script>\n/* =============== ícones';
+const HOST_MARKS = ['<!--HOST-->', '<script>\n/* =============== ícones'];
 
 /** Serve o editor para um post da marca ativa, injetando dados e URLs de save. */
 export async function GET(req: Request) {
@@ -20,20 +20,27 @@ export async function GET(req: Request) {
 
   const [tpl] = post.templateId ? await db.select().from(templates).where(eq(templates.id, post.templateId)) : [];
 
-  const palettes = await db.select().from(colorPalettes).where(eq(colorPalettes.brandId, c.brandId)).orderBy(colorPalettes.name);
+  const editorKey = tpl?.editor ?? 'carrossel';
+  const palettes = await db
+    .select()
+    .from(colorPalettes)
+    .where(and(eq(colorPalettes.brandId, c.brandId), eq(colorPalettes.editor, editorKey)))
+    .orderBy(colorPalettes.name);
 
   const host = {
     initial: post.data,
     saveUrl: `/api/posts/${post.id}`,
     palettesUrl: '/api/palettes',
+    editor: editorKey,
     palettes: palettes.map((p) => ({ id: p.id, name: p.name, theme: p.theme, canDelete: c.isBrandAdmin || p.createdBy === c.userId })),
   };
   // "<" escapado para o JSON não conseguir fechar a tag <script>
   const json = JSON.stringify(host).replace(/</g, '\\u003c');
 
   let html = await readFile(join(process.cwd(), 'private', editorFile(tpl?.editor)), 'utf8');
-  if (!html.includes(HOST_MARK)) return new Response('Template do editor inválido', { status: 500 });
-  html = html.replace(HOST_MARK, () => `<script>window.CARROSSEL = ${json};</script>\n${HOST_MARK}`);
+  const mark = HOST_MARKS.find((m) => html.includes(m));
+  if (!mark) return new Response('Template do editor inválido', { status: 500 });
+  html = html.replace(mark, () => `<script>window.CARROSSEL = ${json};</script>\n${mark}`);
 
   return new Response(html, {
     headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'private, no-store' },

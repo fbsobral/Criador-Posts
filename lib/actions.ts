@@ -84,7 +84,7 @@ export async function saveSettings(formData: FormData) {
   const choice = f('colors');
   let theme = GLOBAL_PRESETS.find((p) => p.name === choice)?.theme;
   if (choice.startsWith('p:')) {
-    const [saved] = await db.select().from(colorPalettes).where(and(eq(colorPalettes.id, choice.slice(2)), eq(colorPalettes.brandId, c.brandId)));
+    const [saved] = await db.select().from(colorPalettes).where(and(eq(colorPalettes.id, choice.slice(2)), eq(colorPalettes.brandId, c.brandId), eq(colorPalettes.editor, 'carrossel')));
     theme = saved?.theme;
   }
   const current = (await getBrandSettings(c.brandId))?.style ?? DEFAULT_STYLE;

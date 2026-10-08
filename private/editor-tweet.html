@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Editor Tweet Card</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Manrope:wght@400;700;800&family=DM+Sans:wght@400;700&family=Poppins:wght@400;700&family=Montserrat:wght@400;700&family=Space+Grotesk:wght@400;700&family=Work+Sans:wght@400;700&family=Kanit:wght@400;700&family=Barlow:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root { --ui-bg: #EDEAE5; --ui-line: #DDD9D2; --ui-ink: #1b1b1b; --accent: #1D9BF0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--ui-bg); color: var(--ui-ink); -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+
+  /* ===== shell ===== */
+  .appbar { height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: #fff; border-bottom: 1px solid var(--ui-line); position: sticky; top: 0; z-index: 20; }
+  .appbar h1 { font-size: 16px; font-weight: 700; letter-spacing: -.2px; margin-right: auto; }
+  .btn { padding: 8px 14px; border-radius: 9px; border: 1px solid #c9c5be; background: #fff; font-size: 14px; font-weight: 500; white-space: nowrap; }
+  .btn:hover { background: #f4f2ee; }
+  .btn.primary { background: #111; border-color: #111; color: #fff; }
+  .btn.small { padding: 5px 10px; font-size: 13px; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  #status { font-size: 12px; color: #8a867f; }
+  .app { display: grid; grid-template-columns: 168px minmax(0, 1fr) 300px; height: calc(100vh - 56px); }
+  .thumbs-col { overflow: auto; padding: 14px; background: #F6F4F0; border-right: 1px solid var(--ui-line); display: flex; flex-direction: column; gap: 14px; align-items: center; }
+  .main { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+  .panel { overflow: auto; padding: 16px; background: #fff; border-left: 1px solid var(--ui-line); display: flex; flex-direction: column; gap: 20px; }
+  .thumb { background: none; border: 0; display: flex; flex-direction: column; gap: 6px; align-items: center; flex: none; text-align: left; }
+  .thumb-box { width: 135px; height: 169px; position: relative; overflow: hidden; border-radius: 4px; box-shadow: 0 0 0 1px rgba(0,0,0,.12); pointer-events: none; }
+  .thumb.active .thumb-box { box-shadow: 0 0 0 3px var(--accent); }
+  .thumb-box .scaler { transform: scale(.125); }
+  .thumb .lab { font-size: 12px; color: #6d6962; }
+  .thumb.active .lab { color: #111; font-weight: 600; }
+  .add-thumb { width: 135px; height: 169px; flex: none; border: 2px dashed #bdb8af; border-radius: 6px; background: transparent; display: flex; flex-direction: column; gap: 6px; align-items: center; justify-content: center; font-size: 13px; color: #6d6962; }
+  .add-thumb:hover { background: #ece9e3; }
+  .add-thumb b { font-size: 26px; font-weight: 400; line-height: 1; }
+  .slidebar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 13px; color: #6d6962; flex: none; flex-wrap: wrap; }
+  .slidebar .grow { margin-right: auto; }
+  #warn { color: #b3261e; font-weight: 600; display: none; }
+  .stage { flex: 1; min-height: 0; overflow: auto; display: flex; justify-content: center; padding: 8px 24px 24px; }
+  .slide-box { margin: auto; width: calc(1080px * var(--s, .4)); height: calc(1350px * var(--s, .4)); position: relative; box-shadow: 0 6px 30px rgba(0,0,0,.14); flex: none; }
+  .scaler { position: absolute; top: 0; left: 0; width: 1080px; height: 1350px; transform-origin: top left; transform: scale(var(--s, .4)); }
+  .panel h3 { font-size: 12px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #8a867f; margin-bottom: 10px; }
+  .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; font-size: 13px; }
+  .field input[type=text], .field select { padding: 8px 10px; border: 1px solid #c9c5be; border-radius: 8px; font: inherit; font-size: 14px; background: #fff; width: 100%; }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 14px; margin-bottom: 8px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .colors { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cfield { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: #55524c; }
+  .cfield input[type=color] { width: 100%; height: 34px; padding: 2px; border: 1px solid #c9c5be; border-radius: 8px; background: #fff; cursor: pointer; }
+  .presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .preset { position: relative; border: 1.5px solid var(--ui-line); background: #fff; border-radius: 10px; padding: 6px; display: flex; flex-direction: column; gap: 5px; align-items: stretch; font-size: 11px; font-weight: 500; text-align: center; cursor: pointer; }
+  .preset:hover { border-color: #aaa; }
+  .preset.active { border-color: var(--accent); background: #f1f8fe; }
+  .preset .sw { height: 40px; border-radius: 6px; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px rgba(0,0,0,.1); }
+  .preset .sw i { width: 62%; height: 62%; border-radius: 4px; display: block; }
+  .preset .del { position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; border-radius: 50%; border: 0; background: rgba(0,0,0,.55); color: #fff; font-size: 13px; line-height: 20px; padding: 0; display: none; }
+  .preset:hover .del { display: block; }
+  .mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  input[type=file] { display: none; }
+
+  /* ===== slide 1080 x 1350 ===== */
+  .slide { text-align: left; width: 1080px; height: 1350px; background: var(--bg); display: flex; flex-direction: column; overflow: hidden; position: relative; font-family: var(--font, 'Plus Jakarta Sans'), system-ui, sans-serif; }
+  .logo-wrap { height: 250px; flex: none; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 36px; }
+  .logo { max-height: 120px; max-width: 520px; object-fit: contain; display: block; }
+  .logo-ph { font-size: 26px; color: var(--ph); border: 3px dashed var(--ph); border-radius: 16px; padding: 22px 36px; cursor: pointer; }
+  .area { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0 140px 120px; }
+  .card { width: 100%; background: var(--card); border-radius: 36px; padding: 52px 52px 46px; color: var(--text); }
+  .who { display: flex; align-items: center; gap: 26px; margin-bottom: 40px; }
+  .avatar { width: 112px; height: 112px; border-radius: 50%; flex: none; background: #cfd8d3 center / cover no-repeat; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
+  .avatar svg { width: 82%; height: 82%; }
+  .names .name { display: flex; align-items: center; gap: 12px; font-size: 42px; font-weight: 800; letter-spacing: -.8px; line-height: 1.15; color: var(--name); }
+  .names .name svg { width: 36px; height: 36px; flex: none; }
+  .names .handle { display: block; font-size: 30px; font-weight: 500; color: var(--handle); margin-top: 4px; }
+  .tx { font-size: var(--fs, 50px); line-height: 1.22; letter-spacing: -1.2px; color: var(--text); white-space: pre-wrap; word-wrap: break-word; outline: none; min-height: 1.2em; }
+  .btnc { margin-top: 44px; background: var(--accent2); color: var(--btntext); font-weight: 800; font-size: 36px; text-transform: uppercase; letter-spacing: -.6px; text-align: center; padding: 28px 24px; border-radius: 6px; line-height: 1.15; }
+  .line { height: 3px; background: var(--line); margin: 44px 0 36px; }
+  .metrics { display: flex; gap: 52px; font-size: 40px; color: var(--text); letter-spacing: -.5px; }
+  .metrics span { display: flex; align-items: center; gap: 14px; }
+  .metrics svg { width: 42px; height: 42px; fill: none; stroke: var(--text); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .noline .line { display: none; }
+  .stage [contenteditable]:hover { outline: 2px dashed rgba(29,155,240,.35); outline-offset: 6px; border-radius: 4px; cursor: text; }
+  .stage [contenteditable]:focus { outline: 2px dashed rgba(29,155,240,.85); outline-offset: 6px; border-radius: 4px; }
+  .stage .avatar, .stage .logo-wrap { cursor: pointer; }
+
+  @media (max-width: 959px) {
+    .app { display: flex; flex-direction: column; height: auto; }
+    .thumbs-col { order: 1; flex-direction: row; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--ui-line); padding: 10px; }
+    .main { order: 2; } .panel { order: 3; border-left: 0; border-top: 1px solid var(--ui-line); }
+    .stage { overflow: visible; padding: 8px 12px 20px; }
+    .appbar .hide-m { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="appbar">
+  <h1>Tweet Card</h1>
+  <span id="status"></span>
+  <button class="btn primary" id="btnNew">+ Novo slide</button>
+  <button class="btn hide-m" id="btnAll">Baixar todos (PNG)</button>
+</div>
+
+<div class="app">
+  <aside class="thumbs-col">
+    <div id="thumbs" style="display:contents"></div>
+    <button class="add-thumb" id="btnNew2"><b>+</b>Novo slide</button>
+  </aside>
+
+  <main class="main">
+    <div class="slidebar">
+      <span class="grow" id="slideInfo">Slide 1 de 1</span>
+      <span id="warn">⚠ O conteúdo excede o espaço do slide</span>
+      <button class="btn small" id="btnUp">↑ Mover</button>
+      <button class="btn small" id="btnDown">↓ Mover</button>
+      <button class="btn small" id="btnDup">Duplicar</button>
+      <button class="btn small" id="btnDel">Excluir</button>
+    </div>
+    <div class="stage" id="stage"><div class="slide-box"><div class="scaler" id="scaler"></div></div></div>
+  </main>
+
+  <aside class="panel">
+    <section>
+      <h3>Este slide</h3>
+      <label class="check"><input type="checkbox" id="optButton"> Mostrar botão</label>
+      <div class="field" id="btnTextField"><label for="inButton">Texto do botão</label><input type="text" id="inButton"></div>
+      <label class="check"><input type="checkbox" id="optMetrics"> Mostrar métricas</label>
+      <div class="mini" id="metricsFields">
+        <div class="field"><label for="inC">Coment.</label><input type="text" id="inC"></div>
+        <div class="field"><label for="inR">Repost.</label><input type="text" id="inR"></div>
+        <div class="field"><label for="inL">Curtidas</label><input type="text" id="inL"></div>
+      </div>
+      <div class="field">
+        <label for="optSize">Tamanho do texto</label>
+        <select id="optSize"><option value="42">Pequeno</option><option value="50">Padrão</option><option value="58">Grande</option><option value="68">Extra grande</option></select>
+      </div>
+      <p style="font-size:12px;color:#8a867f;line-height:1.4">Clique no texto, no nome ou no @ direto no slide para editar.</p>
+    </section>
+
+    <section>
+      <h3>Perfil e logo (todos os slides)</h3>
+      <div class="field"><label for="inName">Nome</label><input type="text" id="inName"></div>
+      <div class="field"><label for="inHandle">@ usuário</label><input type="text" id="inHandle"></div>
+      <div class="field"><label for="inFont">Fonte</label><select id="inFont"></select></div>
+      <div class="row">
+        <button class="btn small" id="btnAvatar">Trocar foto</button>
+        <button class="btn small" id="btnAvatarRm">Remover foto</button>
+        <button class="btn small" id="btnLogo">Enviar logo</button>
+        <button class="btn small" id="btnLogoRm">Remover logo</button>
+      </div>
+    </section>
+
+    <section>
+      <h3>Cores do template</h3>
+      <div class="presets" id="presets"></div>
+      <div id="hostPal" style="display:none">
+        <h3 style="margin-top:4px">Cores salvas</h3>
+        <div class="presets" id="palList"></div>
+        <p id="palEmpty" style="font-size:12px;color:#8a867f;margin:-4px 0 10px">Nenhuma ainda. Ajuste as cores abaixo e salve.</p>
+      </div>
+      <div class="colors" id="colors"></div>
+      <button class="btn small" id="btnSavePal" style="margin-top:12px;display:none">Salvar cores como template</button>
+      <button class="btn small" id="btnResetColors" style="margin-top:12px">Restaurar cores padrão</button>
+    </section>
+
+    <section>
+      <h3>Exportar</h3>
+      <div class="row">
+        <button class="btn small" id="btnOne">Baixar este (PNG)</button>
+        <button class="btn small" id="btnAll2">Baixar todos</button>
+      </div>
+    </section>
+  </aside>
+</div>
+
+<input type="file" id="pickImg" accept="image/*">
+
+<!--HOST-->
+<script>
+/* =============== ícones =============== */
+const iconVerified = c => `<svg viewBox="0 0 24 24"><path fill="${c.badge}" d="M22.5 12.5c0-1.58-.88-2.95-2.18-3.66.54-1.4.24-3.05-.88-4.17-1.12-1.12-2.76-1.42-4.17-.88C14.57 2.5 13.2 1.62 11.62 1.62S8.67 2.5 7.96 3.8c-1.4-.54-3.05-.24-4.17.88-1.12 1.12-1.42 2.77-.88 4.17C1.6 9.55.72 10.92.72 12.5s.88 2.95 2.19 3.66c-.54 1.4-.24 3.05.88 4.17 1.12 1.12 2.77 1.42 4.17.88.71 1.3 2.08 2.18 3.66 2.18s2.95-.88 3.66-2.18c1.4.54 3.05.24 4.17-.88 1.12-1.12 1.42-2.77.88-4.17 1.3-.71 2.18-2.08 2.18-3.66z"/><path fill="#fff" d="M10.4 16.9l-3.3-3.3 1.4-1.4 1.9 1.9 5-5 1.4 1.4z"/></svg>`;
+const ICON_PERSON = `<svg viewBox="0 0 100 100"><circle cx="50" cy="38" r="20" fill="#5b4a40"/><path d="M12 100c2-24 18-36 38-36s36 12 38 36z" fill="#6c6f78"/></svg>`;
+const ICO_COMMENT = `<svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 0 1-8.9 8.4 9 9 0 0 1-3.2-.6L3.5 21l1.6-4.6A8.2 8.2 0 0 1 3.6 11.5C3.6 7 7.4 3.5 12.3 3.5S21 7 21 11.5z"/></svg>`;
+const ICO_RETWEET = `<svg viewBox="0 0 24 24"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>`;
+const ICO_HEART = `<svg viewBox="0 0 24 24"><path d="M20.8 5.6a5.2 5.2 0 0 0-7.4 0L12 7l-1.4-1.4a5.2 5.2 0 0 0-7.4 7.4L12 21.8l8.8-8.8a5.2 5.2 0 0 0 0-7.4z"/></svg>`;
+
+/* =============== modelo =============== */
+const DEF_COLORS = { bg: '#1B3F33', card: '#F6F6F6', text: '#14382C', name: '#14382C', handle: '#3E6A5B', accent2: '#5CC49A', btntext: '#0F3226', line: '#BBD3CB', badge: '#1D9BF0', ph: '#7FA597' };
+const THEMES = {
+  verde:   { name: 'Verde',       c: { ...DEF_COLORS } },
+  claro:   { name: 'Claro',       c: { bg: '#F2EFE9', card: '#FFFFFF', text: '#171717', name: '#0A0A0A', handle: '#6F6B64', accent2: '#111111', btntext: '#FFFFFF', line: '#DDD9D2', badge: '#1D9BF0', ph: '#A9A59D' } },
+  escuro:  { name: 'Escuro',      c: { bg: '#0E0E0E', card: '#1C1C1E', text: '#F2F2F2', name: '#FFFFFF', handle: '#9A9A9A', accent2: '#F2F2F2', btntext: '#0E0E0E', line: '#38383A', badge: '#1D9BF0', ph: '#5C5C5C' } },
+  azul:    { name: 'Azul noite',  c: { bg: '#0B1B33', card: '#F4F7FC', text: '#10243F', name: '#0B1B33', handle: '#52688A', accent2: '#5BB0FF', btntext: '#06182E', line: '#C5D3E8', badge: '#1D9BF0', ph: '#5C7396' } },
+  terra:   { name: 'Terracota',   c: { bg: '#8A3B1E', card: '#FBEFE6', text: '#3B1A0E', name: '#3B1A0E', handle: '#9A6A52', accent2: '#F2A65A', btntext: '#3B1A0E', line: '#E3C7B4', badge: '#C4542B', ph: '#D2A98F' } },
+  violeta: { name: 'Violeta',     c: { bg: '#2A1553', card: '#F6F1FF', text: '#2A1553', name: '#1B0E3A', handle: '#7A66A6', accent2: '#FF7AC6', btntext: '#2A1553', line: '#D9CCF2', badge: '#8A5CF6', ph: '#9C86C9' } }
+};
+const COLOR_FIELDS = [['bg', 'Fundo'], ['card', 'Card'], ['text', 'Texto'], ['name', 'Nome'], ['handle', '@ usuário'], ['accent2', 'Botão'], ['btntext', 'Texto do botão'], ['line', 'Linha divisória'], ['badge', 'Selo verificado']];
+const FONTS = ['Plus Jakarta Sans', 'Inter', 'Manrope', 'DM Sans', 'Poppins', 'Montserrat', 'Space Grotesk', 'Work Sans', 'Kanit', 'Barlow'];
+const newSlide = (o = {}) => Object.assign({ text: 'Escreva aqui o texto do seu post.', showButton: false, button: 'Quero acessar agora', showMetrics: true, c: '754', r: '2641', l: '25K', size: '50' }, o);
+
+const KEY = 'editor-tweet-v1';
+const HOST = window.CARROSSEL || null;
+let g = { name: 'Lorem Ipsum', handle: '@loremipsum', avatar: null, logo: null, font: 'Plus Jakarta Sans', colors: { ...DEF_COLORS } };
+let slides = [
+  newSlide({ text: 'Das 15 operações encerradas, 13 tiveram lucro; cada operação dura uma média de 100 dias (siga o fio 👉):' }),
+  newSlide({ text: 'Toque no botão abaixo e acesse agora a estratégia. 👇', showButton: true, button: 'Quero acessar', c: '7K', r: '6K', l: '32K' })
+];
+let idx = 0;
+try {
+  const saved = HOST ? HOST.initial : JSON.parse(localStorage.getItem(KEY) || 'null');
+  if (saved && saved.g) {
+    ['name', 'handle', 'avatar', 'logo', 'font'].forEach(k => { if (saved.g[k] != null && !(k === 'font' && !FONTS.includes(saved.g[k]))) g[k] = saved.g[k]; });
+    if (saved.g.colors) g.colors = Object.assign({ ...DEF_COLORS }, saved.g.colors);
+  }
+  if (saved && Array.isArray(saved.slides) && saved.slides.length && saved.slides[0].text !== undefined) slides = saved.slides.map(s => newSlide(s));
+} catch (e) {}
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const cur = () => slides[idx];
+const scaler = $('scaler');
+
+/* =============== slide =============== */
+function buildSlide(s, editable) {
+  const c = g.colors;
+  const el = document.createElement('div');
+  el.className = 'slide';
+  el.style.setProperty('--font', '"' + g.font + '"');
+  el.style.setProperty('--bg', c.bg); el.style.setProperty('--card', c.card); el.style.setProperty('--text', c.text);
+  el.style.setProperty('--name', c.name); el.style.setProperty('--handle', c.handle); el.style.setProperty('--accent2', c.accent2);
+  el.style.setProperty('--btntext', c.btntext); el.style.setProperty('--line', c.line); el.style.setProperty('--ph', c.ph);
+  el.style.setProperty('--fs', s.size + 'px');
+  const ce = editable ? 'contenteditable="plaintext-only" spellcheck="false"' : '';
+  const logo = g.logo ? `<img class="logo" src="${g.logo}" alt="">` : (editable ? `<div class="logo-ph">Clique para enviar o logo</div>` : '');
+  el.innerHTML = `
+    <div class="logo-wrap" data-logo>${logo}</div>
+    <div class="area"><div class="card ${s.showMetrics ? '' : 'noline'}">
+      <div class="who">
+        <div class="avatar" data-avatar>${g.avatar ? '' : ICON_PERSON}</div>
+        <div class="names"><span class="name"><span data-bind="name" ${ce}>${esc(g.name)}</span>${iconVerified(c)}</span><span class="handle" data-bind="handle" ${ce}>${esc(g.handle)}</span></div>
+      </div>
+      <div class="tx" data-text ${ce}>${esc(s.text)}</div>
+      ${s.showButton ? `<div class="btnc">${esc(s.button)}</div>` : ''}
+      ${s.showMetrics ? `<div class="line"></div><div class="metrics"><span>${ICO_COMMENT}${esc(s.c)}</span><span>${ICO_RETWEET}${esc(s.r)}</span><span>${ICO_HEART}${esc(s.l)}</span></div>` : ''}
+    </div></div>`;
+  const av = el.querySelector('[data-avatar]');
+  if (g.avatar) av.style.backgroundImage = `url("${g.avatar}")`;
+  return el;
+}
+
+function renderCurrent() {
+  const el = buildSlide(cur(), true);
+  scaler.innerHTML = ''; scaler.appendChild(el);
+  const tx = el.querySelector('[data-text]');
+  tx.addEventListener('input', () => { cur().text = tx.textContent; checkOverflow(); scheduleThumb(); scheduleSave(); });
+  tx.addEventListener('paste', e => { e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain')); });
+  el.querySelector('[data-logo]').addEventListener('click', () => openPicker('logo'));
+  el.querySelector('[data-avatar]').addEventListener('click', () => openPicker('avatar'));
+  const inputOf = { name: 'inName', handle: 'inHandle' };
+  el.querySelectorAll('[data-bind]').forEach(n => {
+    const key = n.dataset.bind;
+    n.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); n.blur(); } });
+    n.addEventListener('paste', e => { e.preventDefault(); document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text/plain').replace(/\s+/g, ' ')); });
+    n.addEventListener('input', () => { g[key] = n.textContent; $(inputOf[key]).value = g[key]; scheduleAllThumbs(); scheduleSave(); });
+  });
+  updatePanel(); renderThumbs(); checkOverflow();
+}
+function checkOverflow() {
+  const area = scaler.querySelector('.area'), card = scaler.querySelector('.card');
+  $('warn').style.display = (area && card && card.offsetHeight > area.clientHeight - 120 + 1 && card.offsetHeight > 1350 - 250 - 20) ? 'inline' : 'none';
+}
+
+/* =============== miniaturas =============== */
+function renderThumbs() {
+  const box = $('thumbs'); box.innerHTML = '';
+  slides.forEach((s, i) => {
+    const b = document.createElement('button');
+    b.className = 'thumb' + (i === idx ? ' active' : '');
+    const tb = document.createElement('div'); tb.className = 'thumb-box';
+    const sc = document.createElement('div'); sc.className = 'scaler'; sc.appendChild(buildSlide(s, false)); tb.appendChild(sc);
+    const lab = document.createElement('div'); lab.className = 'lab'; lab.textContent = `Slide ${i + 1}`;
+    b.append(tb, lab); b.addEventListener('click', () => { idx = i; renderCurrent(); });
+    box.appendChild(b);
+  });
+  box.children[idx]?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  $('slideInfo').textContent = `Slide ${idx + 1} de ${slides.length}`;
+  $('btnUp').disabled = idx === 0; $('btnDown').disabled = idx === slides.length - 1; $('btnDel').disabled = slides.length === 1;
+}
+function refreshThumb(i) { const sc = $('thumbs').children[i]?.querySelector('.scaler'); if (sc) { sc.innerHTML = ''; sc.appendChild(buildSlide(slides[i], false)); } }
+let thumbT, thumbsT;
+function scheduleThumb() { clearTimeout(thumbT); thumbT = setTimeout(() => refreshThumb(idx), 200); }
+function scheduleAllThumbs() { clearTimeout(thumbsT); thumbsT = setTimeout(renderThumbs, 250); }
+
+/* =============== painel =============== */
+function updatePanel() {
+  const s = cur();
+  $('optButton').checked = s.showButton; $('inButton').value = s.button; $('btnTextField').style.display = s.showButton ? 'flex' : 'none';
+  $('optMetrics').checked = s.showMetrics; $('metricsFields').style.display = s.showMetrics ? 'grid' : 'none';
+  $('inC').value = s.c; $('inR').value = s.r; $('inL').value = s.l; $('optSize').value = s.size;
+  $('inName').value = g.name; $('inHandle').value = g.handle; $('inFont').value = g.font;
+  document.querySelectorAll('#colors input').forEach(i => { i.value = g.colors[i.dataset.key]; });
+  markPresets();
+}
+const change = () => { renderCurrent(); scheduleSave(); };
+$('optButton').addEventListener('change', e => { cur().showButton = e.target.checked; change(); });
+$('optMetrics').addEventListener('change', e => { cur().showMetrics = e.target.checked; change(); });
+$('optSize').addEventListener('change', e => { cur().size = e.target.value; change(); });
+[['inButton', 'button'], ['inC', 'c'], ['inR', 'r'], ['inL', 'l']].forEach(([id, k]) => $(id).addEventListener('input', e => {
+  cur()[k] = e.target.value; clearTimeout(window._pt); window._pt = setTimeout(() => { const t = scaler.querySelector('[data-text]'); const keep = document.activeElement; renderCurrent(); if (keep && keep.id) $(keep.id)?.focus(); scheduleSave(); }, 250);
+}));
+[['inName', 'name'], ['inHandle', 'handle']].forEach(([id, k]) => $(id).addEventListener('input', e => {
+  g[k] = e.target.value; scaler.querySelectorAll(`[data-bind="${k}"]`).forEach(n => n.textContent = g[k]); renderThumbs(); scheduleSave();
+}));
+FONTS.forEach(f => { const o = document.createElement('option'); o.value = f; o.textContent = f; $('inFont').appendChild(o); });
+$('inFont').addEventListener('change', e => { g.font = e.target.value; change(); });
+COLOR_FIELDS.forEach(([k, label]) => {
+  const l = document.createElement('label'); l.className = 'cfield';
+  l.innerHTML = `<span>${label}</span><input type="color" data-key="${k}">`; $('colors').appendChild(l);
+});
+let colT;
+$('colors').addEventListener('input', e => { const k = e.target.dataset.key; if (!k) return; g.colors[k] = e.target.value; clearTimeout(colT); colT = setTimeout(() => { renderCurrent(); scheduleSave(); }, 120); });
+$('btnResetColors').addEventListener('click', () => { g.colors = { ...DEF_COLORS }; change(); });
+
+/* temas prontos */
+const sameColors = (a, b) => Object.keys(DEF_COLORS).every(k => String(a[k]).toLowerCase() === String(b[k]).toLowerCase());
+function swatch(c, label, extra = '') {
+  return `<span class="sw" style="background:${esc(c.bg)}"><i style="background:${esc(c.card)}"></i></span><span>${esc(label)}</span>${extra}`;
+}
+function markPresets() { document.querySelectorAll('#presets .preset').forEach(b => b.classList.toggle('active', sameColors(g.colors, THEMES[b.dataset.key].c))); }
+Object.entries(THEMES).forEach(([key, t]) => {
+  const b = document.createElement('div'); b.className = 'preset'; b.dataset.key = key; b.title = t.name; b.innerHTML = swatch(t.c, t.name);
+  b.addEventListener('click', () => { g.colors = { ...t.c }; change(); }); $('presets').appendChild(b);
+});
+
+/* cores salvas na marca */
+function buildPalettes() {
+  if (!HOST || !HOST.palettes) return;
+  $('hostPal').style.display = 'block'; $('btnSavePal').style.display = 'inline-block';
+  const box = $('palList'); box.innerHTML = '';
+  $('palEmpty').style.display = HOST.palettes.length ? 'none' : 'block';
+  HOST.palettes.forEach(p => {
+    const c = Object.assign({ ...DEF_COLORS }, p.theme);
+    const b = document.createElement('div'); b.className = 'preset'; b.title = p.name;
+    b.innerHTML = swatch(c, p.name, p.canDelete ? '<button class="del" title="Excluir cores salvas">×</button>' : '');
+    b.addEventListener('click', () => { g.colors = c; change(); });
+    const del = b.querySelector('.del');
+    if (del) del.addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm(`Excluir as cores salvas "${p.name}"?`)) return;
+      const r = await fetch(`${HOST.palettesUrl}/${p.id}`, { method: 'DELETE' });
+      if (!r.ok) { alert('Não foi possível excluir.'); return; }
+      HOST.palettes = HOST.palettes.filter(x => x.id !== p.id); buildPalettes();
+    });
+    box.appendChild(b);
+  });
+}
+$('btnSavePal').addEventListener('click', async () => {
+  const name = prompt('Nome para estas cores:'); if (!name || !name.trim()) return;
+  const r = await fetch(HOST.palettesUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, theme: g.colors, editor: HOST.editor || 'tweet' }) });
+  if (!r.ok) { alert('Não foi possível salvar.'); return; }
+  HOST.palettes.push(await r.json()); HOST.palettes.sort((a, b) => a.name.localeCompare(b.name)); buildPalettes();
+});
+
+/* =============== slides =============== */
+const addSlide = () => { slides.splice(idx + 1, 0, newSlide({ text: '' })); idx++; renderCurrent(); scheduleSave(); };
+$('btnNew').addEventListener('click', addSlide); $('btnNew2').addEventListener('click', addSlide);
+$('btnUp').addEventListener('click', () => { if (idx > 0) { [slides[idx - 1], slides[idx]] = [slides[idx], slides[idx - 1]]; idx--; change(); } });
+$('btnDown').addEventListener('click', () => { if (idx < slides.length - 1) { [slides[idx + 1], slides[idx]] = [slides[idx], slides[idx + 1]]; idx++; change(); } });
+$('btnDup').addEventListener('click', () => { slides.splice(idx + 1, 0, JSON.parse(JSON.stringify(cur()))); idx++; change(); });
+$('btnDel').addEventListener('click', () => { if (slides.length === 1 || !confirm('Excluir este slide?')) return; slides.splice(idx, 1); idx = Math.min(idx, slides.length - 1); change(); });
+
+/* =============== imagens =============== */
+const picker = $('pickImg'); let pickTarget = null;
+function openPicker(t) { pickTarget = t; picker.click(); }
+function readImage(file, max) {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader(); fr.onerror = reject;
+    fr.onload = () => {
+      const img = new Image(); img.onerror = reject;
+      img.onload = () => {
+        const r = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas'); c.width = Math.round(img.width * r); c.height = Math.round(img.height * r);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL(file.type === 'image/png' ? 'image/png' : 'image/jpeg', 0.9));
+      };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+picker.addEventListener('change', async () => {
+  const file = picker.files[0]; picker.value = ''; if (!file) return;
+  let data; try { data = await readImage(file, pickTarget === 'logo' ? 1200 : 600); } catch (e) { alert('Não foi possível ler essa imagem.'); return; }
+  g[pickTarget === 'logo' ? 'logo' : 'avatar'] = data; change();
+});
+$('btnAvatar').addEventListener('click', () => openPicker('avatar'));
+$('btnLogo').addEventListener('click', () => openPicker('logo'));
+$('btnAvatarRm').addEventListener('click', () => { g.avatar = null; change(); });
+$('btnLogoRm').addEventListener('click', () => { g.logo = null; change(); });
+
+/* =============== escala =============== */
+const stage = $('stage'), desktop = window.matchMedia('(min-width: 960px)');
+function fit() {
+  const W = stage.clientWidth, H = stage.clientHeight;
+  const s = Math.max(0.15, desktop.matches ? Math.min((W - 48) / 1080, (H - 32) / 1350) : (W - 24) / 1080);
+  document.documentElement.style.setProperty('--s', s.toFixed(4));
+}
+new ResizeObserver(fit).observe(stage); window.addEventListener('resize', fit);
+
+/* =============== salvar =============== */
+let saveT;
+const status = t => { $('status').textContent = t; };
+function scheduleSave() {
+  clearTimeout(saveT);
+  saveT = setTimeout(() => {
+    const payload = { v: 1, g, slides };
+    if (HOST) {
+      status('Salvando…');
+      fetch(HOST.saveUrl, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
+        .then(r => { if (!r.ok) throw 0; status('Salvo'); }).catch(() => status('Erro ao salvar — verifique a conexão'));
+      return;
+    }
+    try { localStorage.setItem(KEY, JSON.stringify(payload)); status('Salvo no navegador'); } catch (e) { status('Auto-save indisponível'); }
+  }, 500);
+}
+
+/* =============== exportar =============== */
+async function exportIdx(i) {
+  const holder = document.createElement('div');
+  holder.style.cssText = 'position:fixed;left:-99999px;top:0;width:1080px;height:1350px;';
+  const el = buildSlide(slides[i], false); holder.appendChild(el); document.body.appendChild(holder);
+  try {
+    try { await document.fonts.load(`700 40px "${g.font}"`); await document.fonts.load(`400 40px "${g.font}"`); } catch (e) {}
+    await document.fonts.ready; await new Promise(r => setTimeout(r, 150));
+    const canvas = await html2canvas(el, { width: 1080, height: 1350, scale: 1, backgroundColor: g.colors.bg, useCORS: true });
+    const a = document.createElement('a'); a.download = `slide-${String(i + 1).padStart(2, '0')}.png`; a.href = canvas.toDataURL('image/png'); a.click();
+  } finally { holder.remove(); }
+}
+$('btnOne').addEventListener('click', () => exportIdx(idx));
+async function exportAll() { for (let i = 0; i < slides.length; i++) { status(`Exportando ${i + 1}/${slides.length}…`); await exportIdx(i); await new Promise(r => setTimeout(r, 400)); } status('Exportação concluída'); }
+$('btnAll').addEventListener('click', exportAll); $('btnAll2').addEventListener('click', exportAll);
+
+buildPalettes();
+renderCurrent(); fit();
+</script>
+</body>
+</html>
