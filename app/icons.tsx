@@ -9,3 +9,4 @@ export const IconCopy = () => (<svg {...base}><rect x="8" y="8" width="12" heigh
 export const IconTrash = () => (<svg {...base}><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" /></svg>);
 export const IconBack = () => (<svg {...base}><path d="M15 5l-7 7 7 7" /></svg>);
 export const IconSpark = () => (<svg {...base} strokeWidth={2}><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" /><path d="M19 17v4M17 19h4" /></svg>);
+export const IconEdit = () => (<svg {...base}><path d="M4 20h4L19 9a2.1 2.1 0 0 0-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></svg>);

@@ -3,9 +3,9 @@ import { and, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { posts, templates, users } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
-import { createPost, deletePost, duplicatePost, setPostStatus } from '@/lib/actions';
+import { createPost, deletePost, duplicatePost, renamePost, setPostStatus } from '@/lib/actions';
 import { timeAgo } from '@/lib/format';
-import { IconCopy, IconPlus, IconTrash } from '../../icons';
+import { IconCopy, IconEdit, IconPlus, IconTrash } from '../../icons';
 import { PostPreview } from '../post-preview';
 import { TemplateArt } from '../template-art';
 
@@ -81,6 +81,14 @@ export default async function PostsPage() {
                   <button className={`pill ${p.status}`} title="Alternar status">{p.status === 'draft' ? 'Rascunho' : 'Publicado'}</button>
                 </form>
                 <span className="spacer" />
+                <details className="rename-pop">
+                  <summary className="btn small ghost" title="Renomear" aria-label="Renomear"><IconEdit /></summary>
+                  <form action={renamePost} className="card-surface rename-form">
+                    <input type="hidden" name="id" value={p.id} />
+                    <input name="title" defaultValue={p.title} maxLength={120} required aria-label="Novo título" />
+                    <button className="btn small primary">Salvar</button>
+                  </form>
+                </details>
                 <form action={duplicatePost}>
                   <input type="hidden" name="id" value={p.id} />
                   <button className="btn small ghost" title="Duplicar" aria-label="Duplicar"><IconCopy /></button>

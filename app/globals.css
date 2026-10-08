@@ -124,6 +124,7 @@ button.pill:hover { filter: brightness(.95); }
 .post-actions { display: flex; gap: 6px; padding: 0 14px 14px; align-items: center; }
 .post-actions form { display: contents; }
 .post-actions .spacer { flex: 1; }
+.post-actions { position: relative; }
 
 /* mini preview do post */
 .pv { width: 100%; height: 100%; padding: 9%; display: flex; flex-direction: column; gap: 6%; font-family: var(--font-body); overflow: hidden; }
@@ -232,3 +233,22 @@ td.right, th.right { text-align: right; }
 }
 .show-s { display: none; }
 @media (max-width: 900px) { .show-s { display: block; } }
+
+/* renomear post */
+.rename { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; max-width: 560px; }
+.rename input { flex: 1; min-width: 0; font-family: var(--font-head); font-weight: 700; font-size: 15px; letter-spacing: -.01em; padding: 7px 10px; border: 1px solid transparent; border-radius: 10px; background: transparent; text-overflow: ellipsis; }
+.rename input:hover { background: var(--surface-2); border-color: var(--line); }
+.rename input:focus { background: #fff; }
+.rename-state { font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+.rename-state.saved { color: var(--ok); }
+.rename-state.error { color: var(--danger); }
+.post-card { position: relative; }
+.rename-pop { position: static; }
+.rename-pop summary { list-style: none; cursor: pointer; }
+.rename-pop summary::-webkit-details-marker { display: none; }
+.rename-pop[open] summary { background: rgba(22, 20, 15, .06); }
+.rename-form { position: absolute; bottom: calc(100% + 6px); left: 8px; right: 8px; z-index: 20; display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; box-shadow: var(--shadow-lg); }
+.rename-form input { flex: 1 1 100%; min-width: 0; padding: 8px 10px; }
+.rename-form .btn { flex: 1; }
+@media (max-width: 520px) { .rename-state { display: none; } }
+.post-actions form.rename-form { display: flex; }

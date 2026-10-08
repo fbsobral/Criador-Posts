@@ -64,6 +64,15 @@ export async function duplicatePost(formData: FormData) {
   revalidatePath('/admin/posts');
 }
 
+/** Renomeia um post (usado na lista de posts). */
+export async function renamePost(formData: FormData) {
+  const c = await need();
+  const title = String(formData.get('title') ?? '').trim().slice(0, 120);
+  if (!title) return;
+  await db.update(posts).set({ title, updatedBy: c.userId, updatedAt: new Date() }).where(and(eq(posts.id, String(formData.get('id'))), eq(posts.brandId, c.brandId)));
+  revalidatePath('/admin/posts');
+}
+
 export async function deletePost(formData: FormData) {
   const c = await need();
   await db.delete(posts).where(and(eq(posts.id, String(formData.get('id'))), eq(posts.brandId, c.brandId)));
