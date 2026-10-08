@@ -42,14 +42,18 @@ export const brandSettings = pgTable('brand_settings', {
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
-/** Templates de estilo. `brandId` nulo = template global da plataforma. */
+/**
+ * Templates = formatos de post. Cada um aponta para um editor (`editor`), que define
+ * a estrutura dos slides. `brandId` nulo = formato global da plataforma.
+ */
 export const templates = pgTable(
   'templates',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     brandId: uuid('brand_id').references(() => brands.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
-    style: jsonb('style').$type<Style>().notNull(),
+    description: text('description').notNull().default(''),
+    editor: text('editor').notNull().default('carrossel'),
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
@@ -63,6 +67,7 @@ export const posts = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+    templateId: uuid('template_id').references(() => templates.id, { onDelete: 'restrict' }),
     title: text('title').notNull().default('Sem título'),
     status: postStatus('status').notNull().default('draft'),
     data: jsonb('data').$type<PostData>().notNull(),

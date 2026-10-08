@@ -8,6 +8,20 @@
       "when": 1791457872935,
       "tag": "0000_quick_talos",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791462341545,
+      "tag": "0001_drop_template_style",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791462342307,
+      "tag": "0002_template_formats",
+      "breakpoints": true
     }
   ]
 }

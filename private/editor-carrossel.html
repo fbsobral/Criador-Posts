@@ -250,11 +250,6 @@
     <section>
       <h3>Cores do template</h3>
       <div class="presets" id="presets"></div>
-      <div id="hostTpl" style="display:none">
-        <h3 style="margin-top:4px">Templates salvos</h3>
-        <div class="presets" id="tplList"></div>
-        <button class="btn small" id="btnSaveTpl" style="margin-bottom:14px">Salvar estilo como template</button>
-      </div>
       <div class="colors" id="colors"></div>
     </section>
 
@@ -597,32 +592,6 @@ function buildThemeUI() {
   });
 }
 
-/* templates salvos no servidor */
-function applyStyle(st) {
-  g.theme = Object.assign({}, THEMES.original, st.theme); g.font = st.font || g.font; g.width = st.width || g.width;
-  fillGlobalInputs(); renderCurrent(); scheduleSave();
-}
-function buildHostTemplates() {
-  if (!HOST) return;
-  $('hostTpl').style.display = 'block';
-  const box = $('tplList'); box.innerHTML = '';
-  HOST.templates.forEach(t => {
-    const b = document.createElement('button');
-    b.className = 'preset'; b.title = t.name;
-    b.innerHTML = `<span class="sw" style="background:${esc(t.style.theme.bg)};color:${esc(t.style.theme.title)}"><b>Aa</b><i style="background:${esc(t.style.theme.marker)}"></i></span><span>${esc(t.name)}${t.global ? ' ·&nbsp;global' : ''}</span>`;
-    b.addEventListener('click', () => applyStyle(t.style));
-    box.appendChild(b);
-  });
-  const sb = $('btnSaveTpl');
-  if (!HOST.canSaveTemplate) { sb.style.display = 'none'; return; }
-  sb.addEventListener('click', async () => {
-    const name = prompt('Nome do template:'); if (!name) return;
-    const r = await fetch(HOST.templatesUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, style: { theme: g.theme, font: g.font, width: g.width } }) });
-    if (!r.ok) { alert('Não foi possível salvar o template.'); return; }
-    const t = await r.json(); HOST.templates.push({ id: t.id, name: t.name, style: t.style, global: false }); buildHostTemplates();
-  });
-}
-
 /* fontes */
 const FONTS = ['Inter', 'Poppins', 'Montserrat', 'DM Sans', 'Manrope', 'Space Grotesk', 'Work Sans', 'Raleway', 'Oswald', 'Playfair Display', 'Lora', 'Merriweather', 'Libre Baskerville', 'Roboto Slab'];
 function fillFontSelects() {
@@ -840,7 +809,6 @@ $('btnAll2').addEventListener('click', exportAll);
 /* =============== início =============== */
 fillFontSelects();
 buildThemeUI();
-buildHostTemplates();
 fillGlobalInputs();
 renderCurrent();
 fit();

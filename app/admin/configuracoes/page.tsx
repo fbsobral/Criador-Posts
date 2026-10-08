@@ -1,14 +1,11 @@
-import { eq, isNull, or } from 'drizzle-orm';
-import { db } from '@/db';
-import { templates } from '@/db/schema';
 import { getBrandSettings, getCtx } from '@/lib/ctx';
 import { saveSettings } from '@/lib/actions';
+import { GLOBAL_PRESETS } from '@/lib/themes';
 
 export default async function SettingsPage() {
   const c = (await getCtx())!;
   const s = (await getBrandSettings(c.brandId))!;
-  const tpls = await db.select().from(templates).where(or(isNull(templates.brandId), eq(templates.brandId, c.brandId))).orderBy(templates.name);
-  const current = tpls.find((t) => s.style && JSON.stringify(t.style) === JSON.stringify(s.style));
+  const current = GLOBAL_PRESETS.find((p) => s.style && JSON.stringify(p.theme) === JSON.stringify(s.style.theme));
   const ro = !c.isBrandAdmin;
 
   return (
@@ -20,10 +17,9 @@ export default async function SettingsPage() {
         <label>@ usuário<input name="handle" defaultValue={s.handle} disabled={ro} /></label>
         <label>Tema (canto superior)<input name="topic" defaultValue={s.topic} disabled={ro} /></label>
         <label>Ano<input name="year" defaultValue={s.year} disabled={ro} /></label>
-        <label>Template padrão
-          <select name="templateId" defaultValue={current?.id ?? ''} disabled={ro}>
-            <option value="">Original (padrão)</option>
-            {tpls.map((t) => <option key={t.id} value={t.id}>{t.name}{t.brandId === null ? ' (global)' : ''}</option>)}
+        <label>Cores padrão
+          <select name="colors" defaultValue={current?.name ?? 'Original'} disabled={ro}>
+            {GLOBAL_PRESETS.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
           </select>
         </label>
         {!ro && <button className="btn primary">Salvar</button>}
