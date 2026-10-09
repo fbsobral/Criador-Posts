@@ -3,14 +3,24 @@ import { and, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { posts, templates, users } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
-import { createPost, deletePost, duplicatePost, renamePost, setPostStatus } from '@/lib/actions';
+import { auth, clerkClient } from '@clerk/nextjs/server';
+import { createPost, deletePost, duplicatePost, migratePost, renamePost, setPostStatus } from '@/lib/actions';
 import { timeAgo } from '@/lib/format';
-import { IconCopy, IconEdit, IconPlus, IconTrash } from '../../icons';
+import { IconCopy, IconEdit, IconMove, IconPlus, IconTrash } from '../../icons';
 import { PostPreview } from '../post-preview';
 import { TemplateArt } from '../template-art';
 
-export default async function PostsPage() {
+export default async function PostsPage({ searchParams }: { searchParams: Promise<{ moved?: string }> }) {
+  const { moved } = await searchParams;
   const c = (await getCtx())!;
+
+  // super-admin: lista as outras marcas (organizações do Clerk) para migrar posts
+  let destinations: { id: string; name: string }[] = [];
+  if (c.isPlatformAdmin) {
+    const { orgId } = await auth();
+    const orgs = await (await clerkClient()).organizations.getOrganizationList({ limit: 100, orderBy: 'name' });
+    destinations = orgs.data.filter((o) => o.id !== orgId).map((o) => ({ id: o.id, name: o.name }));
+  }
   const rows = await db
     .select({
       p: { id: posts.id, title: posts.title, status: posts.status, updatedAt: posts.updatedAt },
@@ -38,6 +48,8 @@ export default async function PostsPage() {
           <p>{rows.length === 0 ? 'Crie o primeiro post da marca.' : `${rows.length} ${rows.length === 1 ? 'post' : 'posts'} em ${c.brandName}.`}</p>
         </div>
       </div>
+
+      {moved && <div className="notice ok" style={{ marginBottom: 20 }} role="status">Post migrado para <b>{moved}</b>. Ele chegou lá como rascunho.</div>}
 
       <form action={createPost} className="card-surface new-post">
         <h2>Novo post</h2>
@@ -89,6 +101,22 @@ export default async function PostsPage() {
                     <button className="btn small primary">Salvar</button>
                   </form>
                 </details>
+                {destinations.length > 0 && (
+                  <details className="rename-pop">
+                    <summary className="btn small ghost" title="Migrar para outra marca" aria-label="Migrar para outra marca"><IconMove /></summary>
+                    <form action={migratePost} className="card-surface rename-form migrate-form">
+                      <b>Migrar para outra marca</b>
+                      <input type="hidden" name="id" value={p.id} />
+                      <select name="destOrgId" required defaultValue="" aria-label="Marca de destino">
+                        <option value="" disabled>Escolha a marca…</option>
+                        {destinations.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      </select>
+                      <label className="mini-check"><input type="checkbox" name="applyIdentity" defaultChecked /> Aplicar nome, @ e foto da marca de destino</label>
+                      <small className="muted">O post sai desta marca e chega como rascunho.</small>
+                      <button className="btn small primary">Migrar</button>
+                    </form>
+                  </details>
+                )}
                 <form action={duplicatePost}>
                   <input type="hidden" name="id" value={p.id} />
                   <button className="btn small ghost" title="Duplicar" aria-label="Duplicar"><IconCopy /></button>

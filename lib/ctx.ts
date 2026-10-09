@@ -39,12 +39,7 @@ export const getCtx = cache(async (): Promise<Ctx | null> => {
       .onConflictDoNothing();
   }
 
-  let brand = brandRow;
-  if (!brand) {
-    const org = await (await clerkClient()).organizations.getOrganization({ organizationId: orgId });
-    [brand] = await db.insert(brands).values({ clerkOrgId: orgId, name: org.name }).onConflictDoUpdate({ target: brands.clerkOrgId, set: { name: org.name } }).returning();
-    await db.insert(brandSettings).values({ brandId: brand.id, displayName: org.name }).onConflictDoNothing();
-  }
+  const brand = brandRow ?? (await ensureBrand(orgId));
 
   return {
     userId,
@@ -54,6 +49,16 @@ export const getCtx = cache(async (): Promise<Ctx | null> => {
     isPlatformAdmin: !!email && platformAdmins().includes(email.toLowerCase()),
   };
 });
+
+/** Garante a linha da marca (e suas configurações) no banco para uma Organization do Clerk. */
+export async function ensureBrand(clerkOrgId: string, knownName?: string) {
+  const [existing] = await db.select().from(brands).where(eq(brands.clerkOrgId, clerkOrgId));
+  if (existing) return existing;
+  const name = knownName ?? (await (await clerkClient()).organizations.getOrganization({ organizationId: clerkOrgId })).name;
+  const [brand] = await db.insert(brands).values({ clerkOrgId, name }).onConflictDoUpdate({ target: brands.clerkOrgId, set: { name } }).returning();
+  await db.insert(brandSettings).values({ brandId: brand.id, displayName: name }).onConflictDoNothing();
+  return brand;
+}
 
 /** Só o necessário para saber se é admin da plataforma (não exige marca ativa). */
 export async function isPlatformAdminUser(): Promise<boolean> {

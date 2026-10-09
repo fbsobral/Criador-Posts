@@ -64,7 +64,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
             <div className="gen-thumb">
               {it.status === 'done' && it.postId
                 ? <Link href={`/admin/posts/${it.postId}`} aria-label="Abrir post"><PostPreview editor={tpl?.editor ?? 'carrossel'} theme={theme} colors={colors} text={text} /></Link>
-                : <div className={`gen-wait ${it.status}`}>{it.status === 'error' ? '!' : <div className="spinner" />}</div>}
+                : <div className={`gen-wait ${it.status}`}>{it.status === 'error' ? '!' : it.status === 'done' ? '—' : <div className="spinner" />}</div>}
             </div>
             <div className="gen-body">
               <div className="gen-top">
@@ -72,6 +72,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
                 {it.status === 'done' && <span className="muted">{slides} slides · {fmtUsd(costUsd(it.inputTokens, it.outputTokens))}</span>}
               </div>
               {it.status === 'done' && title ? <b className="gen-title">{title}</b> : null}
+              {it.status === 'done' && !it.postId && <p className="muted">Este post foi migrado para outra marca ou excluído.</p>}
               <p className="gen-brief">{it.brief}</p>
               {it.status === 'error' && <p className="gen-err">{it.error}</p>}
               {it.notes && it.notes.length > 0 && (

@@ -27,3 +27,14 @@ export function initialPostData(s: Settings, slides: unknown[] | null = null): P
     },
   };
 }
+
+/**
+ * Faz um post assumir a identidade de outra marca (nome, @, contas e foto).
+ * No carrossel também assume as cores/fonte padrão da marca; o Tweet Card mantém as suas cores.
+ */
+export function applyBrandIdentity(data: PostData, editor: string | null, destination: Settings): PostData {
+  const base = initialPostData(destination).g;
+  const g: Record<string, unknown> = { ...data.g, name: base.name, handle: base.handle, accounts: base.accounts, view: base.view, avatar: base.avatar };
+  if (editor === 'carrossel') Object.assign(g, { theme: base.theme, font: base.font, width: base.width });
+  return { ...data, g };
+}

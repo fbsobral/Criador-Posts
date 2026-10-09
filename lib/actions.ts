@@ -6,10 +6,10 @@ import { revalidatePath } from 'next/cache';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { db } from '@/db';
 import { brandSettings, colorPalettes, generationBatches, generationItems, posts, templates } from '@/db/schema';
-import { getCtx, getBrandSettings } from './ctx';
+import { getCtx, getBrandSettings, ensureBrand } from './ctx';
 import { DEFAULT_STYLE, GLOBAL_PRESETS } from './themes';
 import { EDITORS, type EditorKey } from './editors';
-import { initialPostData } from './posts';
+import { applyBrandIdentity, initialPostData } from './posts';
 import { supportsAi } from './ai/generate';
 import { MAX_ITEMS_PER_BATCH, MAX_SLIDES, collectBriefs } from './ai/constants';
 import { kickBatch } from './ai/worker';
@@ -67,6 +67,41 @@ export async function renamePost(formData: FormData) {
   if (!title) return;
   await db.update(posts).set({ title, updatedBy: c.userId, updatedAt: new Date() }).where(and(eq(posts.id, String(formData.get('id'))), eq(posts.brandId, c.brandId)));
   revalidatePath('/admin/posts');
+}
+
+/**
+ * Migra um post para outra marca (tenant). Só o super-admin da plataforma.
+ * O post volta para rascunho; opcionalmente assume a identidade da marca de destino.
+ */
+export async function migratePost(formData: FormData) {
+  const c = await need();
+  if (!c.isPlatformAdmin) throw new Error('Apenas o admin da plataforma pode migrar posts entre marcas');
+
+  const id = String(formData.get('id'));
+  const destOrgId = String(formData.get('destOrgId') ?? '');
+  const applyIdentity = formData.get('applyIdentity') === 'on';
+  if (!destOrgId) throw new Error('Escolha a marca de destino');
+
+  const [src] = await db
+    .select({ post: posts, editor: templates.editor, tplBrand: templates.brandId })
+    .from(posts)
+    .leftJoin(templates, eq(templates.id, posts.templateId))
+    .where(and(eq(posts.id, id), eq(posts.brandId, c.brandId)));
+  if (!src) throw new Error('Post não encontrado');
+
+  const org = await (await clerkClient()).organizations.getOrganization({ organizationId: destOrgId }).catch(() => null);
+  if (!org) throw new Error('Marca de destino não encontrada');
+  const dest = await ensureBrand(org.id, org.name);
+  if (dest.id === c.brandId) throw new Error('O post já está nessa marca');
+  if (src.tplBrand && src.tplBrand !== dest.id) throw new Error('O formato deste post é exclusivo da marca de origem');
+
+  const data = applyIdentity ? applyBrandIdentity(src.post.data, src.editor, await getBrandSettings(dest.id)) : src.post.data;
+
+  await db.update(posts).set({ brandId: dest.id, data, status: 'draft', updatedBy: c.userId, updatedAt: new Date() }).where(eq(posts.id, id));
+  // lotes de IA da marca de origem deixam de apontar para este post
+  await db.update(generationItems).set({ postId: null }).where(eq(generationItems.postId, id));
+  revalidatePath('/admin/posts');
+  redirect(`/admin/posts?moved=${encodeURIComponent(org.name)}`);
 }
 
 export async function deletePost(formData: FormData) {

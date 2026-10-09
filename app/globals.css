@@ -333,3 +333,10 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 .add-script svg { width: 16px; height: 16px; }
 .add-script:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
 .add-script:disabled { opacity: .5; cursor: not-allowed; }
+.notice.ok { background: #E8F6EE; border-color: #BFE3CE; color: #11724A; }
+.migrate-form { flex-direction: column; align-items: stretch; gap: 8px; }
+.migrate-form b { font-family: var(--font-head); font-size: 14px; }
+.migrate-form select { width: 100%; }
+.mini-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--ink-2); line-height: 1.35; }
+.mini-check input { margin-top: 2px; padding: 0; width: 15px; height: 15px; flex: none; accent-color: var(--primary); }
+.post-actions form.migrate-form { display: flex; }
