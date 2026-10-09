@@ -30,6 +30,7 @@ export async function GET(req: Request) {
   const host = {
     initial: post.data,
     saveUrl: `/api/posts/${post.id}`,
+    title: post.title,
     palettesUrl: '/api/palettes',
     editor: editorKey,
     palettes: palettes.map((p) => ({ id: p.id, name: p.name, theme: p.theme, canDelete: c.isBrandAdmin || p.createdBy === c.userId })),

@@ -206,6 +206,7 @@
   <span id="status"></span>
   <button class="btn primary" id="btnNew">+ Novo slide</button>
   <button class="btn hide-m" id="btnAll">Baixar todos (PNG)</button>
+  <button class="btn hide-m" id="btnPdf" data-pdf>Baixar PDF</button>
 </div>
 
 <div class="app">
@@ -310,7 +311,8 @@
       <h3>Exportar e projeto</h3>
       <div class="row">
         <button class="btn small" id="btnOne">Baixar este (PNG)</button>
-        <button class="btn small" id="btnAll2">Baixar todos</button>
+        <button class="btn small" id="btnAll2">Baixar todos (PNG)</button>
+        <button class="btn small primary" id="btnPdf2" data-pdf>Baixar PDF</button>
         <button class="btn small" id="btnSave">Salvar projeto</button>
         <button class="btn small" id="btnOpen">Abrir projeto</button>
       </div>
@@ -885,38 +887,66 @@ $('pickProject').addEventListener('change', e => {
 
 /* =============== exportar PNG =============== */
 /* html2canvas só é baixado quando o primeiro PNG é exportado (não bloqueia a abertura do editor) */
-let h2cPromise;
-function loadH2C() {
-  if (window.html2canvas) return Promise.resolve();
-  return h2cPromise || (h2cPromise = new Promise((resolve, reject) => {
+const scriptCache = {};
+function loadScript(src) {
+  return scriptCache[src] || (scriptCache[src] = new Promise((resolve, reject) => {
     const sc = document.createElement('script');
-    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-    sc.onload = resolve; sc.onerror = () => { h2cPromise = null; reject(new Error('html2canvas')); };
+    sc.src = src; sc.onload = resolve; sc.onerror = () => { delete scriptCache[src]; reject(new Error(src)); };
     document.head.appendChild(sc);
   }));
 }
+const loadH2C = () => window.html2canvas ? Promise.resolve() : loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+const loadJsPDF = () => window.jspdf ? Promise.resolve() : loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+const fileBase = () => ((HOST && HOST.title) || 'carrossel').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'carrossel';
 
-async function exportIdx(i) {
+/** Renderiza o slide i em um canvas (fora da tela, no tamanho real 1080×1350). */
+async function renderCanvas(i, scale = 1) {
   const holder = document.createElement('div');
   holder.style.cssText = 'position:fixed;left:-99999px;top:0;width:1080px;height:1350px;';
-  const el = buildSlide(slides[i], false);
-  holder.appendChild(el); document.body.appendChild(holder);
+  const el = buildSlide(slides[i], false); holder.appendChild(el); document.body.appendChild(holder);
   try {
     try { await document.fonts.load(`700 40px "${g.font}"`); await document.fonts.load(`400 40px "${g.font}"`); } catch (e) {}
-    await document.fonts.ready;
-    await new Promise(r => setTimeout(r, 150));
+    await document.fonts.ready; await new Promise(r => setTimeout(r, 150));
     await loadH2C();
-    const canvas = await html2canvas(el, { width: 1080, height: 1350, scale: 1, backgroundColor: g.theme.bg, useCORS: true });
-    const a = document.createElement('a');
-    a.download = `slide-${String(i + 1).padStart(2, '0')}.png`;
-    a.href = canvas.toDataURL('image/png'); a.click();
+    return await html2canvas(el, { width: 1080, height: 1350, scale, backgroundColor: g.theme.bg, useCORS: true });
   } finally { holder.remove(); }
+}
+
+async function exportIdx(i) {
+  const canvas = await renderCanvas(i, 1);
+  const a = document.createElement('a'); a.download = `slide-${String(i + 1).padStart(2, '0')}.png`; a.href = canvas.toDataURL('image/png'); a.click();
 }
 $('btnOne').addEventListener('click', () => exportIdx(idx));
 async function exportAll() {
   for (let i = 0; i < slides.length; i++) { status(`Exportando ${i + 1}/${slides.length}…`); await exportIdx(i); await new Promise(r => setTimeout(r, 400)); }
   status('Exportação concluída');
 }
+/** Um PDF com todos os slides (uma página 1080×1350 por slide). */
+let pdfBusy = false;
+async function exportPdf() {
+  if (pdfBusy) return; pdfBusy = true;
+  document.querySelectorAll('[data-pdf]').forEach(b => b.disabled = true);
+  try {
+    status('Preparando PDF…');
+    await loadJsPDF();
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'px', format: [1080, 1350], compress: true, hotfixes: ['px_scaling'] });
+    for (let i = 0; i < slides.length; i++) {
+      status(`Gerando PDF… ${i + 1}/${slides.length}`);
+      const canvas = await renderCanvas(i, 2);
+      if (i > 0) pdf.addPage([1080, 1350], 'portrait');
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 1080, 1350, undefined, 'FAST');
+      await new Promise(r => setTimeout(r, 0));
+    }
+    pdf.save(`${fileBase()}.pdf`);
+    status('PDF pronto');
+  } catch (e) {
+    status('Não foi possível gerar o PDF (verifique a conexão)');
+  } finally {
+    pdfBusy = false; document.querySelectorAll('[data-pdf]').forEach(b => b.disabled = false);
+  }
+}
+$('btnPdf').addEventListener('click', exportPdf); $('btnPdf2').addEventListener('click', exportPdf);
 $('btnAll').addEventListener('click', exportAll);
 $('btnAll2').addEventListener('click', exportAll);
 
