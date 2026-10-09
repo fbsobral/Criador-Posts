@@ -13,3 +13,4 @@ export const IconEdit = () => (<svg {...base}><path d="M4 20h4L19 9a2.1 2.1 0 0 
 export const IconMove = () => (<svg {...base}><path d="M4 12h14M13 6l6 6-6 6" /><path d="M4 5v14" /></svg>);
 export const IconGrid = () => (<svg {...base}><rect x="4" y="4" width="6.5" height="6.5" rx="1.6" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6" /></svg>);
 export const IconList = () => (<svg {...base}><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" /></svg>);
+export const IconImage = () => (<svg {...base}><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="9" cy="10" r="1.8" /><path d="M21 16l-5-5-9 9" /></svg>);

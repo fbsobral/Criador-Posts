@@ -33,6 +33,7 @@ export async function GET(req: Request) {
     saveUrl: `/api/posts/${post.id}`,
     title: post.title,
     imageUrl: '/api/ai/image',
+    assetsUrl: '/api/assets',
     imageEnabled: imageEnabled(),
     palettesUrl: '/api/palettes',
     editor: editorKey,

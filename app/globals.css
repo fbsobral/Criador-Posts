@@ -380,3 +380,20 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 .img-opt input { margin-top: 3px; width: 18px; height: 18px; flex: none; padding: 0; accent-color: var(--primary); }
 .img-opt b { display: block; font-size: 14px; }
 .img-opt small { color: var(--muted); font-size: 12.5px; line-height: 1.4; display: block; margin-top: 2px; }
+
+/* ============ galeria ============ */
+.gal-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 22px; flex-wrap: wrap; }
+.gal-bar input[type=search] { flex: 1; min-width: 220px; max-width: 460px; }
+.gal-page-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 18px; }
+.gal-card-item { overflow: hidden; display: flex; flex-direction: column; transition: transform .15s, box-shadow .2s; }
+.gal-card-item:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.gal-thumb { position: relative; display: block; aspect-ratio: 4 / 3; background: var(--surface-2); border-bottom: 1px solid var(--line); }
+.gal-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gal-thumb .badge { position: absolute; top: 8px; left: 8px; background: var(--primary); color: #fff; font-size: 11px; font-weight: 800; padding: 2px 9px; border-radius: 99px; }
+.gal-body { padding: 10px 12px 8px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.gal-desc { font-size: 12.5px; line-height: 1.4; color: var(--ink-2); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.gal-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+.gal-tags span { font-size: 11px; font-weight: 600; background: #F3EEE4; color: var(--ink-2); padding: 2px 8px; border-radius: 99px; }
+.gal-meta { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: auto; font-size: 12px; }
+@media (max-width: 900px) { .gal-page-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .gal-bar input[type=search] { max-width: none; } }
+.gal-import { margin: -10px 0 18px; }

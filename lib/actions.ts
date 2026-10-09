@@ -14,6 +14,7 @@ import { supportsAi } from './ai/generate';
 import { imageEnabled } from './ai/image';
 import { MAX_ITEMS_PER_BATCH, MAX_SLIDES, collectBriefs } from './ai/constants';
 import { kickBatch } from './ai/worker';
+import { importPostImagesFor } from './assets';
 
 async function need() {
   const c = await getCtx();
@@ -284,4 +285,16 @@ export async function saveAiProfile(formData: FormData) {
     aiRules: f('aiRules', 1500), aiCta: f('aiCta', 300), aiExamples: f('aiExamples', 4000), aiImageStyle: f('aiImageStyle', 400), updatedAt: new Date(),
   }).where(eq(brandSettings.brandId, c.brandId));
   revalidatePath('/admin/configuracoes');
+}
+
+
+/**
+ * Importa para a galeria as imagens embutidas nos posts da marca (deixa os posts mais leves).
+ */
+export async function importPostImages() {
+  const c = await need();
+  if (!c.isBrandAdmin) throw new Error('Apenas admins da marca');
+  const r = await importPostImagesFor(c.brandId, c.userId);
+  revalidatePath('/admin/galeria');
+  redirect(`/admin/galeria?imported=${r.images}&posts=${r.posts}`);
 }

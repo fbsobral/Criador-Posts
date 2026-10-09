@@ -7,6 +7,7 @@ import { MAX_IMAGES_PER_POST } from './constants';
 import { IMAGE_MODEL, ImageError, buildPrompt, generateImage, imageEnabled, type AspectRatio } from './image';
 import { deriveImagePrompt, deriveImagePromptsForPost } from './image-prompt';
 import { plainText } from '../format';
+import { ASSET_URL, saveAsset } from '../assets';
 
 const CONCURRENCY = 3;
 const MAX_ATTEMPTS = 3;
@@ -165,15 +166,16 @@ async function addImages(editor: 'carrossel' | 'tweet', slides: Record<string, u
     try {
       await heartbeat();
       const hint = String(s.imagePrompt ?? '').trim();
-      const prompt = planned.get(i + 1)
-        ?? (await deriveImagePrompt(
+      const plan = planned.get(i + 1)
+        ?? await deriveImagePrompt(
           { slideText: text(s), slideIndex: i + 1, total: slides.length, outline, title: ctx.title, topic: ctx.topic, format: editor === 'tweet' ? 'tweet-card' : String(s.format), hint: hint || undefined },
           brandArt,
-        )).prompt;
-      const art = { prompt };
+        );
+      const art = { prompt: plan.prompt, tags: plan.tags };
       const ratio = (editor === 'carrossel' ? RATIO_BY_FORMAT[String(s.format)] : '16:9') ?? '4:3';
       const img = await generateImage(buildPrompt(art.prompt, ctx.imageStyle), ratio);
-      s.image = `data:${img.mime};base64,${img.data}`;
+      const saved = await saveAsset({ brandId: ctx.brandId, userId: ctx.userId, kind: 'ai', data: Buffer.from(img.data, 'base64'), description: art.prompt, tags: art.tags });
+      s.image = ASSET_URL(saved.id);
       s.imagePrompt = art.prompt;
       s.aiRatio = ratio;
       if (editor === 'tweet') s.showImage = true;

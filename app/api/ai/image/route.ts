@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { brandSettings, brands, imageGenerations } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { deriveImagePrompt, type SlideContext } from '@/lib/ai/image-prompt';
+import { ASSET_THUMB_URL, ASSET_URL, saveAsset } from '@/lib/assets';
 import { ASPECT_RATIOS, IMAGE_MODEL, ImageError, MAX_PROMPT_CHARS, buildPrompt, generateImage, imageEnabled, type AspectRatio } from '@/lib/ai/image';
 
 export const maxDuration = 130;
@@ -34,6 +35,7 @@ export async function POST(req: Request) {
     .where(eq(brandSettings.brandId, c.brandId));
   try {
     let derived = false;
+    let tags: string[] = [];
     const improve = !!body?.improve && description.length >= 3 && !!ctxIn && !!process.env.ANTHROPIC_API_KEY;
     if ((description.length < 3 || improve) && ctxIn) {
       // modo automático: o Claude cria a descrição a partir do texto do slide e do contexto do post
@@ -48,12 +50,14 @@ export async function POST(req: Request) {
         { brandName: settings?.name ?? '', niche: settings?.niche ?? '', audience: settings?.audience ?? '', imageStyle: settings?.style ?? '' },
       );
       description = art.prompt;
+      tags = art.tags;
       if (!body?.ratio && art.ratio && (ASPECT_RATIOS as readonly string[]).includes(art.ratio)) ratio = art.ratio as AspectRatio;
       derived = true;
     }
     const img = await generateImage(buildPrompt(description, settings?.style ?? ''), ratio);
+    const saved = await saveAsset({ brandId: c.brandId, userId: c.userId, kind: 'ai', data: Buffer.from(img.data, 'base64'), description, tags });
     await db.insert(imageGenerations).values({ brandId: c.brandId, userId: c.userId, model: IMAGE_MODEL, prompt: description.slice(0, 1500), aspectRatio: ratio });
-    return Response.json({ data: img.data, mime: img.mime, prompt: description, ratio, derived, remaining: DAILY_LIMIT - n - 1 });
+    return Response.json({ id: saved.id, url: ASSET_URL(saved.id), thumb: ASSET_THUMB_URL(saved.id), prompt: description, ratio, derived, reused: saved.reused, remaining: DAILY_LIMIT - n - 1 });
   } catch (e) {
     const err = e instanceof ImageError ? e : new ImageError('Erro inesperado ao gerar a imagem.');
     if (!(e instanceof ImageError)) console.error('[image]', e);

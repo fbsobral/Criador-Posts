@@ -27,23 +27,29 @@ REGRAS
 - NÃO retrate pessoas reais ou figuras públicas identificáveis. Pessoas genéricas são aceitáveis só se ajudarem a mensagem.
 - Deixe a composição limpa, com área de respiro, pois o slide terá texto ao lado ou acima.
 - Respeite o estilo visual da marca, se houver.
+- "tags": 5 a 8 palavras-chave em português (objetos, cenário, tema, clima), minúsculas, para achar esta imagem depois numa galeria.
 
 QUANDO HOUVER "INSTRUÇÃO DO USUÁRIO"
 - Se estiver clara e boa, preserve a intenção e apenas enriqueça (composição, luz, paleta, enquadramento).
 - Se estiver vaga, confusa, genérica ou fraca para o objetivo do slide, reescreva por completo de forma estratégica, mantendo só o que for útil.
 - Se pedir texto, números, gráficos com dados ou pessoas reais, adapte para uma alternativa visual que funcione (o texto fica no slide).`;
 
+/** Palavras-chave curtas e minúsculas para a busca na galeria. */
+export const cleanTags = (t: unknown): string[] =>
+  (Array.isArray(t) ? t : []).map((x) => String(x).toLowerCase().replace(/[^a-zà-úç0-9 -]/g, '').trim()).filter((x) => x.length >= 3 && x.length <= 30).slice(0, 10);
+
 const SCHEMA = {
-  type: 'object', additionalProperties: false, required: ['prompt', 'ratio'],
+  type: 'object', additionalProperties: false, required: ['prompt', 'ratio', 'tags'],
   properties: {
     prompt: { type: 'string' },
     ratio: { type: 'string', enum: ['16:9', '4:3', '1:1', '4:5', '3:4'] },
+    tags: { type: 'array', items: { type: 'string' } },
   },
 };
 
 /** Cria a descrição da imagem a partir do texto do slide e do contexto do post. */
-export async function deriveImagePrompt(ctx: SlideContext, brand: ArtBrand): Promise<{ prompt: string; ratio: string | null }> {
-  if (process.env.AI_MOCK === '1') return { prompt: `${ctx.hint ? 'Versão melhorada de "' + ctx.hint.slice(0, 40) + '": ' : ''}imagem de apoio simbólica para: ${ctx.slideText.slice(0, 80)}`, ratio: null };
+export async function deriveImagePrompt(ctx: SlideContext, brand: ArtBrand): Promise<{ prompt: string; ratio: string | null; tags: string[] }> {
+  if (process.env.AI_MOCK === '1') return { prompt: `${ctx.hint ? 'Versão melhorada de "' + ctx.hint.slice(0, 40) + '": ' : ''}imagem de apoio simbólica para: ${ctx.slideText.slice(0, 80)}`, ratio: null, tags: [] };
   if (!process.env.ANTHROPIC_API_KEY) throw new ImageError('Para criar a descrição automática é preciso a ANTHROPIC_API_KEY. Ou escreva a descrição você mesmo.', 503);
 
   const brandLines = [
@@ -74,10 +80,10 @@ export async function deriveImagePrompt(ctx: SlideContext, brand: ArtBrand): Pro
     });
     if (res.stop_reason === 'refusal') throw new ImageError('A IA recusou criar uma descrição para este slide. Escreva a descrição você mesmo.', 422);
     const text = res.content.find((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')?.text ?? '';
-    const out = JSON.parse(text) as { prompt?: string; ratio?: string };
+    const out = JSON.parse(text) as { prompt?: string; ratio?: string; tags?: string[] };
     const prompt = String(out.prompt ?? '').trim().slice(0, 1200);
     if (prompt.length < 10) throw new ImageError('Não consegui criar a descrição da imagem. Tente de novo.', 502);
-    return { prompt, ratio: typeof out.ratio === 'string' ? out.ratio : null };
+    return { prompt, ratio: typeof out.ratio === 'string' ? out.ratio : null, tags: cleanTags(out.tags) };
   } catch (e) {
     if (e instanceof ImageError) throw e;
     if (e instanceof Anthropic.RateLimitError) throw new ImageError('Limite de uso da IA atingido. Tente em instantes.', 429);
@@ -93,7 +99,7 @@ const SCHEMA_POST = {
   type: 'object', additionalProperties: false, required: ['style', 'items'],
   properties: {
     style: { type: 'string' },
-    items: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['slide', 'prompt'], properties: { slide: { type: 'integer' }, prompt: { type: 'string' } } } },
+    items: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['slide', 'prompt', 'tags'], properties: { slide: { type: 'integer' }, prompt: { type: 'string' }, tags: { type: 'array', items: { type: 'string' } } } } },
   },
 };
 
@@ -112,11 +118,11 @@ export async function deriveImagePromptsForPost(
   post: { title: string; topic: string; outline: string[]; total: number },
   targets: PostImageTarget[],
   brand: ArtBrand,
-): Promise<Map<number, string>> {
-  const out = new Map<number, string>();
+): Promise<Map<number, { prompt: string; tags: string[] }>> {
+  const out = new Map<number, { prompt: string; tags: string[] }>();
   if (!targets.length) return out;
   if (process.env.AI_MOCK === '1') {
-    targets.forEach((t) => out.set(t.slide, `${t.hint ? `Versão melhorada de "${t.hint.slice(0, 40)}": ` : ''}imagem para: ${t.text.slice(0, 80)}`));
+    targets.forEach((t) => out.set(t.slide, { prompt: `${t.hint ? `Versão melhorada de "${t.hint.slice(0, 40)}": ` : ''}imagem para: ${t.text.slice(0, 80)}`, tags: [] }));
     return out;
   }
   if (!process.env.ANTHROPIC_API_KEY) throw new ImageError('ANTHROPIC_API_KEY não configurada.', 503);
@@ -143,10 +149,10 @@ export async function deriveImagePromptsForPost(
     });
     if (res.stop_reason === 'refusal') return out;
     const text = res.content.find((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')?.text ?? '';
-    const parsed = JSON.parse(text) as { items?: { slide?: number; prompt?: string }[] };
+    const parsed = JSON.parse(text) as { items?: { slide?: number; prompt?: string; tags?: string[] }[] };
     for (const it of parsed.items ?? []) {
       const prompt = String(it.prompt ?? '').trim().slice(0, 1200);
-      if (Number.isInteger(it.slide) && prompt.length >= 10) out.set(it.slide!, prompt);
+      if (Number.isInteger(it.slide) && prompt.length >= 10) out.set(it.slide!, { prompt, tags: cleanTags(it.tags) });
     }
   } catch (e) {
     console.error('[ai] direção de arte do post falhou (usarei slide a slide):', e instanceof Error ? e.message : e);

@@ -64,6 +64,13 @@
       "when": 1791556585823,
       "tag": "0008_batch_images",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791557171836,
+      "tag": "0009_assets_gallery",
+      "breakpoints": true
     }
   ]
 }

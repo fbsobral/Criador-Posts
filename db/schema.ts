@@ -1,4 +1,8 @@
-import { boolean, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { boolean, customType, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
+const tsvector = customType<{ data: string }>({ dataType: () => 'tsvector' });
 
 /** Tema de cores do carrossel (mesmo formato usado pelo editor). */
 export type Theme = Record<string, string>;
@@ -165,4 +169,38 @@ export const imageGenerations = pgTable(
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },
   (t) => [index('image_generations_brand_idx').on(t.brandId, t.createdAt)],
+);
+
+/**
+ * Galeria de imagens da marca (geradas com IA ou enviadas). Os posts guardam só a referência
+ * (`/api/assets/:id`), não os bytes. `search` é uma coluna de busca de texto em português.
+ */
+export const assets = pgTable(
+  'assets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull().default('upload'), // 'ai' | 'upload'
+    mime: text('mime').notNull(),
+    bytes: bytea('bytes').notNull(),
+    thumb: bytea('thumb'),
+    size: integer('size').notNull().default(0),
+    width: integer('width'),
+    height: integer('height'),
+    /** Descrição da imagem (para IA: o prompt usado). */
+    description: text('description').notNull().default(''),
+    /** Palavras-chave separadas por espaço (minúsculas). */
+    tags: text('tags').notNull().default(''),
+    contentHash: text('content_hash').notNull(),
+    usageCount: integer('usage_count').notNull().default(0),
+    lastUsedAt: timestamp('last_used_at'),
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    search: tsvector('search').generatedAlwaysAs(sql`to_tsvector('portuguese', coalesce(description, '') || ' ' || coalesce(tags, ''))`),
+  },
+  (t) => [
+    index('assets_brand_idx').on(t.brandId, t.createdAt),
+    index('assets_search_idx').using('gin', t.search),
+    uniqueIndex('assets_brand_hash_idx').on(t.brandId, t.contentHash),
+  ],
 );

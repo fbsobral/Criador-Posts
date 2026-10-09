@@ -119,6 +119,28 @@
   .aicheck input { width: 15px; height: 15px; accent-color: #F97335; }
   .aimsg { font-size: 12px; color: #8a857a; line-height: 1.35; } .aimsg.err { color: #c8341f; font-weight: 600; }
 
+  .ph-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+  .ph-btns .ph-ai { margin-top: 0; }
+  .ph-gal { background: #fff !important; color: #16140F !important; box-shadow: inset 0 0 0 2px #D9D3C5, 0 6px 16px -8px rgba(0,0,0,.25) !important; }
+  .ph-gal:hover { box-shadow: inset 0 0 0 2px #F97335 !important; }
+  .gal-modal { position: fixed; inset: 0; z-index: 80; background: rgba(22,20,15,.5); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 18px; }
+  .gal-modal[hidden] { display: none; }
+  .gal-card { background: #fff; border-radius: 18px; width: min(860px, 100%); max-height: min(720px, 92vh); display: flex; flex-direction: column; box-shadow: 0 30px 70px -20px rgba(0,0,0,.45); overflow: hidden; }
+  .gal-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid #E8E3D8; font-size: 16px; font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; }
+  .gal-search { display: flex; gap: 8px; padding: 12px 18px 4px; }
+  .gal-search input { flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid #D9D3C5; border-radius: 11px; font: inherit; font-size: 14px; }
+  .gal-search input:focus { outline: none; border-color: #F97335; box-shadow: 0 0 0 4px rgba(249,115,53,.16); }
+  .gal-note { margin: 8px 18px 0; padding: 9px 12px; border-radius: 10px; background: #FFF6F0; border: 1px solid #FFD9C2; font-size: 13px; }
+  .gal-grid { flex: 1; overflow: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; padding: 14px 18px; align-content: start; min-height: 160px; }
+  .gal-grid.loading { opacity: .5; }
+  .gal-item { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 0; border: 1.5px solid #E8E3D8; border-radius: 12px; background: #fff; text-align: left; overflow: hidden; transition: border-color .15s, transform .1s, box-shadow .15s; }
+  .gal-item:hover { border-color: #F97335; transform: translateY(-2px); box-shadow: 0 10px 22px -12px rgba(249,115,53,.6); }
+  .gal-item img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; background: #EDEAE5; }
+  .gal-item span { padding: 0 9px 9px; font-size: 11.5px; line-height: 1.35; color: #55524c; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .gal-item i { position: absolute; top: 7px; left: 7px; font-style: normal; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 99px; background: #F97335; color: #fff; }
+  .gal-empty { grid-column: 1 / -1; text-align: center; color: #8a857a; padding: 30px 10px; font-size: 14px; }
+  .gal-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 18px; border-top: 1px solid #E8E3D8; }
+
   /* ===== acabamento (design system do admin) ===== */
   :root { --ui-bg: #F4F1EB; --ui-line: #E8E3D8; --accent: #F97335; }
   body { background: var(--ui-bg); }
@@ -260,6 +282,16 @@
   </aside>
 </div>
 
+<div class="gal-modal" id="galModal" hidden>
+  <div class="gal-card" role="dialog" aria-modal="true" aria-labelledby="galTitle">
+    <div class="gal-head"><b id="galTitle">Galeria de imagens</b><button type="button" class="btn small ghost" id="galClose" aria-label="Fechar">✕</button></div>
+    <div class="gal-search"><input type="search" id="galQ" placeholder="Buscar por palavras (ex.: mesa, juros, dinheiro)" autocomplete="off"><button type="button" class="btn small" id="galUpload">Enviar imagem</button></div>
+    <p class="gal-note" id="galNote" hidden></p>
+    <div class="gal-grid" id="galGrid"></div>
+    <div class="gal-foot"><span class="muted" id="galCount"></span><button type="button" class="btn primary" id="galGen">✨ Gerar nova imagem com IA</button></div>
+  </div>
+</div>
+
 <input type="file" id="pickImg" accept="image/*">
 
 <!--HOST-->
@@ -332,7 +364,7 @@ function buildSlide(s, editable) {
         <div class="names"><span class="name"><span data-bind="name" ${ce}>${esc(g.name)}</span>${iconVerified(c)}</span><span class="handle" data-bind="handle" ${ce}>${esc(g.handle)}</span></div>
       </div>
       <div class="tx" data-text ${ce}>${esc(s.text)}</div>
-      ${s.showImage && (s.image || editable) ? `<div class="pic ${s.ratio === 'orig' && s.image ? 'orig' : ''}" data-pic style="${picStyle(s)}">${s.image ? `<img src="${s.image}" alt="">` : `<div class="ph">Clique ou arraste uma imagem${(HOST && HOST.imageEnabled) ? `<br><button type="button" class="ph-ai" data-ai>✨ Gerar com IA</button>` : ''}</div>`}</div>` : ''}
+      ${s.showImage && (s.image || editable) ? `<div class="pic ${s.ratio === 'orig' && s.image ? 'orig' : ''}" data-pic style="${picStyle(s)}">${s.image ? `<img src="${s.image}" alt="">` : `<div class="ph">Clique ou arraste uma imagem<div class="ph-btns">${(HOST && HOST.imageEnabled) ? `<button type="button" class="ph-ai" data-ai>✨ Gerar com IA</button>` : ''}${(HOST && HOST.assetsUrl) ? `<button type="button" class="ph-ai ph-gal" data-gal>📚 Galeria</button>` : ''}</div></div>`}</div>` : ''}
       ${s.showButton ? `<div class="btnc">${esc(s.button)}</div>` : ''}
       ${s.showMetrics ? `<div class="line"></div><div class="metrics"><span>${ICO_COMMENT}<b data-metric="c" ${ce}>${esc(s.c)}</b></span><span>${ICO_RETWEET}<b data-metric="r" ${ce}>${esc(s.r)}</b></span><span>${ICO_HEART}<b data-metric="l" ${ce}>${esc(s.l)}</b></span></div>` : ''}
     </div></div>
@@ -359,7 +391,7 @@ function renderCurrent() {
     pic.addEventListener('drop', async e => {
       e.preventDefault(); pic.classList.remove('drag');
       const f = e.dataTransfer.files[0];
-      if (f && f.type.startsWith('image/')) { cur().image = await readImage(f, 1600); change(); }
+      if (f && f.type.startsWith('image/')) { cur().image = await storeImage(await readImage(f, 1600), f.name); change(); }
     });
   }
   const inputOf = { name: 'inName' };
@@ -517,7 +549,8 @@ function readImage(file, max) {
 picker.addEventListener('change', async () => {
   const file = picker.files[0]; picker.value = ''; if (!file) return;
   let data; try { data = await readImage(file, pickTarget === 'pic' ? 1600 : pickTarget === 'logo' ? 1200 : 600); } catch (e) { alert('Não foi possível ler essa imagem.'); return; }
-  if (pickTarget === 'pic') { cur().image = data; cur().showImage = true; } else g[pickTarget === 'logo' ? 'logo' : 'avatar'] = data;
+  if (pickTarget === 'gal') { await storeImage(data, file.name); galSearch(($('galQ').value || '').trim()); return; }
+  if (pickTarget === 'pic') { cur().image = await storeImage(data, file.name); cur().showImage = true; } else g[pickTarget === 'logo' ? 'logo' : 'avatar'] = data;
   change();
 });
 $('btnAvatar').addEventListener('click', () => openPicker('avatar'));
@@ -652,11 +685,16 @@ function setAiBusy(on) {
   const b = $('btnAiImg'); if (b) { b.disabled = on || !(HOST && HOST.imageEnabled); b.textContent = on ? 'Gerando… (10–30 s)' : AI_BTN; }
   document.querySelectorAll('[data-ai]').forEach(x => { x.disabled = on; x.textContent = on ? 'Gerando…' : AI_PH_BTN; });
 }
-async function aiGenerate() {
+async function aiGenerate(opts) {
   if (aiBusy || !aiOn) return;
   const s = cur(), prompt = $('aiPrompt').value.trim(), ratio = $('aiRatio').value, m = $('aiMsg');
   setAiBusy(true); m.className = 'aimsg'; m.textContent = prompt ? 'Aguarde, o Nano Banana está criando a imagem.' : 'Criando a descrição a partir do slide e gerando a imagem…';
   try {
+    if (!prompt && galOn && !(opts && opts.skipGallery)) {
+      m.textContent = 'Procurando imagens parecidas na galeria…';
+      const hits = await findSimilar();
+      if (hits.length) { m.textContent = ''; openGallery('suggest', hits); return; }
+    }
     const improve = !!prompt && $('aiImprove').checked;
     const body = { ratio };
     if (prompt) body.prompt = prompt;
@@ -665,8 +703,7 @@ async function aiGenerate() {
     const r = await fetch(HOST.imageUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || 'Não foi possível gerar a imagem.');
-    const blob = b64Blob(j.data, j.mime || 'image/jpeg');
-    s.image = await readImage(new File([blob], 'ia', { type: blob.type }), 1600);
+    s.image = j.url;
     s.imagePrompt = j.prompt || prompt; s.aiRatio = ratio;
     s.showImage = true;
     if (s === cur()) change(); else { renderThumbs(); scheduleSave(); }
@@ -684,7 +721,70 @@ if (aiOn) {
 /** Liga o botão "Gerar com IA" que aparece em cima do espaço vazio da imagem. */
 function bindAiPlaceholder(el) {
   el.querySelectorAll('[data-ai]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); aiGenerate(); }));
+  el.querySelectorAll('[data-gal]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); openGallery('browse'); }));
 }
+
+/* =============== galeria de imagens =============== */
+const galOn = !!(HOST && HOST.assetsUrl);
+let galSlide = null, galTimer;
+/** Guarda a imagem na galeria da marca e devolve a referência (ou o dataURL, se não houver servidor). */
+async function storeImage(dataUrl, name) {
+  if (!galOn) return dataUrl;
+  try {
+    const r = await fetch(HOST.assetsUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ dataUrl, description: String(name || '').replace(/\.[a-z0-9]+$/i, '').replace(/[-_]+/g, ' ') }) });
+    if (!r.ok) throw 0;
+    return (await r.json()).url;
+  } catch (e) { return dataUrl; }
+}
+async function fetchAssets(q, limit, min) {
+  try {
+    const r = await fetch(`${HOST.assetsUrl}?q=${encodeURIComponent(q)}&limit=${limit}&min=${min}`);
+    return r.ok ? ((await r.json()).items || []) : [];
+  } catch (e) { return []; }
+}
+/** Imagens da galeria parecidas com o slide atual (usa o texto do slide e o contexto do post). */
+async function findSimilar() {
+  const c = slideContext();
+  return fetchAssets([c.slideText, c.title, c.topic].join(' '), 3, 2);
+}
+function renderGal(items) {
+  const grid = $('galGrid'); grid.classList.remove('loading'); grid.innerHTML = '';
+  $('galCount').textContent = items.length ? `${items.length} ${items.length === 1 ? 'imagem' : 'imagens'}` : '';
+  if (!items.length) { grid.innerHTML = '<p class="gal-empty">Nenhuma imagem encontrada. Tente outras palavras, envie uma imagem ou gere uma nova com IA.</p>'; return; }
+  items.forEach(it => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'gal-item'; b.title = it.description || '';
+    b.innerHTML = `<img loading="lazy" alt="" src="${esc(it.thumb)}"><span>${esc((it.description || 'Sem descrição').slice(0, 90))}</span>${it.kind === 'ai' ? '<i>IA</i>' : ''}`;
+    b.addEventListener('click', () => useAsset(it));
+    grid.appendChild(b);
+  });
+}
+async function galSearch(q) { $('galGrid').classList.add('loading'); renderGal(await fetchAssets(q, 36, 1)); }
+function openGallery(mode, items) {
+  if (!galOn) return;
+  galSlide = cur();
+  $('galModal').hidden = false; document.body.style.overflow = 'hidden';
+  $('galTitle').textContent = mode === 'suggest' ? 'Já temos imagens parecidas' : 'Galeria de imagens';
+  const note = $('galNote'); note.hidden = mode !== 'suggest';
+  note.textContent = 'Estas imagens da galeria combinam com este slide. Usar uma delas economiza uma geração.';
+  $('galQ').value = ''; $('galGen').style.display = (HOST.imageEnabled) ? '' : 'none';
+  if (items) renderGal(items); else galSearch('');
+}
+function closeGallery() { $('galModal').hidden = true; document.body.style.overflow = ''; }
+function useAsset(it) {
+  const s = galSlide || cur();
+  s.image = it.url;
+  fetch(HOST.assetsUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ use: it.id }) }).catch(() => {});
+  closeGallery(); applyAsset(s);
+}
+if (galOn) {
+  $('galClose').addEventListener('click', closeGallery);
+  $('galModal').addEventListener('click', e => { if (e.target === $('galModal')) closeGallery(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('galModal').hidden) closeGallery(); });
+  $('galQ').addEventListener('input', e => { clearTimeout(galTimer); galTimer = setTimeout(() => galSearch(e.target.value.trim()), 250); });
+  $('galUpload').addEventListener('click', () => openPicker('gal'));
+  $('galGen').addEventListener('click', () => { closeGallery(); aiGenerate({ skipGallery: true }); });
+}
+function applyAsset(s) { s.showImage = true; if (s === cur()) change(); else { renderThumbs(); scheduleSave(); } }
 
 function aiDefaultRatio(s) { return ({ '16/9': '16:9', '4/3': '4:3', '1/1': '1:1' })[s.ratio] || '16:9'; }
 
