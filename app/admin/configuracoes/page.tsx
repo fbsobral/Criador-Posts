@@ -35,9 +35,16 @@ export default async function SettingsPage() {
           <h2>Perfil e cabeçalho</h2>
           <div className="two">
             <label className="field">Nome<input name="displayName" defaultValue={s.displayName} disabled={ro} /></label>
-            <label className="field">@ usuário<input name="handle" defaultValue={s.handle} disabled={ro} placeholder="@suamarca" /></label>
             <label className="field">Tema (acima do perfil)<input name="topic" defaultValue={s.topic} disabled={ro} /></label>
             <label className="field">Ano<input name="year" defaultValue={s.year} disabled={ro} /></label>
+          </div>
+
+          <h2 style={{ marginTop: 6 }}>Contas por rede</h2>
+          <p className="muted" style={{ marginTop: -10 }}>O @ de cada perfil. Na hora de baixar um post, você escolhe qual conta usar, ou baixa todas de uma vez.</p>
+          <div className="two">
+            <label className="field">Instagram<input name="instagram" defaultValue={s.instagram} disabled={ro} placeholder="@suamarca" /></label>
+            <label className="field">TikTok<input name="tiktok" defaultValue={s.tiktok} disabled={ro} placeholder="@suamarca" /></label>
+            <label className="field">X (Twitter)<input name="x" defaultValue={s.x} disabled={ro} placeholder="@suamarca" /></label>
           </div>
 
           <h2 style={{ marginTop: 6 }}>Cores padrão</h2>
@@ -57,7 +64,7 @@ export default async function SettingsPage() {
           <h2>Prévia</h2>
           <p className="muted">Como um novo post começa.</p>
           <div className="pvbox">
-            <PostPreview editor="carrossel" theme={active} colors={null} text={`<h2>${s.topic || 'Título do seu post'}</h2><p>${s.displayName} ${s.handle}</p>`} />
+            <PostPreview editor="carrossel" theme={active} colors={null} text={`<h2>${s.topic || 'Título do seu post'}</h2><p>${s.displayName} ${s.instagram || s.tiktok || s.x}</p>`} />
           </div>
         </aside>
       </div>

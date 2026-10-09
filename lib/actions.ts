@@ -10,6 +10,12 @@ import { getCtx, getBrandSettings } from './ctx';
 import { DEFAULT_STYLE, GLOBAL_PRESETS } from './themes';
 import { EDITORS, type EditorKey } from './editors';
 
+const HANDLE_KEYS = ['instagram', 'tiktok', 'x'] as const;
+type Handles = Partial<Record<(typeof HANDLE_KEYS)[number] | 'handle', string | null>> | undefined;
+/** Rede exibida por padrão no editor: a primeira que tem @ preenchido. */
+const firstView = (s: Handles) => HANDLE_KEYS.find((k) => s?.[k]) ?? 'instagram';
+const firstHandle = (s: Handles) => s?.[firstView(s)] || s?.handle || '';
+
 async function need() {
   const c = await getCtx();
   if (!c) throw new Error('Sem marca ativa');
@@ -38,7 +44,8 @@ export async function createPost(formData: FormData) {
         v: 2,
         slides: null,
         g: {
-          name: s?.displayName, handle: s?.handle, topic: s?.topic, year: s?.year,
+          name: s?.displayName, handle: firstHandle(s), accounts: { instagram: s?.instagram ?? '', tiktok: s?.tiktok ?? '', x: s?.x ?? '' },
+          view: firstView(s), topic: s?.topic, year: s?.year,
           avatar: s?.avatarUrl ?? null, font: style.font, width: style.width, theme: style.theme,
         },
       },
@@ -100,7 +107,10 @@ export async function saveSettings(formData: FormData) {
   await db
     .update(brandSettings)
     .set({
-      displayName: f('displayName'), handle: f('handle'), topic: f('topic'), year: f('year'),
+      displayName: f('displayName'),
+      instagram: f('instagram'), tiktok: f('tiktok'), x: f('x'),
+      handle: f('instagram') || f('tiktok') || f('x'), // @ principal (compatibilidade)
+      topic: f('topic'), year: f('year'),
       style: theme ? { ...current, theme } : current,
       updatedAt: new Date(),
     })

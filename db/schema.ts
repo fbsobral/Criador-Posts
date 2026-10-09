@@ -35,6 +35,10 @@ export const brandSettings = pgTable('brand_settings', {
   brandId: uuid('brand_id').primaryKey().references(() => brands.id, { onDelete: 'cascade' }),
   displayName: text('display_name').notNull().default(''),
   handle: text('handle').notNull().default(''),
+  /** @ de cada rede (o editor exporta uma versão por conta). */
+  instagram: text('instagram').notNull().default(''),
+  tiktok: text('tiktok').notNull().default(''),
+  x: text('x').notNull().default(''),
   topic: text('topic').notNull().default(''),
   year: text('year').notNull().default(''),
   avatarUrl: text('avatar_url'),

@@ -36,6 +36,13 @@
       "when": 1791466849501,
       "tag": "0004_tweet_card",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791552252328,
+      "tag": "0005_social_handles",
+      "breakpoints": true
     }
   ]
 }
