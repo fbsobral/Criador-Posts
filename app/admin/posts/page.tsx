@@ -85,14 +85,13 @@ export default async function PostsPage({ searchParams }: { searchParams: Promis
                   <span>{format ?? 'Carrossel'}</span><span>·</span><span>{timeAgo(p.updatedAt)}</span>
                   {author && <><span>·</span><span>{author}</span></>}
                 </div>
-              </div>
-              <div className="post-actions">
-                <form action={setPostStatus}>
+                <form action={setPostStatus} className="status-form">
                   <input type="hidden" name="id" value={p.id} />
                   <input type="hidden" name="status" value={p.status === 'draft' ? 'published' : 'draft'} />
-                  <button className={`pill ${p.status}`} title="Alternar status">{p.status === 'draft' ? 'Rascunho' : 'Publicado'}</button>
+                  <button className={`pill ${p.status}`} title="Clique para alternar entre rascunho e publicado">{p.status === 'draft' ? 'Rascunho' : 'Publicado'}</button>
                 </form>
-                <span className="spacer" />
+              </div>
+              <div className="post-actions">
                 <details className="rename-pop">
                   <summary className="btn small ghost" title="Renomear" aria-label="Renomear"><IconEdit /></summary>
                   <form action={renamePost} className="card-surface rename-form">

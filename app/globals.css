@@ -124,7 +124,9 @@ button.pill:hover { filter: brightness(.95); }
 .post-title { font-family: var(--font-head); font-weight: 700; font-size: 15px; letter-spacing: -.01em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .post-title:hover { color: var(--primary); }
 .post-meta { color: var(--muted); font-size: 12px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-.post-actions { display: flex; gap: 6px; padding: 0 14px 14px; align-items: center; }
+.post-actions { display: flex; gap: 4px; padding: 0 10px 12px; align-items: center; flex-wrap: wrap; }
+.status-form { margin-top: 4px; }
+.status-form .pill { padding: 3px 10px; }
 .post-actions form { display: contents; }
 .post-actions .spacer { flex: 1; }
 .post-actions { position: relative; }
@@ -217,7 +219,8 @@ td.right, th.right { text-align: right; }
   .sticky-preview { display: none; }
   .form-card .two { grid-template-columns: 1fr; }
   .grid-posts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .post-actions { padding: 0 10px 12px; flex-wrap: wrap; }
+  .post-actions { padding: 0 6px 12px; gap: 2px; flex-wrap: wrap; justify-content: space-between; }
+  .post-actions .btn.small { padding: 6px 7px; }
   .post-body { padding: 12px 12px 10px; }
   .new-post { padding: 16px; }
   .tpl-opts { grid-template-columns: 1fr; }
