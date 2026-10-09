@@ -5,6 +5,7 @@ import { getBrandSettings, getCtx } from '@/lib/ctx';
 import { saveAiProfile, saveSettings } from '@/lib/actions';
 import { GLOBAL_PRESETS } from '@/lib/themes';
 import { PostPreview } from '../post-preview';
+import { AvatarField } from './avatar-field';
 
 export default async function SettingsPage() {
   const c = (await getCtx())!;
@@ -33,6 +34,7 @@ export default async function SettingsPage() {
       <div className="settings">
         <form action={saveSettings} className="card-surface form-card">
           <h2>Perfil e cabeçalho</h2>
+          <AvatarField initialUrl={s.avatarUrl} disabled={ro} />
           <div className="two">
             <label className="field">Nome<input name="displayName" defaultValue={s.displayName} disabled={ro} /></label>
             <label className="field">Tema (acima do perfil)<input name="topic" defaultValue={s.topic} disabled={ro} /></label>

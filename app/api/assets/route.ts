@@ -18,7 +18,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
-  const body = (await req.json().catch(() => null)) as { dataUrl?: string; description?: string; use?: string } | null;
+  const body = (await req.json().catch(() => null)) as { dataUrl?: string; description?: string; use?: string; kind?: string } | null;
 
   // marca uma imagem existente como usada (ranking da busca)
   if (body?.use && /^[0-9a-f-]{36}$/.test(body.use)) {
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   const buf = body?.dataUrl ? dataUrlToBuffer(body.dataUrl) : null;
   if (!buf) return Response.json({ error: 'Imagem inválida.' }, { status: 400 });
   try {
-    const { id, reused } = await saveAsset({ brandId: c.brandId, userId: c.userId, kind: 'upload', data: buf, description: String(body?.description ?? '').slice(0, 300) });
+    const { id, reused } = await saveAsset({ brandId: c.brandId, userId: c.userId, kind: body?.kind === 'avatar' ? 'avatar' : 'upload', data: buf, description: body?.kind === 'avatar' ? 'Foto de perfil' : String(body?.description ?? '').slice(0, 300) });
     return Response.json({ id, url: ASSET_URL(id), thumb: ASSET_THUMB_URL(id), reused });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : 'Não foi possível salvar a imagem.' }, { status: 422 });

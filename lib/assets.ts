@@ -37,7 +37,7 @@ type Saved = { id: string; reused: boolean };
  * gera miniatura e evita duplicatas (mesmo conteúdo na mesma marca devolve a existente).
  */
 export async function saveAsset(input: {
-  brandId: string; userId: string | null; kind: 'ai' | 'upload'; data: Buffer; description?: string; tags?: string[];
+  brandId: string; userId: string | null; kind: 'ai' | 'upload' | 'avatar'; data: Buffer; description?: string; tags?: string[];
 }): Promise<Saved> {
   if (input.data.length > MAX_UPLOAD_BYTES) throw new Error('Imagem grande demais (máximo 12 MB).');
   const base = sharp(input.data, { failOn: 'none' }).rotate();
@@ -77,16 +77,16 @@ export async function searchAssets(brandId: string, q: string, limit = 24, minMa
   if (!q.trim() || !terms.length) {
     if (q.trim()) {
       const like = `%${q.trim().replace(/[%_]/g, '')}%`;
-      return (await db.execute(sql`select ${cols}, 0 as matches from assets where brand_id = ${brandId} and (description ilike ${like} or tags ilike ${like}) order by created_at desc limit ${limit}`)) as unknown as AssetHit[];
+      return (await db.execute(sql`select ${cols}, 0 as matches from assets where brand_id = ${brandId} and kind <> 'avatar' and (description ilike ${like} or tags ilike ${like}) order by created_at desc limit ${limit}`)) as unknown as AssetHit[];
     }
-    return (await db.execute(sql`select ${cols}, 0 as matches from assets where brand_id = ${brandId} order by created_at desc limit ${limit}`)) as unknown as AssetHit[];
+    return (await db.execute(sql`select ${cols}, 0 as matches from assets where brand_id = ${brandId} and kind <> 'avatar' order by created_at desc limit ${limit}`)) as unknown as AssetHit[];
   }
   const matchExpr = sql.join(terms.map((t) => sql`(search @@ plainto_tsquery('portuguese', ${t}))::int`), sql` + `);
   const orQuery = terms.map((t) => `'${t.replace(/'/g, '')}'`).join(' | ');
   const rows = (await db.execute(sql`
     select ${cols}, (${matchExpr}) as matches, ts_rank(search, to_tsquery('portuguese', ${orQuery})) as rank
     from assets
-    where brand_id = ${brandId} and search @@ to_tsquery('portuguese', ${orQuery})
+    where brand_id = ${brandId} and kind <> 'avatar' and search @@ to_tsquery('portuguese', ${orQuery})
     order by matches desc, rank desc, usage_count desc, created_at desc
     limit ${limit}`)) as unknown as (AssetHit & { rank: number })[];
   return rows.filter((r) => Number(r.matches) >= minMatches);

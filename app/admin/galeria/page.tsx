@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { assets } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
@@ -13,7 +13,7 @@ export default async function GalleryPage({ searchParams }: { searchParams: Prom
   const c = (await getCtx())!;
   const [{ total, ai }] = await db
     .select({ total: sql<number>`count(*)::int`, ai: sql<number>`count(*) filter (where ${assets.kind} = 'ai')::int` })
-    .from(assets).where(eq(assets.brandId, c.brandId));
+    .from(assets).where(and(eq(assets.brandId, c.brandId), sql`${assets.kind} <> 'avatar'`));
   const hits = await searchAssets(c.brandId, q.slice(0, 200), 60);
 
   return (

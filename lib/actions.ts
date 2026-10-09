@@ -1,11 +1,11 @@
 'use server';
 
-import { and, count, eq, gte, isNull, or } from 'drizzle-orm';
+import { and, count, eq, gte, isNull, or, sql } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { db } from '@/db';
-import { brandSettings, colorPalettes, generationBatches, generationItems, posts, templates } from '@/db/schema';
+import { assets, brandSettings, colorPalettes, generationBatches, generationItems, posts, templates } from '@/db/schema';
 import { getCtx, getBrandSettings, ensureBrand } from './ctx';
 import { DEFAULT_STYLE, GLOBAL_PRESETS } from './themes';
 import { EDITORS, type EditorKey } from './editors';
@@ -14,7 +14,7 @@ import { supportsAi } from './ai/generate';
 import { imageEnabled } from './ai/image';
 import { MAX_ITEMS_PER_BATCH, MAX_SLIDES, collectBriefs } from './ai/constants';
 import { kickBatch } from './ai/worker';
-import { importPostImagesFor } from './assets';
+import { ASSET_URL_RE, importPostImagesFor } from './assets';
 
 async function need() {
   const c = await getCtx();
@@ -130,6 +130,15 @@ export async function saveSettings(formData: FormData) {
     theme = saved?.theme;
   }
   const current = (await getBrandSettings(c.brandId))?.style ?? DEFAULT_STYLE;
+  // foto de perfil: só aceita uma imagem da própria marca (ou vazio para remover)
+  let avatarUrl: string | null = null;
+  const av = f('avatarUrl');
+  if (av) {
+    const m = ASSET_URL_RE.exec(av);
+    const [own] = m ? await db.select({ id: assets.id }).from(assets).where(and(eq(assets.id, m[1]), eq(assets.brandId, c.brandId))) : [];
+    if (!own) throw new Error('Foto de perfil inválida');
+    avatarUrl = av;
+  }
   await db
     .update(brandSettings)
     .set({
@@ -137,10 +146,17 @@ export async function saveSettings(formData: FormData) {
       instagram: f('instagram'), tiktok: f('tiktok'), x: f('x'),
       handle: f('instagram') || f('tiktok') || f('x'), // @ principal (compatibilidade)
       topic: f('topic'), year: f('year'),
+      avatarUrl,
       style: theme ? { ...current, theme } : current,
       updatedAt: new Date(),
     })
     .where(eq(brandSettings.brandId, c.brandId));
+
+  // aplica a foto aos posts que ainda não têm (uma única atualização no banco)
+  if (avatarUrl && formData.get('applyAvatarToPosts') === 'on') {
+    await db.execute(sql`update posts set data = jsonb_set(data, '{g,avatar}', to_jsonb(${avatarUrl}::text), true)
+      where brand_id = ${c.brandId} and coalesce(data->'g'->>'avatar', '') = ''`);
+  }
   revalidatePath('/admin/configuracoes');
 }
 
