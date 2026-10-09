@@ -1,0 +1,1 @@
+ALTER TABLE "posts" ADD COLUMN "source_post_id" uuid;

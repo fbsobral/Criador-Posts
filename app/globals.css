@@ -405,3 +405,15 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 .avatar-side { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .avatar-side b { font-family: var(--font-head); font-size: 15px; }
 @media (max-width: 520px) { .avatar-field { flex-direction: column; align-items: flex-start; } }
+
+/* ============ converter formato ============ */
+.conv-n { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 600; }
+.conv-n input { width: 76px; padding: 7px 10px; text-align: center; }
+.conv-presets { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 12px; }
+.conv-presets button { padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line-2); background: #fff; font: inherit; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.conv-presets button:hover { border-color: var(--primary); color: var(--primary); }
+.conv-err { color: var(--danger); font-weight: 600; }
+.editor-bar .pill { margin-left: 0; }
+.editor-bar .pill:first-of-type { margin-left: auto; }
+.bar-actions { padding: 0 !important; margin-left: 4px; }
+.editor-bar .in-list .rename-form { z-index: 60; }

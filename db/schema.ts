@@ -100,6 +100,8 @@ export const posts = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
     templateId: uuid('template_id').references(() => templates.id, { onDelete: 'restrict' }),
+    /** Post de origem quando este foi criado por conversão de formato. */
+    sourcePostId: uuid('source_post_id'),
     title: text('title').notNull().default('Sem título'),
     status: postStatus('status').notNull().default('draft'),
     data: jsonb('data').$type<PostData>().notNull(),

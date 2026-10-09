@@ -102,7 +102,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Promis
                     </td>
                     <td className="hide-s muted">{slides || 1}</td>
                     <td className="hide-s muted">{timeAgo(p.updatedAt)}{author ? ` · ${author}` : ''}</td>
-                    <td className="right"><div className="post-actions in-list"><PostActions id={p.id} title={p.title} destinations={destinations} /></div></td>
+                    <td className="right"><div className="post-actions in-list"><PostActions id={p.id} title={p.title} destinations={destinations} editor={editor ?? 'carrossel'} slides={slides} /></div></td>
                   </tr>
                 );
               })}
@@ -129,7 +129,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Promis
                   <button className={`pill ${p.status}`} title="Clique para alternar entre rascunho e publicado">{p.status === 'draft' ? 'Rascunho' : 'Publicado'}</button>
                 </form>
               </div>
-              <div className="post-actions"><PostActions id={p.id} title={p.title} destinations={destinations} /></div>
+              <div className="post-actions"><PostActions id={p.id} title={p.title} destinations={destinations} editor={editor ?? 'carrossel'} slides={slides} /></div>
             </article>
           ))}
         </div>

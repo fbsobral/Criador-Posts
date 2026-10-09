@@ -15,6 +15,7 @@ import { imageEnabled } from './ai/image';
 import { MAX_ITEMS_PER_BATCH, MAX_SLIDES, collectBriefs } from './ai/constants';
 import { kickBatch } from './ai/worker';
 import { ASSET_URL_RE, importPostImagesFor } from './assets';
+import { ConvertError, convertPostFormat } from './convert';
 
 async function need() {
   const c = await getCtx();
@@ -314,4 +315,22 @@ export async function importPostImages() {
   const r = await importPostImagesFor(c.brandId, c.userId);
   revalidatePath('/admin/galeria');
   redirect(`/admin/galeria?imported=${r.images}&posts=${r.posts}`);
+}
+
+
+export type ConvertState = { error?: string } | null;
+
+/** Converte o post em Tweet Card (ou carrossel) com a quantidade de cards/slides pedida e abre o novo rascunho. */
+export async function convertPost(_prev: ConvertState, formData: FormData): Promise<ConvertState> {
+  const c = await need();
+  if (!process.env.ANTHROPIC_API_KEY) return { error: 'A chave da IA ainda não foi configurada no servidor (ANTHROPIC_API_KEY).' };
+  let newId: string;
+  try {
+    const r = await convertPostFormat({ brandId: c.brandId, userId: c.userId, sourceId: String(formData.get('id')), slidesWanted: Number(formData.get('slides')) });
+    newId = r.postId;
+  } catch (e) {
+    return { error: e instanceof ConvertError ? e.message : 'Não foi possível converter o post.' };
+  }
+  revalidatePath('/admin/posts');
+  redirect(`/admin/posts/${newId}`);
 }

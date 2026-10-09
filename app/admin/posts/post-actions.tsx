@@ -1,10 +1,12 @@
 import { deletePost, duplicatePost, migratePost, renamePost } from '@/lib/actions';
+import { ConvertButton } from './convert-button';
 import { IconCopy, IconEdit, IconMove, IconTrash } from '../../icons';
 
 export type Destination = { id: string; name: string };
 
 /** Botões de ação de um post (renomear, migrar [super-admin], duplicar, excluir). Usado nos cards e na lista. */
-export function PostActions({ id, title, destinations }: { id: string; title: string; destinations: Destination[] }) {
+export function PostActions({ id, title, destinations, editor, slides }: { id: string; title: string; destinations: Destination[]; editor?: string | null; slides?: number }) {
+  const canConvert = (editor === 'carrossel' || editor === 'tweet') && !!process.env.ANTHROPIC_API_KEY;
   return (
     <>
       <details className="rename-pop">
@@ -31,6 +33,7 @@ export function PostActions({ id, title, destinations }: { id: string; title: st
           </form>
         </details>
       )}
+      {canConvert && <ConvertButton id={id} editor={editor as 'carrossel' | 'tweet'} slides={slides ?? 0} />}
       <form action={duplicatePost}>
         <input type="hidden" name="id" value={id} />
         <button className="btn small ghost" title="Duplicar" aria-label="Duplicar"><IconCopy /></button>

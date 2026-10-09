@@ -18,6 +18,15 @@ export function plain(html: string | null | undefined): string {
     .split('\n').map((l) => l.trim()).filter(Boolean).join('\n');
 }
 
+/** Texto do slide com a estrutura preservada (título, parágrafos, itens de lista em linhas), para virar roteiro. */
+export function scriptText(html: string | null | undefined): string {
+  return plain(
+    (html ?? '')
+      .replace(/<li[^>]*>/gi, '\n- ')
+      .replace(/<br\s*\/?>/gi, '\n'),
+  );
+}
+
 export const initials = (name?: string | null) =>
   (name ?? '?').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join('') || '?';
 
