@@ -11,7 +11,7 @@ import { DEFAULT_STYLE, GLOBAL_PRESETS } from './themes';
 import { EDITORS, type EditorKey } from './editors';
 import { initialPostData } from './posts';
 import { supportsAi } from './ai/generate';
-import { MAX_ITEMS_PER_BATCH, MAX_SLIDES, parseBriefs } from './ai/constants';
+import { MAX_ITEMS_PER_BATCH, MAX_SLIDES, collectBriefs } from './ai/constants';
 import { kickBatch } from './ai/worker';
 
 async function need() {
@@ -169,7 +169,7 @@ export type BatchState = { error?: string } | null;
 export async function createBatch(_prev: BatchState, formData: FormData): Promise<BatchState> {
   const c = await need();
   const mode = formData.get('mode') === 'roteiro' ? 'roteiro' : 'tema';
-  const briefs = parseBriefs(String(formData.get('briefs') ?? ''), mode);
+  const briefs = collectBriefs(mode, formData);
   const slidesTarget = Math.min(MAX_SLIDES, Math.max(3, Number(formData.get('slides')) || 7));
 
   if (!process.env.ANTHROPIC_API_KEY) return { error: 'A chave da IA ainda não foi configurada no servidor (ANTHROPIC_API_KEY).' };

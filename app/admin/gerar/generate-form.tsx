@@ -1,23 +1,44 @@
 'use client';
 
-import { useActionState, useMemo, useState } from 'react';
+import { useActionState, useEffect, useMemo, useRef, useState } from 'react';
 import { createBatch, type BatchState } from '@/lib/actions';
 import { ESTIMATED_COST_PER_POST, MAX_ITEMS_PER_BATCH, fmtUsd, parseBriefs } from '@/lib/ai/constants';
-import { IconSpark } from '../../icons';
+import { IconPlus, IconSpark, IconTrash } from '../../icons';
 import { TemplateArt } from '../template-art';
 
 type Format = { id: string; name: string; description: string; editor: string };
 
 const PLACEHOLDER = {
   tema: 'Um tema por linha. Ex.:\nPor que a dívida pública preocupa\n5 erros ao financiar um imóvel\nFinanciamento ou consórcio?',
-  roteiro: 'Cole o roteiro. Para enviar vários, separe com uma linha contendo ---\n\nSlide 1: Título forte...\nSlide 2: ...\n---\nOutro roteiro...',
+  roteiro: 'Cole o roteiro deste post.\n\nSlide 1: Título forte...\nSlide 2: ...',
 };
+const SEP = /^\s*-{3,}\s*$/m;
 
 export function GenerateForm({ formats, hasKey }: { formats: Format[]; hasKey: boolean }) {
   const [state, action, pending] = useActionState<BatchState, FormData>(createBatch, null);
   const [mode, setMode] = useState<'tema' | 'roteiro'>('tema');
   const [text, setText] = useState('');
-  const count = useMemo(() => parseBriefs(text, mode).length, [text, mode]);
+  const [scripts, setScripts] = useState<string[]>(['']); // um cartão por roteiro
+  const focusLast = useRef(false);
+  const cards = useRef<(HTMLTextAreaElement | null)[]>([]);
+  const filled = scripts.filter((t) => t.trim()).length;
+  const count = useMemo(() => (mode === 'roteiro' ? filled : parseBriefs(text, mode).length), [text, mode, filled]);
+
+  useEffect(() => {
+    if (focusLast.current) { focusLast.current = false; cards.current[scripts.length - 1]?.focus(); }
+  }, [scripts.length]);
+
+  const setScript = (i: number, v: string) => setScripts((a) => a.map((x, k) => (k === i ? v : x)));
+  const addScript = () => { focusLast.current = true; setScripts((a) => (a.length >= MAX_ITEMS_PER_BATCH ? a : [...a, ''])); };
+  const removeScript = (i: number) => setScripts((a) => (a.length === 1 ? [''] : a.filter((_, k) => k !== i)));
+  /** Texto colado com "---" no meio vira vários cartões. */
+  const splitScript = (i: number) => {
+    setScripts((a) => {
+      if (!SEP.test(a[i])) return a;
+      const parts = a[i].split(SEP).map((t) => t.trim()).filter(Boolean);
+      return parts.length > 1 ? [...a.slice(0, i), ...parts, ...a.slice(i + 1)].slice(0, MAX_ITEMS_PER_BATCH) : a;
+    });
+  };
   const over = count > MAX_ITEMS_PER_BATCH;
 
   return (
@@ -46,10 +67,35 @@ export function GenerateForm({ formats, hasKey }: { formats: Format[]; hasKey: b
         </div>
       </div>
 
-      <label className="field">
-        {mode === 'tema' ? 'Temas (um por linha, até ' + MAX_ITEMS_PER_BATCH + ')' : 'Roteiros (separe com ---)'}
-        <textarea name="briefs" rows={mode === 'tema' ? 7 : 10} value={text} onChange={(e) => setText(e.target.value)} placeholder={PLACEHOLDER[mode]} required />
-      </label>
+      {mode === 'tema' ? (
+        <label className="field">
+          Temas (um por linha, até {MAX_ITEMS_PER_BATCH})
+          <textarea name="briefs" rows={7} value={text} onChange={(e) => setText(e.target.value)} placeholder={PLACEHOLDER.tema} required />
+        </label>
+      ) : (
+        <div className="scripts">
+          <div className="lbl">Roteiros ({filled} {filled === 1 ? 'preenchido' : 'preenchidos'}) · cada um vira um post</div>
+          {scripts.map((t, i) => (
+            <div className="script-card" key={i}>
+              <div className="script-head">
+                <b>Roteiro {i + 1}</b>
+                <span className="muted">{t.trim() ? `${t.trim().split(/\s+/).length} palavras` : 'vazio'}</span>
+                <button type="button" className="btn small ghost danger" onClick={() => removeScript(i)} aria-label={`Remover roteiro ${i + 1}`} title="Remover"><IconTrash /></button>
+              </div>
+              <textarea
+                ref={(el) => { cards.current[i] = el; }}
+                name="brief" rows={6} value={t} maxLength={6000}
+                onChange={(e) => setScript(i, e.target.value)} onBlur={() => splitScript(i)}
+                placeholder={PLACEHOLDER.roteiro}
+              />
+            </div>
+          ))}
+          <button type="button" className="add-script" onClick={addScript} disabled={scripts.length >= MAX_ITEMS_PER_BATCH}>
+            <IconPlus /> Adicionar roteiro
+          </button>
+          <small className="muted">Dica: se colar vários roteiros de uma vez separados por uma linha com <code>---</code>, eu divido em cartões para você.</small>
+        </div>
+      )}
 
       <div className="gen-grid">
         {mode === 'tema' && (

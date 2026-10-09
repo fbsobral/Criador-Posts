@@ -18,3 +18,12 @@ export function parseBriefs(raw: string, mode: 'tema' | 'roteiro'): string[] {
     .map((t) => (mode === 'roteiro' ? t.trim() : t.replace(/^\s*(?:[-*•]|\d+[.)])\s+/, '').trim()))
     .filter(Boolean);
 }
+
+/** Itens do lote a partir do formulário: cartões `brief` (roteiros) ou a caixa `briefs` (um tema por linha). */
+export function collectBriefs(mode: 'tema' | 'roteiro', form: { getAll(name: string): unknown[]; get(name: string): unknown }): string[] {
+  if (mode === 'roteiro') {
+    const cards = form.getAll('brief').map((v) => String(v).trim()).filter(Boolean);
+    if (cards.length) return cards;
+  }
+  return parseBriefs(String(form.get('briefs') ?? ''), mode);
+}

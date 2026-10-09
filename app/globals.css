@@ -322,3 +322,14 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
   .gen-thumb { width: 84px; }
   .gen-item { padding: 12px; gap: 12px; }
 }
+.scripts { display: flex; flex-direction: column; gap: 12px; }
+.script-card { border: 1.5px solid var(--line-2); border-radius: 13px; padding: 12px; background: var(--surface); display: flex; flex-direction: column; gap: 8px; transition: border-color .15s; }
+.script-card:focus-within { border-color: var(--primary); }
+.script-head { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.script-head .btn { margin-left: auto; }
+.script-card textarea { border: 0; padding: 4px 2px; box-shadow: none; }
+.script-card textarea:focus { box-shadow: none; }
+.add-script { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; border: 2px dashed var(--line-2); border-radius: 13px; background: transparent; color: var(--ink-2); font-weight: 600; transition: background .15s, border-color .15s, color .15s; }
+.add-script svg { width: 16px; height: 16px; }
+.add-script:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+.add-script:disabled { opacity: .5; cursor: not-allowed; }
