@@ -3,8 +3,8 @@ export const MAX_SLIDES = 12;
 export const MAX_ITEMS_PER_BATCH = 30;
 /** Preço por 1M de tokens (US$) do modelo de geração (Claude Opus 5.5). */
 export const PRICE_PER_MTOK = { input: 4, output: 20 };
-/** Média por post, só para a estimativa exibida antes de rodar. */
-export const ESTIMATED_COST_PER_POST = 0.08;
+/** Média por post (medida: US$ 0,02–0,03 com 5–7 slides), com folga, para a estimativa antes de rodar. */
+export const ESTIMATED_COST_PER_POST = 0.035;
 
 export const costUsd = (inputTokens: number, outputTokens: number) =>
   (inputTokens * PRICE_PER_MTOK.input + outputTokens * PRICE_PER_MTOK.output) / 1_000_000;

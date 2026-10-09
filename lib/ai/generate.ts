@@ -103,14 +103,14 @@ Cada slide tem um "format":
 - "image": só imagem, sem texto.
 
 "html" aceita somente estas tags: <h2> título, <p> parágrafo, <ul class="check"> lista com ✔, <ul class="arrow"> lista com →, <ul class="dot"> lista com marcadores, <li>, <b>, <i>, <u>, <br>. Nenhum outro atributo. Em "image" use html vazio.
-Cada slide deve caber na tela: no máximo ~55 palavras. Use <h2> em quase todo slide de texto e listas quando enumerar itens.
+Cada slide deve caber na tela: no máximo ~50 palavras (~30 quando for "text-image"). Use <h2> em quase todo slide de texto e listas quando enumerar itens.
 "show_more": true em todos os slides, exceto no último (false).
 Use "text-image"/"image" só quando um dado, gráfico ou foto ajudar de verdade, e descreva o que entra em "image_note". Caso contrário "image_note" é "".
 "topic": o assunto curto do carrossel em caixa normal (ex.: "Dívida pública"), até 40 caracteres.`;
 
 const TWEET_FORMAT = `FORMATO: TWEET CARD
 Cada slide é um card branco, estilo post de rede social, com o texto do post (como uma thread).
-- "text": texto puro (sem HTML ou markdown), no máximo ~45 palavras. Emojis só se combinarem com a marca.
+- "text": texto puro (sem HTML ou markdown). O card tem espaço limitado: no máximo ~38 palavras quando o slide é só texto, e no máximo ~22 palavras quando o slide também tem imagem ("image_note") ou botão. Emojis só se combinarem com a marca.
 - "button": texto de um botão de chamada para ação (ex.: "Quero acessar"), ou "" se o slide não tem botão. Use botão apenas no último slide ou quando o roteiro pedir.
 - "image_note": se uma imagem, gráfico ou print ajudar neste slide, descreva; senão "".
 Não crie métricas de engajamento (curtidas, comentários).`;
