@@ -39,6 +39,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
           <div className="nav-label">Marca</div>
           <NavLink href="/admin/posts" icon={<IconPosts />}>Posts</NavLink>
+          <NavLink href="/admin/gerar" icon={<IconSpark />}>Gerar com IA</NavLink>
           <NavLink href="/admin/configuracoes" icon={<IconSettings />}>Configurações</NavLink>
           <div className="nav-label">Geral</div>
           <NavLink href="/admin/templates" icon={<IconTemplates />}>Templates</NavLink>

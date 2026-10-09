@@ -43,6 +43,13 @@
       "when": 1791552252328,
       "tag": "0005_social_handles",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791552908465,
+      "tag": "0006_ai_generation",
+      "breakpoints": true
     }
   ]
 }

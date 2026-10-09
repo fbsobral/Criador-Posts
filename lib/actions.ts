@@ -1,20 +1,18 @@
 'use server';
 
-import { and, count, eq, isNull, or } from 'drizzle-orm';
+import { and, count, eq, gte, isNull, or } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { db } from '@/db';
-import { brandSettings, colorPalettes, posts, templates } from '@/db/schema';
+import { brandSettings, colorPalettes, generationBatches, generationItems, posts, templates } from '@/db/schema';
 import { getCtx, getBrandSettings } from './ctx';
 import { DEFAULT_STYLE, GLOBAL_PRESETS } from './themes';
 import { EDITORS, type EditorKey } from './editors';
-
-const HANDLE_KEYS = ['instagram', 'tiktok', 'x'] as const;
-type Handles = Partial<Record<(typeof HANDLE_KEYS)[number] | 'handle', string | null>> | undefined;
-/** Rede exibida por padrão no editor: a primeira que tem @ preenchido. */
-const firstView = (s: Handles) => HANDLE_KEYS.find((k) => s?.[k]) ?? 'instagram';
-const firstHandle = (s: Handles) => s?.[firstView(s)] || s?.handle || '';
+import { initialPostData } from './posts';
+import { supportsAi } from './ai/generate';
+import { MAX_ITEMS_PER_BATCH, MAX_SLIDES, parseBriefs } from './ai/constants';
+import { kickBatch } from './ai/worker';
 
 async function need() {
   const c = await getCtx();
@@ -31,7 +29,6 @@ export async function createPost(formData: FormData) {
     .where(and(eq(templates.id, String(formData.get('templateId'))), or(isNull(templates.brandId), eq(templates.brandId, c.brandId))));
   if (!tpl) throw new Error('Escolha um template válido');
   const s = await getBrandSettings(c.brandId);
-  const style = s?.style ?? DEFAULT_STYLE;
   const [post] = await db
     .insert(posts)
     .values({
@@ -40,15 +37,7 @@ export async function createPost(formData: FormData) {
       title: String(formData.get('title') || 'Sem título'),
       createdBy: c.userId,
       updatedBy: c.userId,
-      data: {
-        v: 2,
-        slides: null,
-        g: {
-          name: s?.displayName, handle: firstHandle(s), accounts: { instagram: s?.instagram ?? '', tiktok: s?.tiktok ?? '', x: s?.x ?? '' },
-          view: firstView(s), topic: s?.topic, year: s?.year,
-          avatar: s?.avatarUrl ?? null, font: style.font, width: style.width, theme: style.theme,
-        },
-      },
+      data: initialPostData(s),
     })
     .returning({ id: posts.id });
   redirect(`/admin/posts/${post.id}`);
@@ -167,3 +156,94 @@ export async function removeMember(formData: FormData) {
   revalidatePath('/admin/usuarios');
 }
 
+
+
+/* ================= geração com IA ================= */
+
+const MAX_BRIEF_CHARS = 6000;
+const DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT) || 100;
+
+export type BatchState = { error?: string } | null;
+
+/** Cria um lote de geração e começa a processar em segundo plano. */
+export async function createBatch(_prev: BatchState, formData: FormData): Promise<BatchState> {
+  const c = await need();
+  const mode = formData.get('mode') === 'roteiro' ? 'roteiro' : 'tema';
+  const briefs = parseBriefs(String(formData.get('briefs') ?? ''), mode);
+  const slidesTarget = Math.min(MAX_SLIDES, Math.max(3, Number(formData.get('slides')) || 7));
+
+  if (!process.env.ANTHROPIC_API_KEY) return { error: 'A chave da IA ainda não foi configurada no servidor (ANTHROPIC_API_KEY).' };
+  if (!briefs.length) return { error: mode === 'roteiro' ? 'Cole pelo menos um roteiro.' : 'Escreva pelo menos um tema (um por linha).' };
+  if (briefs.length > MAX_ITEMS_PER_BATCH) return { error: `Máximo de ${MAX_ITEMS_PER_BATCH} posts por lote (você enviou ${briefs.length}).` };
+  if (briefs.some((b) => b.length > MAX_BRIEF_CHARS)) return { error: `Cada item pode ter até ${MAX_BRIEF_CHARS} caracteres.` };
+
+  const [tpl] = await db
+    .select()
+    .from(templates)
+    .where(and(eq(templates.id, String(formData.get('templateId'))), or(isNull(templates.brandId), eq(templates.brandId, c.brandId))));
+  if (!tpl || !supportsAi(tpl.editor)) return { error: 'Escolha um formato que suporte geração com IA.' };
+
+  const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+  const [{ n: today }] = await db.select({ n: count() }).from(generationItems).where(and(eq(generationItems.brandId, c.brandId), gte(generationItems.createdAt, startOfDay)));
+  if (today + briefs.length > DAILY_LIMIT) return { error: `Limite diário da marca: ${DAILY_LIMIT} posts (já foram ${today} hoje).` };
+
+  const [batch] = await db
+    .insert(generationBatches)
+    .values({
+      brandId: c.brandId, templateId: tpl.id, mode, slidesTarget, createdBy: c.userId,
+      facts: String(formData.get('facts') ?? '').trim().slice(0, 8000),
+      instructions: String(formData.get('instructions') ?? '').trim().slice(0, 2000),
+    })
+    .returning({ id: generationBatches.id });
+  await db.insert(generationItems).values(briefs.map((brief) => ({ batchId: batch.id, brandId: c.brandId, brief })));
+
+  kickBatch(batch.id);
+  redirect(`/admin/gerar/${batch.id}`);
+}
+
+async function ownBatchItems(batchId: string, brandId: string) {
+  const [b] = await db.select({ id: generationBatches.id }).from(generationBatches).where(and(eq(generationBatches.id, batchId), eq(generationBatches.brandId, brandId)));
+  return !!b;
+}
+
+/** Gera de novo um item (cria um novo post; o anterior continua em Posts). */
+export async function regenerateItem(formData: FormData) {
+  const c = await need();
+  const id = String(formData.get('id'));
+  const [it] = await db.select().from(generationItems).where(and(eq(generationItems.id, id), eq(generationItems.brandId, c.brandId)));
+  if (!it) return;
+  await db.update(generationItems).set({ status: 'queued', postId: null, error: null, notes: null, attempts: 0, updatedAt: new Date() }).where(eq(generationItems.id, id));
+  kickBatch(it.batchId);
+  revalidatePath(`/admin/gerar/${it.batchId}`);
+}
+
+/** Recoloca na fila todos os itens com erro do lote. */
+export async function retryFailed(formData: FormData) {
+  const c = await need();
+  const batchId = String(formData.get('batchId'));
+  if (!(await ownBatchItems(batchId, c.brandId))) return;
+  await db.update(generationItems).set({ status: 'queued', error: null, attempts: 0, updatedAt: new Date() })
+    .where(and(eq(generationItems.batchId, batchId), eq(generationItems.status, 'error')));
+  kickBatch(batchId);
+  revalidatePath(`/admin/gerar/${batchId}`);
+}
+
+/** Remove o lote do histórico (os posts gerados continuam em Posts). */
+export async function deleteBatch(formData: FormData) {
+  const c = await need();
+  await db.delete(generationBatches).where(and(eq(generationBatches.id, String(formData.get('id'))), eq(generationBatches.brandId, c.brandId)));
+  revalidatePath('/admin/gerar');
+  redirect('/admin/gerar');
+}
+
+/** Identidade da marca usada pela IA (só admins). */
+export async function saveAiProfile(formData: FormData) {
+  const c = await need();
+  if (!c.isBrandAdmin) throw new Error('Apenas admins da marca');
+  const f = (k: string, max: number) => String(formData.get(k) ?? '').trim().slice(0, max);
+  await db.update(brandSettings).set({
+    aiNiche: f('aiNiche', 500), aiAudience: f('aiAudience', 500), aiVoice: f('aiVoice', 800),
+    aiRules: f('aiRules', 1500), aiCta: f('aiCta', 300), aiExamples: f('aiExamples', 4000), updatedAt: new Date(),
+  }).where(eq(brandSettings.brandId, c.brandId));
+  revalidatePath('/admin/configuracoes');
+}
