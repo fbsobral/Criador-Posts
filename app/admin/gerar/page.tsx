@@ -4,7 +4,8 @@ import { db } from '@/db';
 import { brandSettings, generationBatches, generationItems, templates } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { supportsAi } from '@/lib/ai/generate';
-import { costUsd, fmtUsd } from '@/lib/ai/constants';
+import { IMAGE_COST_USD, costUsd, fmtUsd } from '@/lib/ai/constants';
+import { imageEnabled } from '@/lib/ai/image';
 import { timeAgo } from '@/lib/format';
 import { GenerateForm } from './generate-form';
 
@@ -22,6 +23,7 @@ export default async function GeneratePage() {
       done: sql<number>`count(*) filter (where ${generationItems.status} = 'done')::int`,
       failed: sql<number>`count(*) filter (where ${generationItems.status} = 'error')::int`,
       inTok: sql<number>`coalesce(sum(${generationItems.inputTokens}), 0)::int`,
+      imgs: sql<number>`coalesce(sum(${generationItems.imageCount}), 0)::int`,
       outTok: sql<number>`coalesce(sum(${generationItems.outputTokens}), 0)::int`,
       first: sql<string>`min(left(${generationItems.brief}, 90))`,
     })
@@ -50,6 +52,7 @@ export default async function GeneratePage() {
       <GenerateForm
         formats={formats.map((t) => ({ id: t.id, name: t.name, description: t.description, editor: t.editor }))}
         hasKey={!!process.env.ANTHROPIC_API_KEY}
+        hasImageKey={imageEnabled()}
       />
 
       {batches.length > 0 && (
@@ -59,7 +62,7 @@ export default async function GeneratePage() {
             <table>
               <thead><tr><th>Lote</th><th className="hide-s">Modo</th><th>Progresso</th><th className="hide-s">Custo</th><th className="hide-s">Quando</th></tr></thead>
               <tbody>
-                {batches.map(({ b, total, done, failed, inTok, outTok, first }) => (
+                {batches.map(({ b, total, done, failed, inTok, outTok, imgs, first }) => (
                   <tr key={b.id}>
                     <td><Link href={`/admin/gerar/${b.id}`}><b>{first || 'Lote'}</b>{total > 1 && <span className="muted"> + {total - 1}</span>}</Link></td>
                     <td className="hide-s muted">{b.mode === 'roteiro' ? 'Roteiros' : 'Temas'}</td>
@@ -67,7 +70,7 @@ export default async function GeneratePage() {
                       <span className={`pill ${done === total ? 'published' : 'draft'}`}>{done}/{total}</span>
                       {failed > 0 && <span className="pill" style={{ marginLeft: 6, background: '#fdecea', color: 'var(--danger)' }}>{failed} com erro</span>}
                     </td>
-                    <td className="hide-s muted">{fmtUsd(costUsd(inTok, outTok))}</td>
+                    <td className="hide-s muted">{fmtUsd(costUsd(inTok, outTok) + imgs * IMAGE_COST_USD)}</td>
                     <td className="hide-s muted">{timeAgo(b.createdAt)}</td>
                   </tr>
                 ))}

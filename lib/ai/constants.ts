@@ -27,3 +27,8 @@ export function collectBriefs(mode: 'tema' | 'roteiro', form: { getAll(name: str
   }
   return parseBriefs(String(form.get('briefs') ?? ''), mode);
 }
+
+/** Imagens (Nano Banana): preço aproximado por imagem 1K e quantas costumam ser geradas por post. */
+export const IMAGE_COST_USD = 0.034;
+export const MAX_IMAGES_PER_POST = 4;
+export const ESTIMATED_IMAGES_PER_POST = 3;

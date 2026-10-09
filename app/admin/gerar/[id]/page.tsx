@@ -4,7 +4,7 @@ import { and, asc, eq, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { generationBatches, generationItems, posts, templates } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
-import { costUsd, fmtUsd } from '@/lib/ai/constants';
+import { IMAGE_COST_USD, costUsd, fmtUsd } from '@/lib/ai/constants';
 import { deleteBatch, regenerateItem, retryFailed } from '@/lib/actions';
 import { IconBack, IconTrash } from '../../../icons';
 import { PostPreview } from '../../post-preview';
@@ -37,7 +37,8 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
   const done = items.filter((x) => x.it.status === 'done').length;
   const failed = items.filter((x) => x.it.status === 'error').length;
   const pending = items.some((x) => x.it.status === 'queued' || x.it.status === 'running');
-  const cost = costUsd(items.reduce((a, x) => a + x.it.inputTokens, 0), items.reduce((a, x) => a + x.it.outputTokens, 0));
+  const imgs = items.reduce((a, x) => a + x.it.imageCount, 0);
+  const cost = costUsd(items.reduce((a, x) => a + x.it.inputTokens, 0), items.reduce((a, x) => a + x.it.outputTokens, 0)) + imgs * IMAGE_COST_USD;
   const pct = items.length ? Math.round(((done + failed) / items.length) * 100) : 0;
 
   return (
@@ -46,7 +47,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
         <div>
           <Link href="/admin/gerar" className="back"><IconBack /> Gerar com IA</Link>
           <h1 style={{ marginTop: 6 }}>{batch.mode === 'roteiro' ? 'Roteiros' : 'Temas'} · {tpl?.name ?? 'Lote'}</h1>
-          <p>{done} de {items.length} prontos · custo {fmtUsd(cost)} <AutoRefresh batchId={id} active={pending} /></p>
+          <p>{done} de {items.length} prontos{batch.withImages ? ` · ${imgs} ${imgs === 1 ? 'imagem' : 'imagens'}` : ''} · custo {fmtUsd(cost)} <AutoRefresh batchId={id} active={pending} /></p>
         </div>
         <div className="row-actions">
           {failed > 0 && !pending && (
@@ -69,14 +70,14 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
             <div className="gen-body">
               <div className="gen-top">
                 <span className={`pill st-${it.status}`}>{LABEL[it.status]}{it.status === 'queued' && it.attempts > 0 ? ' (nova tentativa)' : ''}</span>
-                {it.status === 'done' && <span className="muted">{slides} slides · {fmtUsd(costUsd(it.inputTokens, it.outputTokens))}</span>}
+                {it.status === 'done' && <span className="muted">{slides} slides{it.imageCount > 0 ? ` · ${it.imageCount} ${it.imageCount === 1 ? 'imagem' : 'imagens'}` : ''} · {fmtUsd(costUsd(it.inputTokens, it.outputTokens) + it.imageCount * IMAGE_COST_USD)}</span>}
               </div>
               {it.status === 'done' && title ? <b className="gen-title">{title}</b> : null}
               {it.status === 'done' && !it.postId && <p className="muted">Este post foi migrado para outra marca ou excluído.</p>}
               <p className="gen-brief">{it.brief}</p>
               {it.status === 'error' && <p className="gen-err">{it.error}</p>}
               {it.notes && it.notes.length > 0 && (
-                <ul className="gen-notes">{it.notes.map((n, i) => <li key={i} className={n.startsWith('Conferir') ? 'check' : ''}>{n}</li>)}</ul>
+                <ul className="gen-notes">{it.notes.map((n, i) => <li key={i} className={n.startsWith('Conferir') || n.includes('não gerada') ? 'check' : ''}>{n}</li>)}</ul>
               )}
               <div className="gen-actions">
                 {it.status === 'done' && it.postId && <Link href={`/admin/posts/${it.postId}`} className="btn small primary">Abrir no editor</Link>}

@@ -28,6 +28,8 @@ export type GenerateInput = {
   slidesTarget: number;
   facts: string;
   instructions: string;
+  /** O usuário vai gerar as imagens dos slides (Nano Banana). */
+  withImages?: boolean;
   brand: BrandProfile;
 };
 
@@ -115,12 +117,21 @@ Cada slide é um card branco, estilo post de rede social, com o texto do post (c
 - "image_note": se uma imagem, gráfico ou print ajudar neste slide, descreva; senão "".
 Não crie métricas de engajamento (curtidas, comentários).`;
 
+const IMAGES_CARROSSEL = `IMAGENS ATIVADAS
+O usuário vai gerar as imagens dos slides com IA. A capa já tem espaço de imagem. Use "text-image" (ou "image") em até 3 slides do meio em que uma imagem de apoio realmente reforça a mensagem.
+Em "image_note": se o roteiro trouxe uma instrução de imagem para o slide, copie-a fielmente (uma direção de arte vai melhorá-la depois); se não trouxe, escreva uma intenção curta baseada no conteúdo do slide. Nunca peça texto, números ou gráficos com dados dentro da imagem.`;
+
+const IMAGES_TWEET = `IMAGENS ATIVADAS
+O usuário vai gerar as imagens dos slides com IA. Preencha "image_note" no slide 1 e em até 2 outros slides em que uma imagem de apoio reforça a mensagem; nos demais, "".
+Se o roteiro trouxe uma instrução de imagem para o slide, copie-a fielmente (uma direção de arte vai melhorá-la depois); se não trouxe, escreva uma intenção curta baseada no conteúdo do slide. Nunca peça texto, números ou gráficos com dados dentro da imagem.`;
+
 function systemPrompt(i: GenerateInput): string {
   return [
     'Você é um redator sênior de conteúdo para redes sociais. Você produz posts prontos para um editor de slides, em JSON estrito.',
     brandBlock(i.brand),
     i.editor === 'carrossel' ? CARROSSEL_FORMAT : TWEET_FORMAT,
     modeBlock(i.mode, i.slidesTarget),
+    i.withImages ? (i.editor === 'carrossel' ? IMAGES_CARROSSEL : IMAGES_TWEET) : '',
     COMMON_RULES,
   ].filter(Boolean).join('\n\n');
 }
@@ -176,7 +187,7 @@ function mapCarrossel(data: any): Mapped {
   const list = (Array.isArray(data?.slides) ? data.slides : []).slice(0, MAX_SLIDES);
   const slides = list.map((s: any) => {
     const format = formats.has(s?.format) ? s.format : 'text';
-    return { format, html: format === 'image' ? '' : sanitizeHtml(String(s?.html ?? '')), image: null, fit: 'cover', showProfile: true, showMore: s?.show_more !== false };
+    return { format, html: format === 'image' ? '' : sanitizeHtml(String(s?.html ?? '')), image: null, imagePrompt: clean(s?.image_note), fit: 'cover', showProfile: true, showMore: s?.show_more !== false };
   });
   return {
     title: clean(data?.title, 80), topic: clean(data?.topic, 60), slides,
@@ -190,7 +201,7 @@ function mapTweet(data: any): Mapped {
     const button = clean(s?.button, 60);
     return {
       text: clean(s?.text, 1200), showButton: !!button, button: button || 'Quero acessar',
-      showImage: !!clean(s?.image_note), image: null,
+      showImage: !!clean(s?.image_note), image: null, imagePrompt: clean(s?.image_note),
       showMetrics: false, // sem números de engajamento inventados
     };
   });

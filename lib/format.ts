@@ -20,3 +20,6 @@ export function plain(html: string | null | undefined): string {
 
 export const initials = (name?: string | null) =>
   (name ?? '?').split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join('') || '?';
+
+/** Texto puro numa linha (aceita HTML do editor ou texto simples). */
+export const plainText = (v: string) => plain(v).replace(/\s+/g, ' ').trim();

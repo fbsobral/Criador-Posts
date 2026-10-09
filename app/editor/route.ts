@@ -5,6 +5,7 @@ import { db } from '@/db';
 import { colorPalettes, posts, templates } from '@/db/schema';
 import { editorFile } from '@/lib/editors';
 import { getCtx } from '@/lib/ctx';
+import { imageEnabled } from '@/lib/ai/image';
 
 const HOST_MARKS = ['<!--HOST-->', '<script>\n/* =============== ícones'];
 
@@ -31,6 +32,8 @@ export async function GET(req: Request) {
     initial: post.data,
     saveUrl: `/api/posts/${post.id}`,
     title: post.title,
+    imageUrl: '/api/ai/image',
+    imageEnabled: imageEnabled(),
     palettesUrl: '/api/palettes',
     editor: editorKey,
     palettes: palettes.map((p) => ({ id: p.id, name: p.name, theme: p.theme, canDelete: c.isBrandAdmin || p.createdBy === c.userId })),

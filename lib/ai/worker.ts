@@ -1,8 +1,12 @@
-import { eq, sql } from 'drizzle-orm';
+import { and, count, eq, gte, sql } from 'drizzle-orm';
 import { db } from '@/db';
-import { brandSettings, brands, generationBatches, generationItems, posts, templates } from '@/db/schema';
+import { brandSettings, brands, generationBatches, generationItems, imageGenerations, posts, templates } from '@/db/schema';
 import { initialPostData } from '../posts';
 import { AiError, generatePost, supportsAi } from './generate';
+import { MAX_IMAGES_PER_POST } from './constants';
+import { IMAGE_MODEL, ImageError, buildPrompt, generateImage, imageEnabled, type AspectRatio } from './image';
+import { deriveImagePrompt, deriveImagePromptsForPost } from './image-prompt';
+import { plainText } from '../format';
 
 const CONCURRENCY = 3;
 const MAX_ATTEMPTS = 3;
@@ -74,12 +78,24 @@ async function processItem(itemId: string) {
       slidesTarget: batch.slidesTarget,
       facts: batch.facts,
       instructions: batch.instructions,
+      withImages: batch.withImages,
       brand: {
         brandName: settings.displayName || row.brandName,
         niche: settings.aiNiche, audience: settings.aiAudience, voice: settings.aiVoice,
         rules: settings.aiRules, cta: settings.aiCta, examples: settings.aiExamples,
       },
     });
+
+    // imagens (Nano Banana) só para os espaços de imagem dos slides deste formato
+    let imageCount = 0;
+    const imageNotes: string[] = [];
+    if (batch.withImages && imageEnabled()) {
+      const r = await addImages(row.editor, result.slides, {
+        brandId: item.brandId, userId: batch.createdBy, title: result.title || item.brief.slice(0, 60), topic: result.topic,
+        brandName: settings.displayName || row.brandName, niche: settings.aiNiche, audience: settings.aiAudience, imageStyle: settings.aiImageStyle,
+      }, () => db.update(generationItems).set({ updatedAt: new Date() }).where(eq(generationItems.id, itemId)));
+      imageCount = r.count; imageNotes.push(...r.notes);
+    }
 
     const data = initialPostData(settings, result.slides);
     if (row.editor === 'carrossel' && result.topic) data.g.topic = result.topic;
@@ -94,7 +110,7 @@ async function processItem(itemId: string) {
       .returning({ id: posts.id });
 
     await db.update(generationItems).set({
-      status: 'done', postId: post.id, notes: result.notes, error: null,
+      status: 'done', postId: post.id, notes: [...result.notes.filter((n) => !(imageCount && /imagem:/.test(n))), ...imageNotes], imageCount, error: null,
       inputTokens: result.inputTokens, outputTokens: result.outputTokens, updatedAt: new Date(),
     }).where(eq(generationItems.id, itemId));
   } catch (e) {
@@ -107,4 +123,67 @@ async function processItem(itemId: string) {
       await fail(err.message);
     }
   }
+}
+
+
+const RATIO_BY_FORMAT: Record<string, AspectRatio> = { cover: '16:9', 'text-image': '4:3', image: '4:5' };
+const HAS_IMAGE_SLOT = new Set(['cover', 'text-image', 'image']);
+
+type ImageCtx = { brandId: string; userId: string | null; title: string; topic: string; brandName: string; niche: string; audience: string; imageStyle: string };
+
+/**
+ * Gera as imagens dos slides que têm espaço de imagem (carrossel: capa, texto+imagem, imagem; Tweet Card: slides com imagem ligada).
+ * A direção de arte cria/melhora a descrição de cada imagem a partir do slide e do post antes de ir para o Nano Banana.
+ */
+async function addImages(editor: 'carrossel' | 'tweet', slides: Record<string, unknown>[], ctx: ImageCtx, heartbeat: () => Promise<unknown>) {
+  const targets = slides
+    .map((s, i) => ({ s, i }))
+    .filter(({ s }) => (editor === 'carrossel' ? HAS_IMAGE_SLOT.has(String(s.format)) : !!s.showImage))
+    .slice(0, MAX_IMAGES_PER_POST);
+
+  const limit = Number(process.env.AI_IMAGE_DAILY_LIMIT) || 60;
+  const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+  const [{ n: usedToday }] = await db.select({ n: count() }).from(imageGenerations).where(and(eq(imageGenerations.brandId, ctx.brandId), gte(imageGenerations.createdAt, startOfDay)));
+  let used = usedToday;
+
+  const text = (s: Record<string, unknown>) => plainText(String(s.html ?? s.text ?? '')).slice(0, 900);
+  const outline = slides.map((s, i) => `${i + 1}. ${text(s).slice(0, 140)}`);
+  const notes: string[] = [];
+  let count_ = 0;
+
+  // uma única chamada descreve todas as imagens do post, com direção de arte coesa
+  const brandArt = { brandName: ctx.brandName, niche: ctx.niche, audience: ctx.audience, imageStyle: ctx.imageStyle };
+  const planned = await deriveImagePromptsForPost(
+    { title: ctx.title, topic: ctx.topic, outline, total: slides.length },
+    targets.map(({ s, i }) => ({ slide: i + 1, text: text(s), format: editor === 'tweet' ? 'tweet-card' : String(s.format), hint: String(s.imagePrompt ?? '').trim() || undefined })),
+    brandArt,
+  );
+
+  for (const { s, i } of targets) {
+    const label = `Slide ${i + 1}`;
+    if (used >= limit) { notes.push(`${label} · imagem não gerada: limite diário de imagens atingido.`); continue; }
+    try {
+      await heartbeat();
+      const hint = String(s.imagePrompt ?? '').trim();
+      const prompt = planned.get(i + 1)
+        ?? (await deriveImagePrompt(
+          { slideText: text(s), slideIndex: i + 1, total: slides.length, outline, title: ctx.title, topic: ctx.topic, format: editor === 'tweet' ? 'tweet-card' : String(s.format), hint: hint || undefined },
+          brandArt,
+        )).prompt;
+      const art = { prompt };
+      const ratio = (editor === 'carrossel' ? RATIO_BY_FORMAT[String(s.format)] : '16:9') ?? '4:3';
+      const img = await generateImage(buildPrompt(art.prompt, ctx.imageStyle), ratio);
+      s.image = `data:${img.mime};base64,${img.data}`;
+      s.imagePrompt = art.prompt;
+      s.aiRatio = ratio;
+      if (editor === 'tweet') s.showImage = true;
+      await db.insert(imageGenerations).values({ brandId: ctx.brandId, userId: ctx.userId, model: IMAGE_MODEL, prompt: art.prompt.slice(0, 1500), aspectRatio: ratio });
+      used++; count_++;
+    } catch (e) {
+      const msg = e instanceof ImageError || e instanceof AiError ? e.message : 'erro inesperado';
+      console.error('[ai] imagem falhou', label, e);
+      notes.push(`${label} · imagem não gerada: ${msg}`);
+    }
+  }
+  return { count: count_, notes };
 }

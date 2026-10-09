@@ -82,6 +82,8 @@
   .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .pic.orig img { height: auto; }
   .pic .ph { font-size: 26px; color: var(--ph); padding: 60px 20px; text-align: center; cursor: pointer; }
+  .ph-ai { margin-top: 20px; padding: 16px 34px; border: 0; border-radius: 999px; background: #F97335; color: #fff; font: 700 26px/1 inherit; font-family: inherit; cursor: pointer; box-shadow: 0 10px 24px -8px rgba(249,115,53,.75); pointer-events: auto; }
+  .ph-ai:hover { background: #E8621F; } .ph-ai:disabled { opacity: .7; cursor: progress; }
   .pic.drag { outline: 4px dashed #1D9BF0; outline-offset: -4px; }
   .btnc { margin-top: 44px; background: var(--accent2); color: var(--btntext); font-weight: 800; font-size: 36px; text-transform: uppercase; letter-spacing: -.6px; text-align: center; padding: 28px 24px; border-radius: 6px; line-height: 1.15; }
   .line { height: 3px; background: var(--line); margin: 44px 0 36px; }
@@ -107,6 +109,15 @@
   .acc input[type=radio] { accent-color: #F97335; margin: 0; }
   .acc input[type=text] { padding: 7px 10px; border: 1px solid #D9D3C5; border-radius: 10px; font: inherit; font-size: 14px; width: 100%; min-width: 0; }
   #expTargetTop { font-size: 13px; padding: 7px 10px; }
+
+  .aigen { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1.5px dashed #F9B38F; border-radius: 12px; background: #FFF8F4; margin: 4px 0 14px; }
+  .aigen label { font-weight: 600; font-size: 13px; } .aigen label small { font-weight: 400; color: #8a857a; }
+  .aigen textarea { width: 100%; padding: 8px 10px; border: 1px solid #D9D3C5; border-radius: 10px; font: inherit; font-size: 13.5px; resize: vertical; background: #fff; }
+  .aigen textarea:focus { outline: none; border-color: #F97335; box-shadow: 0 0 0 4px rgba(249,115,53,.16); }
+  .aigen .row { align-items: center; } .aigen select { padding: 7px 8px; border: 1px solid #D9D3C5; border-radius: 10px; font: inherit; font-size: 13px; background: #fff; }
+  .aicheck { display: flex; gap: 8px; align-items: center; font-size: 12.5px; font-weight: 500 !important; color: #55524c; }
+  .aicheck input { width: 15px; height: 15px; accent-color: #F97335; }
+  .aimsg { font-size: 12px; color: #8a857a; line-height: 1.35; } .aimsg.err { color: #c8341f; font-weight: 600; }
 
   /* ===== acabamento (design system do admin) ===== */
   :root { --ui-bg: #F4F1EB; --ui-line: #E8E3D8; --accent: #F97335; }
@@ -182,6 +193,13 @@
         <div class="row" style="margin-bottom:10px">
           <button class="btn small" id="btnPic">Enviar imagem</button>
           <button class="btn small" id="btnPicRm">Remover</button>
+        </div>
+        <div class="aigen" id="aiGen" style="display:none">
+          <label for="aiPrompt">Imagem com IA <small>(Nano Banana)</small></label>
+          <textarea id="aiPrompt" rows="3" maxlength="1500" placeholder="Descreva a imagem: cena, estilo, cores…"></textarea>
+          <div class="row"><select id="aiRatio" title="Proporção da imagem"><option value="16:9">Paisagem 16:9</option><option value="4:3">Paisagem 4:3</option><option value="1:1">Quadrada 1:1</option><option value="4:5">Retrato 4:5</option><option value="3:4">Retrato 3:4</option></select><button type="button" class="btn small primary" id="btnAiImg">✨ Gerar imagem</button></div>
+          <label class="aicheck"><input type="checkbox" id="aiImprove" checked> Melhorar minha descrição com IA antes de gerar</label>
+          <small id="aiMsg" class="aimsg"></small>
         </div>
         <div class="field"><label for="optRatio">Formato da imagem</label>
           <select id="optRatio"><option value="orig">Original</option><option value="16/9">Paisagem 16:9</option><option value="4/3">Paisagem 4:3</option><option value="1/1">Quadrada 1:1</option><option value="custom">Altura personalizada</option></select>
@@ -314,7 +332,7 @@ function buildSlide(s, editable) {
         <div class="names"><span class="name"><span data-bind="name" ${ce}>${esc(g.name)}</span>${iconVerified(c)}</span><span class="handle" data-bind="handle" ${ce}>${esc(g.handle)}</span></div>
       </div>
       <div class="tx" data-text ${ce}>${esc(s.text)}</div>
-      ${s.showImage && (s.image || editable) ? `<div class="pic ${s.ratio === 'orig' && s.image ? 'orig' : ''}" data-pic style="${picStyle(s)}">${s.image ? `<img src="${s.image}" alt="">` : `<div class="ph">Clique ou arraste uma imagem</div>`}</div>` : ''}
+      ${s.showImage && (s.image || editable) ? `<div class="pic ${s.ratio === 'orig' && s.image ? 'orig' : ''}" data-pic style="${picStyle(s)}">${s.image ? `<img src="${s.image}" alt="">` : `<div class="ph">Clique ou arraste uma imagem${(HOST && HOST.imageEnabled) ? `<br><button type="button" class="ph-ai" data-ai>✨ Gerar com IA</button>` : ''}</div>`}</div>` : ''}
       ${s.showButton ? `<div class="btnc">${esc(s.button)}</div>` : ''}
       ${s.showMetrics ? `<div class="line"></div><div class="metrics"><span>${ICO_COMMENT}<b data-metric="c" ${ce}>${esc(s.c)}</b></span><span>${ICO_RETWEET}<b data-metric="r" ${ce}>${esc(s.r)}</b></span><span>${ICO_HEART}<b data-metric="l" ${ce}>${esc(s.l)}</b></span></div>` : ''}
     </div></div>
@@ -333,6 +351,7 @@ function renderCurrent() {
   el.querySelector('[data-logo]')?.addEventListener('click', () => openPicker('logo'));
   el.querySelector('[data-avatar]').addEventListener('click', () => openPicker('avatar'));
   const pic = el.querySelector('[data-pic]');
+  bindAiPlaceholder(el);
   if (pic) {
     pic.addEventListener('click', () => openPicker('pic'));
     pic.addEventListener('dragover', e => { e.preventDefault(); pic.classList.add('drag'); });
@@ -389,6 +408,7 @@ function scheduleAllThumbs() { clearTimeout(thumbsT); thumbsT = setTimeout(rende
 function updatePanel() {
   const s = cur();
   $('optImage').checked = s.showImage; $('imageFields').style.display = s.showImage ? 'block' : 'none'; $('btnPicRm').disabled = !s.image; $('optRatio').value = s.ratio; $('hField').style.display = s.ratio === 'custom' ? 'flex' : 'none'; $('optH').value = s.h; $('hVal').textContent = s.h;
+  updateAiGen();
   $('optButton').checked = s.showButton; $('inButton').value = s.button; $('btnTextField').style.display = s.showButton ? 'flex' : 'none';
   $('optMetrics').checked = s.showMetrics; $('metricsFields').style.display = s.showMetrics ? 'grid' : 'none';
   $('inC').value = s.c; $('inR').value = s.r; $('inL').value = s.l; $('optSize').value = s.size;
@@ -517,18 +537,20 @@ new ResizeObserver(fit).observe(stage); window.addEventListener('resize', fit);
 /* =============== salvar =============== */
 let saveT;
 const status = t => { $('status').textContent = t; };
+let lastSaveSize = 0;
 function scheduleSave() {
   clearTimeout(saveT);
   saveT = setTimeout(() => {
     const payload = { v: 1, g, slides };
     if (HOST) {
       status('Salvando…');
-      fetch(HOST.saveUrl, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) })
+      const body = JSON.stringify(payload); lastSaveSize = body.length;
+      fetch(HOST.saveUrl, { method: 'PUT', headers: { 'content-type': 'application/json' }, body })
         .then(r => { if (!r.ok) throw 0; status('Salvo'); }).catch(() => status('Erro ao salvar — verifique a conexão'));
       return;
     }
     try { localStorage.setItem(KEY, JSON.stringify(payload)); status('Salvo no navegador'); } catch (e) { status('Auto-save indisponível'); }
-  }, 500);
+  }, lastSaveSize > 400000 ? 2500 : 500); // posts com imagens são pesados: salva com menos frequência
 }
 
 /* =============== contas por rede (@ de cada perfil) =============== */
@@ -593,6 +615,78 @@ function buildTargets() {
 }
 ['expTarget', 'expTargetTop'].forEach(id => $(id) && $(id).addEventListener('change', e => { ['expTarget', 'expTargetTop'].forEach(o => { if ($(o)) $(o).value = e.target.value; }); }));
 buildAccountsUI();
+
+/* =============== imagem com IA (Nano Banana) =============== */
+const aiOn = !!(HOST && HOST.imageUrl);
+const AI_BTN = '✨ Gerar imagem', AI_PH_BTN = '✨ Gerar com IA';
+let aiBusy = false;
+function b64Blob(b64, mime) {
+  const bin = atob(b64), bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+const htmlText = h => { const d = document.createElement('div'); d.innerHTML = (h || '').replace(/<\/(h2|p|li|div)>|<br\s*\/?>/gi, ' $&'); return d.textContent.replace(/\s+/g, ' ').trim(); };
+const slideText = x => x.html !== undefined ? htmlText(x.html) : String(x.text || '').replace(/\s+/g, ' ').trim();
+/** Contexto enviado à IA para criar a descrição da imagem de forma estratégica. */
+function slideContext() {
+  const s = cur();
+  return {
+    slideText: slideText(s).slice(0, 900), slideIndex: idx + 1, total: slides.length,
+    outline: slides.map((x, i) => `${i + 1}. ${slideText(x).slice(0, 140)}`),
+    title: (HOST && HOST.title) || '', topic: g.topic || '', format: s.format || 'tweet-card',
+  };
+}
+function updateAiGen() {
+  const box = $('aiGen'); if (!box) return;
+  box.style.display = aiOn ? 'flex' : 'none';
+  if (!aiOn) return;
+  const s = cur();
+  $('aiPrompt').value = s.imagePrompt || '';
+  $('aiRatio').value = s.aiRatio || aiDefaultRatio(s);
+  $('btnAiImg').disabled = !HOST.imageEnabled || aiBusy;
+  const m = $('aiMsg'); m.className = 'aimsg';
+  m.textContent = HOST.imageEnabled ? 'Deixe em branco e a IA cria a descrição a partir do texto deste slide e do contexto do post. Cerca de US$ 0,03 por imagem.' : 'Geração de imagens desligada: falta configurar a GEMINI_API_KEY no servidor.';
+}
+function setAiBusy(on) {
+  aiBusy = on;
+  const b = $('btnAiImg'); if (b) { b.disabled = on || !(HOST && HOST.imageEnabled); b.textContent = on ? 'Gerando… (10–30 s)' : AI_BTN; }
+  document.querySelectorAll('[data-ai]').forEach(x => { x.disabled = on; x.textContent = on ? 'Gerando…' : AI_PH_BTN; });
+}
+async function aiGenerate() {
+  if (aiBusy || !aiOn) return;
+  const s = cur(), prompt = $('aiPrompt').value.trim(), ratio = $('aiRatio').value, m = $('aiMsg');
+  setAiBusy(true); m.className = 'aimsg'; m.textContent = prompt ? 'Aguarde, o Nano Banana está criando a imagem.' : 'Criando a descrição a partir do slide e gerando a imagem…';
+  try {
+    const improve = !!prompt && $('aiImprove').checked;
+    const body = { ratio };
+    if (prompt) body.prompt = prompt;
+    if (!prompt || improve) body.context = slideContext();
+    if (improve) body.improve = true;
+    const r = await fetch(HOST.imageUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'Não foi possível gerar a imagem.');
+    const blob = b64Blob(j.data, j.mime || 'image/jpeg');
+    s.image = await readImage(new File([blob], 'ia', { type: blob.type }), 1600);
+    s.imagePrompt = j.prompt || prompt; s.aiRatio = ratio;
+    s.showImage = true;
+    if (s === cur()) change(); else { renderThumbs(); scheduleSave(); }
+  } catch (e) {
+    m.className = 'aimsg err'; m.textContent = e.message || 'Erro ao gerar a imagem.'; status(m.textContent);
+  } finally {
+    setAiBusy(false);
+  }
+}
+if (aiOn) {
+  $('aiPrompt').addEventListener('input', e => { cur().imagePrompt = e.target.value; scheduleSave(); });
+  $('aiRatio').addEventListener('change', e => { cur().aiRatio = e.target.value; scheduleSave(); });
+  $('btnAiImg').addEventListener('click', aiGenerate);
+}
+/** Liga o botão "Gerar com IA" que aparece em cima do espaço vazio da imagem. */
+function bindAiPlaceholder(el) {
+  el.querySelectorAll('[data-ai]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); aiGenerate(); }));
+}
+
+function aiDefaultRatio(s) { return ({ '16/9': '16:9', '4/3': '4:3', '1/1': '1:1' })[s.ratio] || '16:9'; }
 
 /* =============== exportar =============== */
 /* html2canvas só é baixado quando o primeiro PNG é exportado (não bloqueia a abertura do editor) */

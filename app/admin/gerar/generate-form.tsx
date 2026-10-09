@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react';
 import { createBatch, type BatchState } from '@/lib/actions';
-import { ESTIMATED_COST_PER_POST, MAX_ITEMS_PER_BATCH, fmtUsd, parseBriefs } from '@/lib/ai/constants';
+import { ESTIMATED_COST_PER_POST, ESTIMATED_IMAGES_PER_POST, IMAGE_COST_USD, MAX_ITEMS_PER_BATCH, fmtUsd, parseBriefs } from '@/lib/ai/constants';
 import { IconPlus, IconSpark, IconTrash } from '../../icons';
 import { TemplateArt } from '../template-art';
 
@@ -14,10 +14,11 @@ const PLACEHOLDER = {
 };
 const SEP = /^\s*-{3,}\s*$/m;
 
-export function GenerateForm({ formats, hasKey }: { formats: Format[]; hasKey: boolean }) {
+export function GenerateForm({ formats, hasKey, hasImageKey }: { formats: Format[]; hasKey: boolean; hasImageKey: boolean }) {
   const [state, action, pending] = useActionState<BatchState, FormData>(createBatch, null);
   const [mode, setMode] = useState<'tema' | 'roteiro'>('tema');
   const [text, setText] = useState('');
+  const [withImages, setWithImages] = useState(false);
   const [scripts, setScripts] = useState<string[]>(['']); // um cartão por roteiro
   const focusLast = useRef(false);
   const cards = useRef<(HTMLTextAreaElement | null)[]>([]);
@@ -114,12 +115,23 @@ export function GenerateForm({ formats, hasKey }: { formats: Format[]; hasKey: b
         <textarea name="facts" rows={3} maxLength={8000} placeholder="Números e fontes reais. A IA não inventa dados: sem isso, ela escreve sem números." />
       </label>
 
+      <label className={`img-opt${withImages ? ' on' : ''}${hasImageKey ? '' : ' off'}`}>
+        <input type="checkbox" name="withImages" checked={withImages && hasImageKey} disabled={!hasImageKey} onChange={(e) => setWithImages(e.target.checked)} />
+        <span>
+          <b>Gerar também as imagens dos slides (Nano Banana)</b>
+          <small>
+            As imagens entram nos espaços de imagem do carrossel e do Tweet Card. Se o roteiro descrever a imagem, a IA melhora a descrição antes de gerar; se não descrever, ela cria a partir do texto do slide. Cerca de {fmtUsd(IMAGE_COST_USD)} por imagem, até 4 por post.
+            {!hasImageKey && <> <b style={{ color: 'var(--danger)' }}>Indisponível: configure GEMINI_API_KEY no servidor.</b></>}
+          </small>
+        </span>
+      </label>
+
       {!hasKey && <div className="notice warn">A chave da IA ainda não está configurada no servidor (<code>ANTHROPIC_API_KEY</code>).</div>}
       {state?.error && <div className="notice err" role="alert">{state.error}</div>}
 
       <div className="gen-foot">
         <div className="muted">
-          {count > 0 ? <><b>{count}</b> {count === 1 ? 'post' : 'posts'} · estimativa <b>{fmtUsd(count * ESTIMATED_COST_PER_POST)}</b></> : 'Nenhum item ainda'}
+          {count > 0 ? <><b>{count}</b> {count === 1 ? 'post' : 'posts'} · estimativa <b>{fmtUsd(count * (ESTIMATED_COST_PER_POST + (withImages && hasImageKey ? ESTIMATED_IMAGES_PER_POST * IMAGE_COST_USD : 0)))}</b>{withImages && hasImageKey && <span className="muted"> (com imagens)</span>}</> : 'Nenhum item ainda'}
           {over && <span style={{ color: 'var(--danger)', marginLeft: 8 }}>máx. {MAX_ITEMS_PER_BATCH} por lote</span>}
         </div>
         <button className="btn primary" disabled={pending || !count || over || !hasKey}>

@@ -11,6 +11,7 @@ import { DEFAULT_STYLE, GLOBAL_PRESETS } from './themes';
 import { EDITORS, type EditorKey } from './editors';
 import { applyBrandIdentity, initialPostData } from './posts';
 import { supportsAi } from './ai/generate';
+import { imageEnabled } from './ai/image';
 import { MAX_ITEMS_PER_BATCH, MAX_SLIDES, collectBriefs } from './ai/constants';
 import { kickBatch } from './ai/worker';
 
@@ -208,6 +209,8 @@ export async function createBatch(_prev: BatchState, formData: FormData): Promis
   const slidesTarget = Math.min(MAX_SLIDES, Math.max(3, Number(formData.get('slides')) || 7));
 
   if (!process.env.ANTHROPIC_API_KEY) return { error: 'A chave da IA ainda não foi configurada no servidor (ANTHROPIC_API_KEY).' };
+  const withImages = formData.get('withImages') === 'on';
+  if (withImages && !imageEnabled()) return { error: 'A geração de imagens ainda não foi configurada no servidor (GEMINI_API_KEY).' };
   if (!briefs.length) return { error: mode === 'roteiro' ? 'Cole pelo menos um roteiro.' : 'Escreva pelo menos um tema (um por linha).' };
   if (briefs.length > MAX_ITEMS_PER_BATCH) return { error: `Máximo de ${MAX_ITEMS_PER_BATCH} posts por lote (você enviou ${briefs.length}).` };
   if (briefs.some((b) => b.length > MAX_BRIEF_CHARS)) return { error: `Cada item pode ter até ${MAX_BRIEF_CHARS} caracteres.` };
@@ -225,7 +228,7 @@ export async function createBatch(_prev: BatchState, formData: FormData): Promis
   const [batch] = await db
     .insert(generationBatches)
     .values({
-      brandId: c.brandId, templateId: tpl.id, mode, slidesTarget, createdBy: c.userId,
+      brandId: c.brandId, templateId: tpl.id, mode, slidesTarget, withImages, createdBy: c.userId,
       facts: String(formData.get('facts') ?? '').trim().slice(0, 8000),
       instructions: String(formData.get('instructions') ?? '').trim().slice(0, 2000),
     })
@@ -278,7 +281,7 @@ export async function saveAiProfile(formData: FormData) {
   const f = (k: string, max: number) => String(formData.get(k) ?? '').trim().slice(0, max);
   await db.update(brandSettings).set({
     aiNiche: f('aiNiche', 500), aiAudience: f('aiAudience', 500), aiVoice: f('aiVoice', 800),
-    aiRules: f('aiRules', 1500), aiCta: f('aiCta', 300), aiExamples: f('aiExamples', 4000), updatedAt: new Date(),
+    aiRules: f('aiRules', 1500), aiCta: f('aiCta', 300), aiExamples: f('aiExamples', 4000), aiImageStyle: f('aiImageStyle', 400), updatedAt: new Date(),
   }).where(eq(brandSettings.brandId, c.brandId));
   revalidatePath('/admin/configuracoes');
 }

@@ -1,4 +1,4 @@
-import { index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 /** Tema de cores do carrossel (mesmo formato usado pelo editor). */
 export type Theme = Record<string, string>;
@@ -50,6 +50,8 @@ export const brandSettings = pgTable('brand_settings', {
   aiRules: text('ai_rules').notNull().default(''),
   aiCta: text('ai_cta').notNull().default(''),
   aiExamples: text('ai_examples').notNull().default(''),
+  /** Estilo visual das imagens geradas (ex.: "fotografia realista, tons quentes, sem pessoas"). */
+  aiImageStyle: text('ai_image_style').notNull().default(''),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
@@ -117,6 +119,8 @@ export const generationBatches = pgTable(
     /** 'tema' = a IA escreve; 'roteiro' = a IA só estrutura o texto enviado. */
     mode: text('mode').notNull().default('tema'),
     slidesTarget: integer('slides_target').notNull().default(7),
+    /** Gerar também as imagens (Nano Banana) dos slides. */
+    withImages: boolean('with_images').notNull().default(false),
     facts: text('facts').notNull().default(''),
     instructions: text('instructions').notNull().default(''),
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
@@ -140,9 +144,25 @@ export const generationItems = pgTable(
     error: text('error'),
     inputTokens: integer('input_tokens').notNull().default(0),
     outputTokens: integer('output_tokens').notNull().default(0),
+    imageCount: integer('image_count').notNull().default(0),
     attempts: integer('attempts').notNull().default(0),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (t) => [index('generation_items_batch_idx').on(t.batchId, t.status), index('generation_items_brand_idx').on(t.brandId, t.createdAt)],
+);
+
+/** Registro de cada imagem gerada com IA (auditoria e limite diário por marca). */
+export const imageGenerations = pgTable(
+  'image_generations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+    userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
+    model: text('model').notNull(),
+    prompt: text('prompt').notNull(),
+    aspectRatio: text('aspect_ratio').notNull().default('1:1'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [index('image_generations_brand_idx').on(t.brandId, t.createdAt)],
 );

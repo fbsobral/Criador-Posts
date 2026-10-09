@@ -373,3 +373,10 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
   .list-posts .post-actions.in-list { justify-content: flex-end; }
   .in-list .rename-form { width: min(280px, calc(100vw - 56px)); }
 }
+.img-opt { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border: 1.5px solid var(--line-2); border-radius: 13px; background: var(--surface); cursor: pointer; transition: border-color .15s, box-shadow .15s, background .15s; }
+.img-opt:hover { border-color: #b9b29f; }
+.img-opt.on { border-color: var(--primary); background: #FFF8F4; box-shadow: 0 0 0 3px var(--primary-soft); }
+.img-opt.off { opacity: .65; cursor: not-allowed; }
+.img-opt input { margin-top: 3px; width: 18px; height: 18px; flex: none; padding: 0; accent-color: var(--primary); }
+.img-opt b { display: block; font-size: 14px; }
+.img-opt small { color: var(--muted); font-size: 12.5px; line-height: 1.4; display: block; margin-top: 2px; }
