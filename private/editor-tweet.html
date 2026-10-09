@@ -552,7 +552,7 @@ async function renderCanvas(i, scale = 1) {
 
 async function exportIdx(i) {
   const canvas = await renderCanvas(i, 1);
-  const a = document.createElement('a'); a.download = `slide-${String(i + 1).padStart(2, '0')}.png`; a.href = canvas.toDataURL('image/png'); a.click();
+  const a = document.createElement('a'); a.download = `${fileBase()}-${String(i + 1).padStart(2, '0')}.png`; a.href = canvas.toDataURL('image/png'); a.click();
 }
 $('btnOne').addEventListener('click', () => exportIdx(idx));
 async function exportAll() { for (let i = 0; i < slides.length; i++) { status(`Exportando ${i + 1}/${slides.length}…`); await exportIdx(i); await new Promise(r => setTimeout(r, 400)); } status('Exportação concluída'); }

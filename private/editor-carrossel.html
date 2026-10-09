@@ -866,7 +866,7 @@ function scheduleSave() {
 }
 $('btnSave').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify({ v: 2, g, slides })], { type: 'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'carrossel.json'; a.click();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${fileBase()}.json`; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
 $('btnOpen').addEventListener('click', () => $('pickProject').click());
@@ -914,7 +914,7 @@ async function renderCanvas(i, scale = 1) {
 
 async function exportIdx(i) {
   const canvas = await renderCanvas(i, 1);
-  const a = document.createElement('a'); a.download = `slide-${String(i + 1).padStart(2, '0')}.png`; a.href = canvas.toDataURL('image/png'); a.click();
+  const a = document.createElement('a'); a.download = `${fileBase()}-${String(i + 1).padStart(2, '0')}.png`; a.href = canvas.toDataURL('image/png'); a.click();
 }
 $('btnOne').addEventListener('click', () => exportIdx(idx));
 async function exportAll() {
