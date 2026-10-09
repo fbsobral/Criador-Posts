@@ -4,7 +4,7 @@ import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { colorPalettes, posts, templates } from '@/db/schema';
 import { editorFile } from '@/lib/editors';
-import { getCtx } from '@/lib/ctx';
+import { getCtx, getBrandSettings } from '@/lib/ctx';
 import { imageEnabled } from '@/lib/ai/image';
 
 const HOST_MARKS = ['<!--HOST-->', '<script>\n/* =============== ícones'];
@@ -33,6 +33,7 @@ export async function GET(req: Request) {
     saveUrl: `/api/posts/${post.id}`,
     title: post.title,
     imageUrl: '/api/ai/image',
+    brandImageBrief: ((await getBrandSettings(c.brandId))?.aiImageStyle ?? '').slice(0, 1500),
     assetsUrl: '/api/assets',
     imageEnabled: imageEnabled(),
     palettesUrl: '/api/palettes',

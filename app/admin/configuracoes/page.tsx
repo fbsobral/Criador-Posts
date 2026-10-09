@@ -68,7 +68,9 @@ export default async function SettingsPage() {
           <label className="field">Tom de voz<textarea name="aiVoice" defaultValue={s.aiVoice} disabled={ro} rows={2} placeholder="Ex.: direto, didático, sem jargão, um pouco irônico" /></label>
           <label className="field">Regras (o que sempre ou nunca fazer)<textarea name="aiRules" defaultValue={s.aiRules} disabled={ro} rows={3} placeholder={'Ex.: nunca prometer ganho garantido; sempre explicar siglas; não usar emojis'} /></label>
           <label className="field">Chamada para ação (CTA) padrão<input name="aiCta" defaultValue={s.aiCta} disabled={ro} placeholder="Ex.: Siga @suamarca e salve este post" /></label>
-          <label className="field">Estilo visual das imagens (Nano Banana)<input name="aiImageStyle" defaultValue={s.aiImageStyle} disabled={ro} maxLength={400} placeholder="Ex.: fotografia realista, luz natural, tons quentes, sem pessoas" /></label>
+          <h2 style={{ marginTop: 6 }}>Briefing de imagens (Nano Banana)</h2>
+          <p className="muted" style={{ marginTop: -10 }}>Funciona como o tom de voz dos textos: a identidade visual da marca, usada em <b>toda</b> imagem gerada. Cada post pode ter um briefing próprio, que é somado a este (o do post prevalece em caso de conflito).</p>
+          <label className="field">Briefing visual da marca<textarea name="aiImageStyle" defaultValue={s.aiImageStyle} disabled={ro} rows={5} maxLength={1500} placeholder={'Ex.: fotografia editorial realista, luz natural, tons quentes (âmbar, terracota, bege), pouca profundidade de campo, composição limpa com espaço para texto. Evitar: pessoas identificáveis, bandeiras, dinheiro vivo, estilo cartoon.'} /></label>
           <label className="field">Exemplos de posts que você gostou<textarea name="aiExamples" defaultValue={s.aiExamples} disabled={ro} rows={5} placeholder="Cole 2 ou 3 posts da marca (só o texto). A IA imita o estilo." /></label>
           {!ro && <div><button className="btn primary">Salvar identidade</button></div>}
         </form>

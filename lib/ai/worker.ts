@@ -4,7 +4,7 @@ import { brandSettings, brands, generationBatches, generationItems, imageGenerat
 import { initialPostData } from '../posts';
 import { AiError, generatePost, supportsAi } from './generate';
 import { MAX_IMAGES_PER_POST } from './constants';
-import { IMAGE_MODEL, ImageError, buildPrompt, generateImage, imageEnabled, type AspectRatio } from './image';
+import { IMAGE_MODEL, ImageError, buildPrompt, combineBriefs, generateImage, imageEnabled, type AspectRatio } from './image';
 import { deriveImagePrompt, deriveImagePromptsForPost } from './image-prompt';
 import { plainText } from '../format';
 import { ASSET_URL, saveAsset } from '../assets';
@@ -93,12 +93,13 @@ async function processItem(itemId: string) {
     if (batch.withImages && imageEnabled()) {
       const r = await addImages(row.editor, result.slides, {
         brandId: item.brandId, userId: batch.createdBy, title: result.title || item.brief.slice(0, 60), topic: result.topic,
-        brandName: settings.displayName || row.brandName, niche: settings.aiNiche, audience: settings.aiAudience, imageStyle: settings.aiImageStyle,
+        brandName: settings.displayName || row.brandName, niche: settings.aiNiche, audience: settings.aiAudience, imageStyle: combineBriefs(settings.aiImageStyle, batch.imageBrief),
       }, () => db.update(generationItems).set({ updatedAt: new Date() }).where(eq(generationItems.id, itemId)));
       imageCount = r.count; imageNotes.push(...r.notes);
     }
 
     const data = initialPostData(settings, result.slides);
+    if (batch.imageBrief.trim()) data.g.imageBrief = batch.imageBrief.trim();
     if (row.editor === 'carrossel' && result.topic) data.g.topic = result.topic;
 
     const [post] = await db

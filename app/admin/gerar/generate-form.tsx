@@ -126,6 +126,12 @@ export function GenerateForm({ formats, hasKey, hasImageKey }: { formats: Format
         </span>
       </label>
 
+      {withImages && hasImageKey && (
+        <label className="field">Briefing de imagens deste lote (opcional)
+          <textarea name="imageBrief" rows={3} maxLength={1500} placeholder="Somado ao briefing visual da marca. Ex.: série em tons de azul, estilo ilustração minimalista, sem pessoas." />
+        </label>
+      )}
+
       {!hasKey && <div className="notice warn">A chave da IA ainda não está configurada no servidor (<code>ANTHROPIC_API_KEY</code>).</div>}
       {state?.error && <div className="notice err" role="alert">{state.error}</div>}
 

@@ -4,7 +4,7 @@ import { brandSettings, brands, imageGenerations } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { deriveImagePrompt, type SlideContext } from '@/lib/ai/image-prompt';
 import { ASSET_THUMB_URL, ASSET_URL, saveAsset } from '@/lib/assets';
-import { ASPECT_RATIOS, IMAGE_MODEL, ImageError, MAX_PROMPT_CHARS, buildPrompt, generateImage, imageEnabled, type AspectRatio } from '@/lib/ai/image';
+import { ASPECT_RATIOS, IMAGE_MODEL, ImageError, MAX_PROMPT_CHARS, buildPrompt, combineBriefs, generateImage, imageEnabled, type AspectRatio } from '@/lib/ai/image';
 
 export const maxDuration = 130;
 const DAILY_LIMIT = Number(process.env.AI_IMAGE_DAILY_LIMIT) || 60;
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
   if (!imageEnabled()) return Response.json({ error: 'Geração de imagens não configurada (GEMINI_API_KEY).' }, { status: 503 });
 
-  const body = (await req.json().catch(() => null)) as { prompt?: string; ratio?: string; context?: Partial<SlideContext>; improve?: boolean } | null;
+  const body = (await req.json().catch(() => null)) as { prompt?: string; ratio?: string; context?: Partial<SlideContext>; improve?: boolean; postBrief?: string } | null;
   let description = String(body?.prompt ?? '').trim();
   let ratio = (ASPECT_RATIOS as readonly string[]).includes(body?.ratio ?? '') ? (body!.ratio as AspectRatio) : '4:3';
   const ctxIn = body?.context;
@@ -33,6 +33,7 @@ export async function POST(req: Request) {
     .from(brandSettings)
     .innerJoin(brands, eq(brands.id, brandSettings.brandId))
     .where(eq(brandSettings.brandId, c.brandId));
+  const brief = combineBriefs(settings?.style ?? '', String(body?.postBrief ?? ''));
   try {
     let derived = false;
     let tags: string[] = [];
@@ -47,14 +48,14 @@ export async function POST(req: Request) {
           title: clip(ctxIn.title, 120), topic: clip(ctxIn.topic, 80), format: clip(ctxIn.format, 40) || 'slide',
           hint: improve ? description : undefined,
         },
-        { brandName: settings?.name ?? '', niche: settings?.niche ?? '', audience: settings?.audience ?? '', imageStyle: settings?.style ?? '' },
+        { brandName: settings?.name ?? '', niche: settings?.niche ?? '', audience: settings?.audience ?? '', imageStyle: brief },
       );
       description = art.prompt;
       tags = art.tags;
       if (!body?.ratio && art.ratio && (ASPECT_RATIOS as readonly string[]).includes(art.ratio)) ratio = art.ratio as AspectRatio;
       derived = true;
     }
-    const img = await generateImage(buildPrompt(description, settings?.style ?? ''), ratio);
+    const img = await generateImage(buildPrompt(description, brief), ratio);
     const saved = await saveAsset({ brandId: c.brandId, userId: c.userId, kind: 'ai', data: Buffer.from(img.data, 'base64'), description, tags });
     await db.insert(imageGenerations).values({ brandId: c.brandId, userId: c.userId, model: IMAGE_MODEL, prompt: description.slice(0, 1500), aspectRatio: ratio });
     return Response.json({ id: saved.id, url: ASSET_URL(saved.id), thumb: ASSET_THUMB_URL(saved.id), prompt: description, ratio, derived, reused: saved.reused, remaining: DAILY_LIMIT - n - 1 });

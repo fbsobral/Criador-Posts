@@ -125,6 +125,8 @@ export const generationBatches = pgTable(
     slidesTarget: integer('slides_target').notNull().default(7),
     /** Gerar também as imagens (Nano Banana) dos slides. */
     withImages: boolean('with_images').notNull().default(false),
+    /** Briefing de imagens deste lote (somado ao da marca; vai para cada post gerado). */
+    imageBrief: text('image_brief').notNull().default(''),
     facts: text('facts').notNull().default(''),
     instructions: text('instructions').notNull().default(''),
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),

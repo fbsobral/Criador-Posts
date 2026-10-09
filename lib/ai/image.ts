@@ -35,11 +35,19 @@ export function findImage(node: unknown): { data: string; mime: string } | null 
   return null;
 }
 
-/** Monta o prompt final: estilo da marca + descrição + regras fixas. */
-export function buildPrompt(description: string, brandStyle: string): string {
+export const MAX_BRIEF_CHARS = 1500;
+
+/** Soma o briefing de imagens da marca e o do post (o do post prevalece em caso de conflito). */
+export function combineBriefs(brand: string, post: string): string {
+  const b = brand.trim().slice(0, MAX_BRIEF_CHARS), p = post.trim().slice(0, MAX_BRIEF_CHARS);
+  return [b && `Marca: ${b}`, p && `Este post: ${p}`].filter(Boolean).join('\n');
+}
+
+/** Monta o prompt final: descrição + briefing visual (marca + post) + regras fixas. */
+export function buildPrompt(description: string, brief: string): string {
   return [
     description.trim(),
-    brandStyle.trim() ? `Estilo visual: ${brandStyle.trim()}.` : '',
+    brief.trim() ? `Briefing visual (siga; se houver conflito, o do post prevalece):\n${brief.trim()}` : '',
     'Não inclua texto, letras, números, logotipos nem marcas d\'água na imagem, a menos que a descrição peça explicitamente.',
   ].filter(Boolean).join('\n');
 }

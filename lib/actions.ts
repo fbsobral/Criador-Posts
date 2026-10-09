@@ -230,6 +230,7 @@ export async function createBatch(_prev: BatchState, formData: FormData): Promis
     .insert(generationBatches)
     .values({
       brandId: c.brandId, templateId: tpl.id, mode, slidesTarget, withImages, createdBy: c.userId,
+      imageBrief: withImages ? String(formData.get('imageBrief') ?? '').trim().slice(0, 1500) : '',
       facts: String(formData.get('facts') ?? '').trim().slice(0, 8000),
       instructions: String(formData.get('instructions') ?? '').trim().slice(0, 2000),
     })
@@ -282,7 +283,7 @@ export async function saveAiProfile(formData: FormData) {
   const f = (k: string, max: number) => String(formData.get(k) ?? '').trim().slice(0, max);
   await db.update(brandSettings).set({
     aiNiche: f('aiNiche', 500), aiAudience: f('aiAudience', 500), aiVoice: f('aiVoice', 800),
-    aiRules: f('aiRules', 1500), aiCta: f('aiCta', 300), aiExamples: f('aiExamples', 4000), aiImageStyle: f('aiImageStyle', 400), updatedAt: new Date(),
+    aiRules: f('aiRules', 1500), aiCta: f('aiCta', 300), aiExamples: f('aiExamples', 4000), aiImageStyle: f('aiImageStyle', 1500), updatedAt: new Date(),
   }).where(eq(brandSettings.brandId, c.brandId));
   revalidatePath('/admin/configuracoes');
 }

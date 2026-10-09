@@ -1,0 +1,1 @@
+ALTER TABLE "generation_batches" ADD COLUMN "image_brief" text DEFAULT '' NOT NULL;

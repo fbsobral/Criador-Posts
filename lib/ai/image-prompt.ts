@@ -26,7 +26,7 @@ REGRAS
 - NÃO coloque texto, letras, números, logotipos, interfaces nem gráficos com dados na imagem (o texto do post fica no slide, e modelos de imagem erram números).
 - NÃO retrate pessoas reais ou figuras públicas identificáveis. Pessoas genéricas são aceitáveis só se ajudarem a mensagem.
 - Deixe a composição limpa, com área de respiro, pois o slide terá texto ao lado ou acima.
-- Respeite o estilo visual da marca, se houver.
+- Siga o BRIEFING VISUAL (da marca e do post), se houver. Se os dois entrarem em conflito, o do post prevalece.
 - "tags": 5 a 8 palavras-chave em português (objetos, cenário, tema, clima), minúsculas, para achar esta imagem depois numa galeria.
 
 QUANDO HOUVER "INSTRUÇÃO DO USUÁRIO"
@@ -54,7 +54,7 @@ export async function deriveImagePrompt(ctx: SlideContext, brand: ArtBrand): Pro
 
   const brandLines = [
     brand.brandName && `Marca: ${brand.brandName}`, brand.niche && `Nicho: ${brand.niche}`,
-    brand.audience && `Público: ${brand.audience}`, brand.imageStyle && `Estilo visual das imagens da marca: ${brand.imageStyle}`,
+    brand.audience && `Público: ${brand.audience}`, brand.imageStyle && `BRIEFING VISUAL:\n${brand.imageStyle}`,
   ].filter(Boolean).join('\n');
 
   const user = [
@@ -129,7 +129,7 @@ export async function deriveImagePromptsForPost(
 
   const brandLines = [
     brand.brandName && `Marca: ${brand.brandName}`, brand.niche && `Nicho: ${brand.niche}`,
-    brand.audience && `Público: ${brand.audience}`, brand.imageStyle && `Estilo visual das imagens da marca: ${brand.imageStyle}`,
+    brand.audience && `Público: ${brand.audience}`, brand.imageStyle && `BRIEFING VISUAL:\n${brand.imageStyle}`,
   ].filter(Boolean).join('\n');
   const user = [
     brandLines,
