@@ -2,7 +2,7 @@ import { and, count, eq, gte } from 'drizzle-orm';
 import { db } from '@/db';
 import { brandSettings, brands, imageGenerations } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
-import { deriveImagePrompt, type SlideContext } from '@/lib/ai/image-prompt';
+import { cleanTags, deriveImagePrompt, type SlideContext } from '@/lib/ai/image-prompt';
 import { ASSET_THUMB_URL, ASSET_URL, saveAsset } from '@/lib/assets';
 import { ASPECT_RATIOS, IMAGE_MODEL, ImageError, MAX_PROMPT_CHARS, buildPrompt, combineBriefs, generateImage, imageEnabled, type AspectRatio } from '@/lib/ai/image';
 
@@ -15,11 +15,12 @@ export async function POST(req: Request) {
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
   if (!imageEnabled()) return Response.json({ error: 'Geração de imagens não configurada (GEMINI_API_KEY).' }, { status: 503 });
 
-  const body = (await req.json().catch(() => null)) as { prompt?: string; ratio?: string; context?: Partial<SlideContext>; improve?: boolean; postBrief?: string } | null;
+  const body = (await req.json().catch(() => null)) as { prompt?: string; ratio?: string; context?: Partial<SlideContext>; improve?: boolean; postBrief?: string; mode?: string; hint?: string; previousPrompt?: string; feedback?: string; tags?: string[] } | null;
   let description = String(body?.prompt ?? '').trim();
   let ratio = (ASPECT_RATIOS as readonly string[]).includes(body?.ratio ?? '') ? (body!.ratio as AspectRatio) : '4:3';
   const ctxIn = body?.context;
-  if (description.length < 3 && !(ctxIn && (String(ctxIn.slideText ?? '').trim() || String(ctxIn.title ?? '').trim()))) {
+  const promptOnly = body?.mode === 'prompt';
+  if (!promptOnly && description.length < 3 && !(ctxIn && (String(ctxIn.slideText ?? '').trim() || String(ctxIn.title ?? '').trim()))) {
     return Response.json({ error: 'Descreva a imagem que você quer.' }, { status: 400 });
   }
   if (description.length > MAX_PROMPT_CHARS) return Response.json({ error: `A descrição pode ter até ${MAX_PROMPT_CHARS} caracteres.` }, { status: 400 });
@@ -34,9 +35,30 @@ export async function POST(req: Request) {
     .innerJoin(brands, eq(brands.id, brandSettings.brandId))
     .where(eq(brandSettings.brandId, c.brandId));
   const brief = combineBriefs(settings?.style ?? '', String(body?.postBrief ?? ''));
+  const clip = (v: unknown, n: number) => String(v ?? '').replace(/\s+/g, ' ').trim().slice(0, n);
+
+  // Modo "prompt": só cria (ou ajusta, com feedback) a descrição, para o usuário revisar. Não gera imagem nem conta no limite.
+  if (promptOnly) {
+    if (!ctxIn) return Response.json({ error: 'Faltou o contexto do slide.' }, { status: 400 });
+    try {
+      const art = await deriveImagePrompt(
+        {
+          slideText: clip(ctxIn.slideText, 900), slideIndex: Number(ctxIn.slideIndex) || 1, total: Number(ctxIn.total) || 1,
+          outline: (Array.isArray(ctxIn.outline) ? ctxIn.outline : []).slice(0, 14).map((l) => clip(l, 160)),
+          title: clip(ctxIn.title, 120), topic: clip(ctxIn.topic, 80), format: clip(ctxIn.format, 40) || 'slide',
+          hint: clip(body?.hint, 1500) || undefined, previous: clip(body?.previousPrompt, 1500) || undefined, feedback: clip(body?.feedback, 600) || undefined,
+        },
+        { brandName: settings?.name ?? '', niche: settings?.niche ?? '', audience: settings?.audience ?? '', imageStyle: brief },
+      );
+      return Response.json({ prompt: art.prompt, tags: art.tags, ratio: art.ratio });
+    } catch (e) {
+      const err = e instanceof ImageError ? e : new ImageError('Não foi possível criar a descrição.');
+      return Response.json({ error: err.message }, { status: err.status });
+    }
+  }
   try {
     let derived = false;
-    let tags: string[] = [];
+    let tags: string[] = cleanTags(body?.tags);
     const improve = !!body?.improve && description.length >= 3 && !!ctxIn && !!process.env.ANTHROPIC_API_KEY;
     if ((description.length < 3 || improve) && ctxIn) {
       // modo automático: o Claude cria a descrição a partir do texto do slide e do contexto do post

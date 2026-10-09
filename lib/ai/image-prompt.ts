@@ -12,6 +12,9 @@ export type SlideContext = {
   format: string;
   /** Instrução de imagem escrita pelo usuário/roteiro (pode estar vaga ou fraca). */
   hint?: string;
+  /** Regeração: a descrição anterior e o que o usuário não gostou. */
+  previous?: string;
+  feedback?: string;
 };
 
 export type ArtBrand = { brandName: string; niche: string; audience: string; imageStyle: string };
@@ -28,6 +31,11 @@ REGRAS
 - Deixe a composição limpa, com área de respiro, pois o slide terá texto ao lado ou acima.
 - Siga o BRIEFING VISUAL (da marca e do post), se houver. Se os dois entrarem em conflito, o do post prevalece.
 - "tags": 5 a 8 palavras-chave em português (objetos, cenário, tema, clima), minúsculas, para achar esta imagem depois numa galeria.
+
+QUANDO HOUVER "FEEDBACK DO USUÁRIO"
+- A imagem gerada com a DESCRIÇÃO ANTERIOR não agradou. Reescreva a descrição aplicando o feedback com precisão, mantendo o que funcionava e mudando só o necessário para atender ao pedido.
+- Se o feedback pedir algo vago (ex.: "mais bonito"), traduza em decisões visuais concretas (luz, enquadramento, paleta, quantidade de objetos).
+- Continue respeitando as regras acima e o briefing visual.
 
 QUANDO HOUVER "INSTRUÇÃO DO USUÁRIO"
 - Se estiver clara e boa, preserve a intenção e apenas enriqueça (composição, luz, paleta, enquadramento).
@@ -49,7 +57,7 @@ const SCHEMA = {
 
 /** Cria a descrição da imagem a partir do texto do slide e do contexto do post. */
 export async function deriveImagePrompt(ctx: SlideContext, brand: ArtBrand): Promise<{ prompt: string; ratio: string | null; tags: string[] }> {
-  if (process.env.AI_MOCK === '1') return { prompt: `${ctx.hint ? 'Versão melhorada de "' + ctx.hint.slice(0, 40) + '": ' : ''}imagem de apoio simbólica para: ${ctx.slideText.slice(0, 80)}`, ratio: null, tags: [] };
+  if (process.env.AI_MOCK === '1') return { prompt: `${ctx.feedback ? `[ajustada: ${ctx.feedback.slice(0, 40)}] ` : ''}${ctx.hint ? 'Versão melhorada de "' + ctx.hint.slice(0, 40) + '": ' : ''}imagem de apoio simbólica para: ${ctx.slideText.slice(0, 80)}`, ratio: null, tags: [] };
   if (!process.env.ANTHROPIC_API_KEY) throw new ImageError('Para criar a descrição automática é preciso a ANTHROPIC_API_KEY. Ou escreva a descrição você mesmo.', 503);
 
   const brandLines = [
@@ -65,6 +73,8 @@ export async function deriveImagePrompt(ctx: SlideContext, brand: ArtBrand): Pro
     ctx.outline.length ? `ROTEIRO COMPLETO (resumo de cada slide):\n${ctx.outline.map((l) => `- ${l}`).join('\n')}` : '',
     `TEXTO DESTE SLIDE:\n${ctx.slideText || '(slide sem texto: use o título e o roteiro do post)'}`,
     ctx.hint?.trim() ? `INSTRUÇÃO DO USUÁRIO PARA A IMAGEM:\n${ctx.hint.trim()}` : '',
+    ctx.previous?.trim() ? `DESCRIÇÃO ANTERIOR (a imagem não agradou):\n${ctx.previous.trim()}` : '',
+    ctx.feedback?.trim() ? `FEEDBACK DO USUÁRIO:\n${ctx.feedback.trim()}` : '',
   ].filter(Boolean).join('\n\n');
 
   try {

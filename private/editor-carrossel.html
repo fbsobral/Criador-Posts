@@ -209,6 +209,22 @@
   .gal-empty { grid-column: 1 / -1; text-align: center; color: #8a857a; padding: 30px 10px; font-size: 14px; }
   .gal-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 18px; border-top: 1px solid #E8E3D8; }
 
+  .aim-card { width: min(640px, 100%); }
+  .aim-body { padding: 16px 18px 18px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+  .aim-lbl { font-weight: 700; font-size: 14px; } .aim-lbl small { font-weight: 400; color: #8a857a; margin-left: 6px; }
+  .aim-body textarea { width: 100%; padding: 10px 12px; border: 1px solid #D9D3C5; border-radius: 12px; font: inherit; font-size: 14px; line-height: 1.45; resize: vertical; }
+  .aim-body textarea:focus { outline: none; border-color: #F97335; box-shadow: 0 0 0 4px rgba(249,115,53,.16); }
+  .aim-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; } .aim-row select { padding: 8px 10px; border: 1px solid #D9D3C5; border-radius: 10px; font: inherit; font-size: 13.5px; background: #fff; } .aim-row small { color: #8a857a; }
+  .aim-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .aim-wait { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 40px 10px; text-align: center; } .aim-wait small { color: #8a857a; }
+  .aim-spin { width: 40px; height: 40px; border-radius: 50%; border: 4px solid #E8E3D8; border-top-color: #F97335; animation: aimspin .8s linear infinite; } @keyframes aimspin { to { transform: rotate(360deg); } }
+  .aim-err { padding: 14px; border-radius: 12px; background: #FDF0ED; border: 1px solid #F2C9C1; display: flex; flex-direction: column; gap: 8px; } .aim-err p { color: #c8341f; font-size: 14px; }
+  .aim-result { border-radius: 14px; overflow: hidden; background: #EDEAE5; border: 1px solid #E8E3D8; } .aim-result img { display: block; width: 100%; max-height: 46vh; object-fit: contain; }
+  .aim-vers { display: flex; gap: 8px; overflow-x: auto; } .aim-vers button { flex: none; width: 64px; height: 48px; padding: 0; border: 2px solid #E8E3D8; border-radius: 10px; overflow: hidden; background: #fff; } .aim-vers button.on { border-color: #F97335; } .aim-vers img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .aim-det { font-size: 12.5px; color: #55524c; } .aim-det summary { cursor: pointer; font-weight: 600; } .aim-det p { margin-top: 6px; line-height: 1.45; max-height: 120px; overflow: auto; }
+  .aim-fb { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: #FFF8F4; border: 1px dashed #F9B38F; }
+  .aim-chips { display: flex; gap: 6px; flex-wrap: wrap; } .aim-chips button { padding: 4px 10px; border-radius: 99px; border: 1px solid #F2D5C4; background: #fff; font: inherit; font-size: 12px; font-weight: 600; color: #B8481C; cursor: pointer; } .aim-chips button:hover { background: #FFE9DD; }
+
   /* ===== acabamento (design system do admin) ===== */
   :root { --ui-bg: #F4F1EB; --ui-line: #E8E3D8; --accent: #F97335; }
   body { background: var(--ui-bg); }
@@ -394,6 +410,13 @@
     <h2>Escolha o formato do novo slide</h2>
     <div class="fmt-grid" id="modalGrid"></div>
     <button class="btn close" id="modalClose">Cancelar</button>
+  </div>
+</div>
+
+<div class="gal-modal" id="aiModal" hidden>
+  <div class="gal-card aim-card" role="dialog" aria-modal="true" aria-labelledby="aimTitle">
+    <div class="gal-head"><b id="aimTitle">Imagem com IA</b><button type="button" class="btn small ghost" id="aimClose" aria-label="Fechar">✕</button></div>
+    <div class="aim-body" id="aimBody"></div>
   </div>
 </div>
 
@@ -1073,32 +1096,103 @@ function setAiBusy(on) {
   const b = $('btnAiImg'); if (b) { b.disabled = on || !(HOST && HOST.imageEnabled); b.textContent = on ? 'Gerando… (10–30 s)' : AI_BTN; }
   document.querySelectorAll('[data-ai]').forEach(x => { x.disabled = on; x.textContent = on ? 'Gerando…' : AI_PH_BTN; });
 }
+/** Entrada dos botões "Gerar com IA": galeria primeiro; depois a janela de descrição → imagem → feedback. */
 async function aiGenerate(opts) {
   if (aiBusy || !aiOn) return;
-  const s = cur(), prompt = $('aiPrompt').value.trim(), ratio = $('aiRatio').value, m = $('aiMsg');
-  setAiBusy(true); m.className = 'aimsg'; m.textContent = prompt ? 'Aguarde, o Nano Banana está criando a imagem.' : 'Criando a descrição a partir do slide e gerando a imagem…';
-  try {
-    if (!prompt && galOn && !(opts && opts.skipGallery)) {
-      m.textContent = 'Procurando imagens parecidas na galeria…';
-      const hits = await findSimilar();
-      if (hits.length) { m.textContent = ''; openGallery('suggest', hits); return; }
-    }
-    const improve = !!prompt && $('aiImprove').checked;
-    const body = { ratio, postBrief: (g.imageBrief || '').trim() };
-    if (prompt) body.prompt = prompt;
-    if (!prompt || improve) body.context = slideContext();
-    if (improve) body.improve = true;
-    const r = await fetch(HOST.imageUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-    const j = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(j.error || 'Não foi possível gerar a imagem.');
-    s.image = j.url;
-    s.imagePrompt = j.prompt || prompt; s.aiRatio = ratio;
-    if (s === cur()) afterChange(true); else { renderThumbs(); scheduleSave(); }
-  } catch (e) {
-    m.className = 'aimsg err'; m.textContent = e.message || 'Erro ao gerar a imagem.'; status(m.textContent);
-  } finally {
-    setAiBusy(false);
+  const s = cur(), typed = $('aiPrompt').value.trim(), improve = !!typed && $('aiImprove').checked, ratio = $('aiRatio').value, m = $('aiMsg');
+  if (!typed && galOn && !(opts && opts.skipGallery)) {
+    setAiBusy(true); m.className = 'aimsg'; m.textContent = 'Procurando imagens parecidas na galeria…';
+    const hits = await findSimilar(); setAiBusy(false); m.textContent = '';
+    if (hits.length) { openGallery('suggest', hits); return; }
   }
+  aimOpen(s, { typed, improve, ratio });
+}
+
+/* ---- janela "Imagem com IA": 1) descrição (editável) → 2) imagem → 3) usar, regerar com feedback ou descartar ---- */
+const AIM = { s: null, ratio: '4:3', prompt: '', tags: [], cands: [], cur: -1, ctx: null, brief: '' };
+const AIM_RATIOS = [['16:9', 'Paisagem 16:9'], ['4:3', 'Paisagem 4:3'], ['1:1', 'Quadrada 1:1'], ['4:5', 'Retrato 4:5'], ['3:4', 'Retrato 3:4']];
+const AIM_CHIPS = ['Mais claro', 'Mais escuro', 'Mais simples', 'Menos objetos', 'Mudar o enquadramento', 'Sem pessoas', 'Mais realista', 'Mais minimalista'];
+const directPref = () => { try { return localStorage.getItem('ai_direct') === '1'; } catch (e) { return false; } };
+const setDirectPref = v => { try { localStorage.setItem('ai_direct', v ? '1' : '0'); } catch (e) {} };
+const aimShow = html => { $('aimBody').innerHTML = html; };
+const aimLoading = msg => aimShow(`<div class="aim-wait"><div class="aim-spin"></div><b>${esc(msg)}</b><small>Pode levar alguns segundos.</small></div>`);
+function closeAim() { $('aiModal').hidden = true; document.body.style.overflow = ''; }
+function aimOpen(s, o) {
+  Object.assign(AIM, { s, ratio: o.ratio, cands: [], cur: -1, ctx: slideContext(), brief: (g.imageBrief || '').trim() });
+  $('aiModal').hidden = false; document.body.style.overflow = 'hidden';
+  if (o.typed && !o.improve) { AIM.prompt = o.typed; AIM.tags = []; aimGenerate(); return; } // a descrição é sua: vai direto
+  aimMakePrompt({ hint: o.improve ? o.typed : '' });
+}
+async function aimApi(body) {
+  const r = await fetch(HOST.imageUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.assign({ ratio: AIM.ratio, postBrief: AIM.brief }, body)) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Não foi possível concluir.');
+  return j;
+}
+function aimError(msg, retry) {
+  aimShow(`<div class="aim-err"><b>Não deu certo</b><p>${esc(msg)}</p><div class="aim-actions"><button type="button" class="btn primary" id="aimRetry">Tentar de novo</button><button type="button" class="btn" id="aimClose2">Fechar</button></div></div>`);
+  $('aimRetry').onclick = retry; $('aimClose2').onclick = closeAim;
+}
+async function aimMakePrompt(o) {
+  aimLoading(o.feedback ? 'Ajustando a descrição com o seu feedback…' : 'Criando a descrição a partir do slide…');
+  try {
+    const j = await aimApi({ mode: 'prompt', context: AIM.ctx, hint: o.hint || undefined, previousPrompt: o.previous, feedback: o.feedback });
+    AIM.prompt = j.prompt; AIM.tags = j.tags || [];
+    if ((o.feedback || directPref()) && !o.review) { aimGenerate(); return; } // com feedback (após ver a imagem) ou no modo "gerar direto", não pede nova aprovação
+    aimPromptView();
+  } catch (e) { aimError(e.message, () => aimMakePrompt(o)); }
+}
+function aimPromptView() {
+  aimShow(`
+    <label class="aim-lbl" for="aimPrompt">Descrição da imagem <small>Revise e edite antes de gerar</small></label>
+    <textarea id="aimPrompt" rows="7" maxlength="1500">${esc(AIM.prompt)}</textarea>
+    <div class="aim-row"><select id="aimRatio" title="Proporção">${AIM_RATIOS.map(([v, l]) => `<option value="${v}"${v === AIM.ratio ? ' selected' : ''}>${l}</option>`).join('')}</select><small>Gerar a imagem custa cerca de US$ 0,03.</small></div>
+    <div class="aim-actions"><button type="button" class="btn primary" id="aimGo">✨ Gerar imagem</button><button type="button" class="btn" id="aimAgain">Criar outra descrição</button><button type="button" class="btn ghost" id="aimCancel">Cancelar</button></div>
+    <label class="aicheck"><input type="checkbox" id="aimDirect"${directPref() ? ' checked' : ''}> Da próxima vez, gerar direto (sem pedir aprovação da descrição)</label>`);
+  $('aimGo').onclick = () => { AIM.prompt = $('aimPrompt').value.trim(); AIM.ratio = $('aimRatio').value; if (AIM.prompt.length < 3) return; aimGenerate(); };
+  $('aimAgain').onclick = () => aimMakePrompt({ previous: $('aimPrompt').value.trim(), feedback: 'Crie uma abordagem visual diferente desta, com outra cena e outra composição.', review: true }); // só troca a descrição: quem gera é você
+  $('aimCancel').onclick = closeAim;
+  $('aimDirect').onchange = e => setDirectPref(e.target.checked);
+  $('aimPrompt').focus();
+}
+async function aimGenerate() {
+  aimLoading('Gerando a imagem…');
+  try {
+    const j = await aimApi({ mode: 'image', prompt: AIM.prompt, tags: AIM.tags });
+    AIM.cands.push({ id: j.id, url: j.url, thumb: j.thumb || j.url, reused: !!j.reused, prompt: AIM.prompt, tags: AIM.tags });
+    AIM.cur = AIM.cands.length - 1; aimResultView();
+  } catch (e) { aimError(e.message, aimGenerate); }
+}
+function aimResultView() {
+  const c = AIM.cands[AIM.cur];
+  aimShow(`
+    <div class="aim-result"><img src="${esc(c.url)}" alt="Imagem gerada"></div>
+    ${AIM.cands.length > 1 ? `<div class="aim-vers" aria-label="Versões geradas">${AIM.cands.map((x, i) => `<button type="button" class="${i === AIM.cur ? 'on' : ''}" data-v="${i}" title="Versão ${i + 1}"><img src="${esc(x.thumb)}" alt="Versão ${i + 1}"></button>`).join('')}</div>` : ''}
+    <details class="aim-det"><summary>Ver a descrição usada</summary><p>${esc(c.prompt)}</p></details>
+    <div class="aim-fb"><label class="aim-lbl" for="aimFb">Não ficou bom? Diga o que mudar</label>
+      <div class="aim-chips">${AIM_CHIPS.map(t => `<button type="button" data-chip="${esc(t)}">${esc(t)}</button>`).join('')}</div>
+      <textarea id="aimFb" rows="2" maxlength="600" placeholder="Ex.: menos objetos na mesa, luz mais fria, sem a xícara…"></textarea>
+      <button type="button" class="btn" id="aimRegen">↻ Regerar com este feedback (≈ US$ 0,03)</button></div>
+    <div class="aim-actions"><button type="button" class="btn primary" id="aimUse">✓ Usar esta imagem</button><button type="button" class="btn ghost danger" id="aimDrop">Descartar</button></div>
+    <small class="aimsg">As versões geradas ficam na Galeria até você usar uma (as outras saem da galeria ao usar).</small>`);
+  document.querySelectorAll('.aim-vers [data-v]').forEach(b => b.onclick = () => { AIM.cur = +b.dataset.v; aimResultView(); });
+  document.querySelectorAll('.aim-chips [data-chip]').forEach(b => b.onclick = () => { const t = $('aimFb'); t.value = (t.value.trim() ? t.value.trim() + '; ' : '') + b.dataset.chip.toLowerCase(); t.focus(); });
+  $('aimRegen').onclick = () => { const fb = $('aimFb').value.trim(); if (fb.length < 3) { $('aimFb').focus(); $('aimFb').placeholder = 'Escreva ou escolha o que mudar'; return; } aimMakePrompt({ previous: c.prompt, feedback: fb }); };
+  $('aimUse').onclick = aimUse;
+  $('aimDrop').onclick = () => { AIM.cands.forEach(x => aimDelete(x)); closeAim(); };
+}
+const aimDelete = c => { if (c && c.id && !c.reused) fetch(`${HOST.assetsUrl}/${c.id}`, { method: 'DELETE' }).catch(() => {}); };
+function aimUse() {
+  const c = AIM.cands[AIM.cur], s = AIM.s;
+  s.image = c.url; s.imagePrompt = c.prompt; s.aiRatio = AIM.ratio;
+  fetch(HOST.assetsUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ use: c.id }) }).catch(() => {});
+  AIM.cands.forEach((x, i) => { if (i !== AIM.cur) aimDelete(x); }); // as outras versões saem da galeria
+  closeAim(); applyAsset(s);
+}
+if (aiOn) {
+  $('aimClose').addEventListener('click', closeAim);
+  $('aiModal').addEventListener('click', e => { if (e.target === $('aiModal')) closeAim(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('aiModal').hidden) closeAim(); });
 }
 if (aiOn) {
   $('aiPrompt').addEventListener('input', e => { cur().imagePrompt = e.target.value; scheduleSave(); });
