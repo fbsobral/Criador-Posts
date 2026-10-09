@@ -85,6 +85,13 @@
       "when": 1791565052171,
       "tag": "0011_post_source",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791565255765,
+      "tag": "0012_caption",
+      "breakpoints": true
     }
   ]
 }

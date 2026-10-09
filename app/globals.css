@@ -417,3 +417,19 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 .editor-bar .pill:first-of-type { margin-left: auto; }
 .bar-actions { padding: 0 !important; margin-left: 4px; }
 .editor-bar .in-list .rename-form { z-index: 60; }
+
+/* ============ legenda ============ */
+.caption-form { width: min(460px, calc(100vw - 32px)) !important; }
+.in-list .caption-form { right: 0; }
+.caption-form textarea { min-height: 150px; }
+.cap-meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+.cap-meta select { padding: 6px 9px; }
+.cap-over { color: var(--danger); font-weight: 700; }
+.cap-ok { color: var(--ok); font-weight: 600; }
+.cap-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.cap-btn { position: relative; }
+.cap-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; margin-left: 2px; }
+@media (max-width: 520px) { .cap-btn span { display: none; } }
+.gen-cap { font-size: 12.5px; color: var(--ink-2); }
+.gen-cap summary { cursor: pointer; font-weight: 600; color: var(--primary); }
+.gen-cap p { white-space: pre-wrap; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; margin: 6px 0; max-height: 160px; overflow: auto; line-height: 1.45; }

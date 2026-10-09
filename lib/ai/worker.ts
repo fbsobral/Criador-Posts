@@ -83,7 +83,7 @@ async function processItem(itemId: string) {
       brand: {
         brandName: settings.displayName || row.brandName,
         niche: settings.aiNiche, audience: settings.aiAudience, voice: settings.aiVoice,
-        rules: settings.aiRules, cta: settings.aiCta, examples: settings.aiExamples,
+        rules: settings.aiRules, cta: settings.aiCta, examples: settings.aiExamples, captionRules: settings.aiCaptionRules,
       },
     });
 
@@ -106,7 +106,7 @@ async function processItem(itemId: string) {
       .insert(posts)
       .values({
         brandId: item.brandId, templateId: row.templateId, status: 'draft',
-        title: result.title || item.brief.slice(0, 60),
+        title: result.title || item.brief.slice(0, 60), caption: result.caption,
         data, createdBy: batch.createdBy, updatedBy: batch.createdBy,
       })
       .returning({ id: posts.id });

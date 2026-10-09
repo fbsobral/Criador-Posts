@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { db } from '@/db';
-import { assets, brandSettings, colorPalettes, generationBatches, generationItems, posts, templates } from '@/db/schema';
+import { assets, brands, brandSettings, colorPalettes, generationBatches, generationItems, posts, templates } from '@/db/schema';
 import { getCtx, getBrandSettings, ensureBrand } from './ctx';
 import { DEFAULT_STYLE, GLOBAL_PRESETS } from './themes';
 import { EDITORS, type EditorKey } from './editors';
@@ -15,7 +15,9 @@ import { imageEnabled } from './ai/image';
 import { MAX_ITEMS_PER_BATCH, MAX_SLIDES, collectBriefs } from './ai/constants';
 import { kickBatch } from './ai/worker';
 import { ASSET_URL_RE, importPostImagesFor } from './assets';
-import { ConvertError, convertPostFormat } from './convert';
+import { ConvertError, convertPostFormat, toScript } from './convert';
+import { NETWORKS, generateCaptionText, type Network } from './ai/caption';
+import { AiError } from './ai/generate';
 
 async function need() {
   const c = await getCtx();
@@ -300,7 +302,7 @@ export async function saveAiProfile(formData: FormData) {
   const f = (k: string, max: number) => String(formData.get(k) ?? '').trim().slice(0, max);
   await db.update(brandSettings).set({
     aiNiche: f('aiNiche', 500), aiAudience: f('aiAudience', 500), aiVoice: f('aiVoice', 800),
-    aiRules: f('aiRules', 1500), aiCta: f('aiCta', 300), aiExamples: f('aiExamples', 4000), aiImageStyle: f('aiImageStyle', 1500), updatedAt: new Date(),
+    aiRules: f('aiRules', 1500), aiCta: f('aiCta', 300), aiExamples: f('aiExamples', 4000), aiImageStyle: f('aiImageStyle', 1500), aiCaptionRules: f('aiCaptionRules', 800), updatedAt: new Date(),
   }).where(eq(brandSettings.brandId, c.brandId));
   revalidatePath('/admin/configuracoes');
 }
@@ -333,4 +335,43 @@ export async function convertPost(_prev: ConvertState, formData: FormData): Prom
   }
   revalidatePath('/admin/posts');
   redirect(`/admin/posts/${newId}`);
+}
+
+
+export type CaptionResult = { caption?: string; error?: string };
+
+/** Gera (ou ajusta, com o pedido) a legenda do post para a rede escolhida e já salva. */
+export async function generateCaption(postId: string, network: string, instruction: string): Promise<CaptionResult> {
+  const c = await need();
+  const net: Network = network in NETWORKS ? (network as Network) : 'instagram';
+  const [row] = await db
+    .select({ post: posts, editor: templates.editor })
+    .from(posts)
+    .leftJoin(templates, eq(templates.id, posts.templateId))
+    .where(and(eq(posts.id, postId), eq(posts.brandId, c.brandId)));
+  if (!row) return { error: 'Post não encontrado.' };
+  const [[st], [br]] = await Promise.all([
+    db.select().from(brandSettings).where(eq(brandSettings.brandId, c.brandId)),
+    db.select({ name: brands.name }).from(brands).where(eq(brands.id, c.brandId)),
+  ]);
+  const editor = row.editor === 'tweet' ? 'tweet' : 'carrossel';
+  const slides = (Array.isArray(row.post.data.slides) ? row.post.data.slides : []) as Record<string, unknown>[];
+  try {
+    const caption = await generateCaptionText({
+      script: toScript(editor, slides), title: row.post.title, network: net,
+      instruction: String(instruction ?? '').slice(0, 600), previous: row.post.caption || undefined,
+      brand: { brandName: st?.displayName || br?.name || '', niche: st?.aiNiche ?? '', audience: st?.aiAudience ?? '', voice: st?.aiVoice ?? '', rules: st?.aiRules ?? '', cta: st?.aiCta ?? '', examples: st?.aiExamples ?? '', captionRules: st?.aiCaptionRules ?? '' },
+    });
+    await db.update(posts).set({ caption }).where(eq(posts.id, postId));
+    return { caption };
+  } catch (e) {
+    return { error: e instanceof AiError ? e.message : 'Não foi possível gerar a legenda.' };
+  }
+}
+
+/** Salva a legenda editada à mão. */
+export async function saveCaption(postId: string, caption: string): Promise<{ ok: boolean }> {
+  const c = await need();
+  const res = await db.update(posts).set({ caption: String(caption ?? '').slice(0, 4000) }).where(and(eq(posts.id, postId), eq(posts.brandId, c.brandId))).returning({ id: posts.id });
+  return { ok: res.length > 0 };
 }

@@ -9,6 +9,7 @@ import { deleteBatch, regenerateItem, retryFailed } from '@/lib/actions';
 import { IconBack, IconTrash } from '../../../icons';
 import { PostPreview } from '../../post-preview';
 import { AutoRefresh } from './auto-refresh';
+import { CopyCaption } from './copy-caption';
 
 const LABEL = { queued: 'Na fila', running: 'Gerando…', done: 'Pronto', error: 'Erro' } as const;
 
@@ -27,6 +28,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
       colors: sql<Record<string, string> | null>`${posts.data}->'g'->'colors'`,
       text: sql<string | null>`coalesce(left(${posts.data}->'slides'->0->>'html', 900), left(${posts.data}->'slides'->0->>'text', 400))`,
       title: posts.title,
+      caption: posts.caption,
       slides: sql<number>`case when jsonb_typeof(${posts.data}->'slides') = 'array' then jsonb_array_length(${posts.data}->'slides') else 0 end`,
     })
     .from(generationItems)
@@ -60,7 +62,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
       <div className="progress" aria-label={`${pct}% concluído`}><span style={{ width: `${pct}%` }} /></div>
 
       <div className="gen-items">
-        {items.map(({ it, theme, colors, text, title, slides }) => (
+        {items.map(({ it, theme, colors, text, title, slides, caption }) => (
           <article className={`card-surface gen-item ${it.status}`} key={it.id}>
             <div className="gen-thumb">
               {it.status === 'done' && it.postId
@@ -73,6 +75,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
                 {it.status === 'done' && <span className="muted">{slides} slides{it.imageCount > 0 ? ` · ${it.imageCount} ${it.imageCount === 1 ? 'imagem' : 'imagens'}` : ''} · {fmtUsd(costUsd(it.inputTokens, it.outputTokens) + it.imageCount * IMAGE_COST_USD)}</span>}
               </div>
               {it.status === 'done' && title ? <b className="gen-title">{title}</b> : null}
+              {it.status === 'done' && caption && <CopyCaption text={caption} />}
               {it.status === 'done' && !it.postId && <p className="muted">Este post foi migrado para outra marca ou excluído.</p>}
               <p className="gen-brief">{it.brief}</p>
               {it.status === 'error' && <p className="gen-err">{it.error}</p>}

@@ -19,6 +19,8 @@ export type BrandProfile = {
   rules: string;
   cta: string;
   examples: string;
+  /** Regras das legendas (hashtags fixas, rodapé, tamanho…). */
+  captionRules?: string;
 };
 
 export type GenerateInput = {
@@ -36,6 +38,8 @@ export type GenerateInput = {
 export type GenerateResult = {
   title: string;
   topic: string;
+  /** Legenda pronta para publicar junto com o post. */
+  caption: string;
   slides: Record<string, unknown>[];
   /** Linhas para o revisor: sugestões de imagem e dados a conferir. */
   notes: string[];
@@ -66,15 +70,22 @@ export function sanitizeHtml(html: string): string {
 const clean = (s: unknown, max = 400) => (typeof s === 'string' ? s.trim().slice(0, max) : '');
 
 /* ---------- instruções ---------- */
-function brandBlock(b: BrandProfile): string {
+export function brandBlock(b: BrandProfile): string {
   const lines = [
     ['Marca', b.brandName], ['Nicho', b.niche], ['Público', b.audience], ['Tom de voz', b.voice],
-    ['Regras (o que sempre/nunca fazer)', b.rules], ['Chamada para ação (CTA) padrão', b.cta],
+    ['Regras (o que sempre/nunca fazer)', b.rules], ['Chamada para ação (CTA) padrão', b.cta], ['Regras das legendas', b.captionRules ?? ''],
   ].filter(([, v]) => v.trim());
   let out = lines.map(([k, v]) => `- ${k}: ${v.trim()}`).join('\n');
   if (b.examples.trim()) out += `\n\nEXEMPLOS DE POSTS DESTA MARCA (imite o estilo, não copie o conteúdo):\n${b.examples.trim()}`;
   return out ? `IDENTIDADE DA MARCA\n${out}` : '';
 }
+
+const CAPTION_RULES = `LEGENDA ("caption")
+Escreva também a legenda para publicar junto com o post (padrão: Instagram):
+- 1ª linha: um gancho curto que mostra o que a pessoa ganha ao ler.
+- 2 a 4 parágrafos curtos que COMPLEMENTAM os slides (não os repita), terminando com a chamada para ação da marca, se houver.
+- Hashtags no fim: siga as "Regras das legendas" da marca; se não houver, use 3 a 5 relevantes.
+- No máximo ~900 caracteres. Não invente fatos, números ou fontes.`;
 
 const COMMON_RULES = `REGRAS GERAIS
 - Escreva em português do Brasil, salvo se o briefing estiver em outro idioma.
@@ -132,6 +143,7 @@ function systemPrompt(i: GenerateInput): string {
     i.editor === 'carrossel' ? CARROSSEL_FORMAT : TWEET_FORMAT,
     modeBlock(i.mode, i.slidesTarget),
     i.withImages ? (i.editor === 'carrossel' ? IMAGES_CARROSSEL : IMAGES_TWEET) : '',
+    CAPTION_RULES,
     COMMON_RULES,
   ].filter(Boolean).join('\n\n');
 }
@@ -146,9 +158,9 @@ function userPrompt(i: GenerateInput): string {
 /* ---------- esquemas de saída (JSON estruturado) ---------- */
 const STR = { type: 'string' } as const;
 const CARROSSEL_SCHEMA = {
-  type: 'object', additionalProperties: false, required: ['title', 'topic', 'slides', 'to_verify'],
+  type: 'object', additionalProperties: false, required: ['title', 'topic', 'slides', 'to_verify', 'caption'],
   properties: {
-    title: STR, topic: STR, to_verify: { type: 'array', items: STR },
+    title: STR, topic: STR, caption: STR, to_verify: { type: 'array', items: STR },
     slides: {
       type: 'array',
       items: {
@@ -159,9 +171,9 @@ const CARROSSEL_SCHEMA = {
   },
 };
 const TWEET_SCHEMA = {
-  type: 'object', additionalProperties: false, required: ['title', 'slides', 'to_verify'],
+  type: 'object', additionalProperties: false, required: ['title', 'slides', 'to_verify', 'caption'],
   properties: {
-    title: STR, to_verify: { type: 'array', items: STR },
+    title: STR, caption: STR, to_verify: { type: 'array', items: STR },
     slides: {
       type: 'array',
       items: { type: 'object', additionalProperties: false, required: ['text', 'button', 'image_note'], properties: { text: STR, button: STR, image_note: STR } },
@@ -170,7 +182,7 @@ const TWEET_SCHEMA = {
 };
 
 /* ---------- mapeamento para o formato nativo de cada editor ---------- */
-type Mapped = { title: string; topic: string; slides: Record<string, unknown>[]; notes: string[] };
+type Mapped = { title: string; topic: string; caption: string; slides: Record<string, unknown>[]; notes: string[] };
 
 function notesFor(list: any[], toVerify: unknown, imageSlide: (s: any, i: number) => string): string[] {
   const notes: string[] = [];
@@ -190,7 +202,7 @@ function mapCarrossel(data: any): Mapped {
     return { format, html: format === 'image' ? '' : sanitizeHtml(String(s?.html ?? '')), image: null, imagePrompt: clean(s?.image_note), fit: 'cover', showProfile: true, showMore: s?.show_more !== false };
   });
   return {
-    title: clean(data?.title, 80), topic: clean(data?.topic, 60), slides,
+    title: clean(data?.title, 80), topic: clean(data?.topic, 60), caption: clean(data?.caption, 2200), slides,
     notes: notesFor(list, data?.to_verify, (s, i) => (slides[i].format.includes('image') ? 'insira a imagem deste slide' : '')),
   };
 }
@@ -205,7 +217,7 @@ function mapTweet(data: any): Mapped {
       showMetrics: false, // sem números de engajamento inventados
     };
   });
-  return { title: clean(data?.title, 80), topic: '', slides, notes: notesFor(list, data?.to_verify, () => '') };
+  return { title: clean(data?.title, 80), topic: '', caption: clean(data?.caption, 2200), slides, notes: notesFor(list, data?.to_verify, () => '') };
 }
 
 const EDITORS = {
@@ -261,7 +273,7 @@ async function mockPost(i: GenerateInput): Promise<GenerateResult> {
   const n = Math.min(i.slidesTarget, 5);
   const topic = i.brief.split('\n')[0].slice(0, 40);
   const raw = {
-    title: i.brief.slice(0, 50), topic, to_verify: ['Confira os dados citados antes de publicar.'],
+    title: i.brief.slice(0, 50), topic, caption: `Legenda de exemplo sobre ${topic}.\n\nSiga para mais. #exemplo`, to_verify: ['Confira os dados citados antes de publicar.'],
     slides: Array.from({ length: n }, (_, k) =>
       i.editor === 'carrossel'
         ? { format: k === 0 ? 'cover' : k === 2 ? 'text-image' : 'text', html: `<h2>${k === 0 ? topic : `Ponto ${k}`}</h2><p>Texto de exemplo do slide ${k + 1}.</p><script>x</script>`, show_more: k < n - 1, image_note: k === 2 ? 'gráfico comparando os dois cenários' : '' }

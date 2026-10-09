@@ -8,6 +8,7 @@ import { IconBack } from '../../../icons';
 import { EditorFrame } from './editor-frame';
 import { RenameTitle } from './rename-title';
 import { ConvertButton } from '../convert-button';
+import { CaptionPanel } from '../caption-panel';
 
 export default async function PostEditor({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -15,7 +16,7 @@ export default async function PostEditor({ params }: { params: Promise<{ id: str
   if (!/^[0-9a-f-]{36}$/.test(id)) notFound();
   const [post] = await db
     .select({
-      id: posts.id, title: posts.title, status: posts.status, editor: templates.editor, sourcePostId: posts.sourcePostId,
+      id: posts.id, title: posts.title, status: posts.status, editor: templates.editor, sourcePostId: posts.sourcePostId, caption: posts.caption,
       slides: sql<number>`case when jsonb_typeof(${posts.data}->'slides') = 'array' then jsonb_array_length(${posts.data}->'slides') else 0 end`,
     })
     .from(posts)
@@ -30,9 +31,10 @@ export default async function PostEditor({ params }: { params: Promise<{ id: str
         <RenameTitle id={post.id} title={post.title} />
         <span className={`pill ${post.status}`}>{post.status === 'draft' ? 'Rascunho' : 'Publicado'}</span>
         {post.sourcePostId && <Link href={`/admin/posts/${post.sourcePostId}`} className="pill" title="Abrir o post de origem">Derivado de outro post ↗</Link>}
-        {(post.editor === 'carrossel' || post.editor === 'tweet') && process.env.ANTHROPIC_API_KEY && (
-          <div className="post-actions in-list bar-actions"><ConvertButton id={post.id} editor={post.editor} slides={post.slides} /></div>
-        )}
+        <div className="post-actions in-list bar-actions">
+          <CaptionPanel id={post.id} initial={post.caption} aiEnabled={!!process.env.ANTHROPIC_API_KEY} />
+          {(post.editor === 'carrossel' || post.editor === 'tweet') && process.env.ANTHROPIC_API_KEY && <ConvertButton id={post.id} editor={post.editor} slides={post.slides} />}
+        </div>
       </div>
       <EditorFrame src={`/editor?post=${post.id}`} title={post.title} />
     </div>

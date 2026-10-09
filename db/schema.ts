@@ -56,6 +56,8 @@ export const brandSettings = pgTable('brand_settings', {
   aiExamples: text('ai_examples').notNull().default(''),
   /** Estilo visual das imagens geradas (ex.: "fotografia realista, tons quentes, sem pessoas"). */
   aiImageStyle: text('ai_image_style').notNull().default(''),
+  /** Regras das legendas (hashtags fixas, rodapé, tamanho, emojis…). */
+  aiCaptionRules: text('ai_caption_rules').notNull().default(''),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
@@ -102,6 +104,8 @@ export const posts = pgTable(
     templateId: uuid('template_id').references(() => templates.id, { onDelete: 'restrict' }),
     /** Post de origem quando este foi criado por conversão de formato. */
     sourcePostId: uuid('source_post_id'),
+    /** Legenda do post (para publicar junto com os slides). */
+    caption: text('caption').notNull().default(''),
     title: text('title').notNull().default('Sem título'),
     status: postStatus('status').notNull().default('draft'),
     data: jsonb('data').$type<PostData>().notNull(),

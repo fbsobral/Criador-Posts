@@ -12,7 +12,7 @@ type Slide = Record<string, unknown>;
 type Editor = 'carrossel' | 'tweet';
 
 /** Slides do post de origem em texto, como se fosse um roteiro (a IA reescreve para o novo formato). */
-function toScript(editor: Editor, slides: Slide[]): string {
+export function toScript(editor: Editor, slides: Slide[]): string {
   return slides
     .map((s, i) => {
       const head = `Slide ${i + 1}${editor === 'carrossel' && s.format === 'cover' ? ' (capa)' : ''}:`;
@@ -93,7 +93,7 @@ export async function convertPostFormat(a: { brandId: string; userId: string; so
     instructions: instructions(retry), withImages: images.length > 0,
     brand: {
       brandName: settings?.displayName || brand?.name || '', niche: settings?.aiNiche ?? '', audience: settings?.aiAudience ?? '', voice: settings?.aiVoice ?? '',
-      rules: settings?.aiRules ?? '', cta: settings?.aiCta ?? '', examples: settings?.aiExamples ?? '',
+      rules: settings?.aiRules ?? '', cta: settings?.aiCta ?? '', examples: settings?.aiExamples ?? '', captionRules: settings?.aiCaptionRules ?? '',
     },
   });
 
@@ -130,7 +130,7 @@ export async function convertPostFormat(a: { brandId: string; userId: string; so
     .insert(posts)
     .values({
       brandId: a.brandId, templateId: target.id, sourcePostId: src.post.id, status: 'draft',
-      title: `${src.post.title} (${label[to]})`.slice(0, 120), data, createdBy: a.userId, updatedBy: a.userId,
+      title: `${src.post.title} (${label[to]})`.slice(0, 120), caption: src.post.caption || result.caption, data, createdBy: a.userId, updatedBy: a.userId,
     })
     .returning({ id: posts.id });
 

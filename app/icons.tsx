@@ -15,3 +15,4 @@ export const IconGrid = () => (<svg {...base}><rect x="4" y="4" width="6.5" heig
 export const IconList = () => (<svg {...base}><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" /></svg>);
 export const IconImage = () => (<svg {...base}><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="9" cy="10" r="1.8" /><path d="M21 16l-5-5-9 9" /></svg>);
 export const IconSwap = () => (<svg {...base}><path d="M7 4L3 8l4 4" /><path d="M3 8h14a4 4 0 0 1 4 4" /><path d="M17 20l4-4-4-4" /><path d="M21 16H7a4 4 0 0 1-4-4" /></svg>);
+export const IconText = () => (<svg {...base}><path d="M4 7h16M4 12h16M4 17h10" /></svg>);
