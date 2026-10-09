@@ -11,3 +11,5 @@ export const IconBack = () => (<svg {...base}><path d="M15 5l-7 7 7 7" /></svg>)
 export const IconSpark = () => (<svg {...base} strokeWidth={2}><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" /><path d="M19 17v4M17 19h4" /></svg>);
 export const IconEdit = () => (<svg {...base}><path d="M4 20h4L19 9a2.1 2.1 0 0 0-4-4L4 16z" /><path d="M13.5 6.5l4 4" /></svg>);
 export const IconMove = () => (<svg {...base}><path d="M4 12h14M13 6l6 6-6 6" /><path d="M4 5v14" /></svg>);
+export const IconGrid = () => (<svg {...base}><rect x="4" y="4" width="6.5" height="6.5" rx="1.6" /><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.6" /><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.6" /><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.6" /></svg>);
+export const IconList = () => (<svg {...base}><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" /></svg>);

@@ -4,18 +4,23 @@ import { db } from '@/db';
 import { posts, templates, users } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { auth, clerkClient } from '@clerk/nextjs/server';
-import { createPost, deletePost, duplicatePost, migratePost, renamePost, setPostStatus } from '@/lib/actions';
+import { cookies } from 'next/headers';
+import { createPost, setPostStatus } from '@/lib/actions';
 import { timeAgo } from '@/lib/format';
-import { IconCopy, IconEdit, IconMove, IconPlus, IconTrash } from '../../icons';
+import { IconPlus } from '../../icons';
 import { PostPreview } from '../post-preview';
 import { TemplateArt } from '../template-art';
+import { PostActions, type Destination } from './post-actions';
+import { ViewToggle, type PostsView } from './view-toggle';
 
-export default async function PostsPage({ searchParams }: { searchParams: Promise<{ moved?: string }> }) {
-  const { moved } = await searchParams;
+export default async function PostsPage({ searchParams }: { searchParams: Promise<{ moved?: string; v?: string }> }) {
+  const { moved, v } = await searchParams;
+  const saved = (await cookies()).get('posts_view')?.value;
+  const view: PostsView = (v ?? saved) === 'lista' ? 'lista' : 'cards';
   const c = (await getCtx())!;
 
   // super-admin: lista as outras marcas (organizações do Clerk) para migrar posts
-  let destinations: { id: string; name: string }[] = [];
+  let destinations: Destination[] = [];
   if (c.isPlatformAdmin) {
     const { orgId } = await auth();
     const orgs = await (await clerkClient()).organizations.getOrganizationList({ limit: 100, orderBy: 'name' });
@@ -47,6 +52,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Promis
           <h1>Posts</h1>
           <p>{rows.length === 0 ? 'Crie o primeiro post da marca.' : `${rows.length} ${rows.length === 1 ? 'post' : 'posts'} em ${c.brandName}.`}</p>
         </div>
+        {rows.length > 0 && <ViewToggle view={view} />}
       </div>
 
       {moved && <div className="notice ok" style={{ marginBottom: 20 }} role="status">Post migrado para <b>{moved}</b>. Ele chegou lá como rascunho.</div>}
@@ -71,6 +77,38 @@ export default async function PostsPage({ searchParams }: { searchParams: Promis
 
       {rows.length === 0 ? (
         <div className="empty"><b>Nenhum post ainda</b>Use o formulário acima para criar o primeiro.</div>
+      ) : view === 'lista' ? (
+        <div className="card-surface table-card list-posts">
+          <table>
+            <thead><tr><th>Post</th><th className="hide-s">Formato</th><th>Status</th><th className="hide-s">Slides</th><th className="hide-s">Atualizado</th><th className="right"></th></tr></thead>
+            <tbody>
+              {rows.map(({ p, slides, theme, colors, author, format, editor }) => {
+                const bg = (editor === 'tweet' ? colors?.bg : theme?.bg) ?? '#EDEAE5';
+                return (
+                  <tr key={p.id}>
+                    <td>
+                      <Link href={`/admin/posts/${p.id}`} className="list-title">
+                        <span className="chip" style={{ background: bg }} aria-hidden />
+                        <span className="t">{p.title}</span>
+                      </Link>
+                    </td>
+                    <td className="hide-s muted">{format ?? 'Carrossel'}</td>
+                    <td>
+                      <form action={setPostStatus}>
+                        <input type="hidden" name="id" value={p.id} />
+                        <input type="hidden" name="status" value={p.status === 'draft' ? 'published' : 'draft'} />
+                        <button className={`pill ${p.status}`} title="Clique para alternar entre rascunho e publicado">{p.status === 'draft' ? 'Rascunho' : 'Publicado'}</button>
+                      </form>
+                    </td>
+                    <td className="hide-s muted">{slides || 1}</td>
+                    <td className="hide-s muted">{timeAgo(p.updatedAt)}{author ? ` · ${author}` : ''}</td>
+                    <td className="right"><div className="post-actions in-list"><PostActions id={p.id} title={p.title} destinations={destinations} /></div></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div className="grid-posts">
           {rows.map(({ p, slides, theme, colors, text, author, format, editor }) => (
@@ -91,40 +129,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Promis
                   <button className={`pill ${p.status}`} title="Clique para alternar entre rascunho e publicado">{p.status === 'draft' ? 'Rascunho' : 'Publicado'}</button>
                 </form>
               </div>
-              <div className="post-actions">
-                <details className="rename-pop">
-                  <summary className="btn small ghost" title="Renomear" aria-label="Renomear"><IconEdit /></summary>
-                  <form action={renamePost} className="card-surface rename-form">
-                    <input type="hidden" name="id" value={p.id} />
-                    <input name="title" defaultValue={p.title} maxLength={120} required aria-label="Novo título" />
-                    <button className="btn small primary">Salvar</button>
-                  </form>
-                </details>
-                {destinations.length > 0 && (
-                  <details className="rename-pop">
-                    <summary className="btn small ghost" title="Migrar para outra marca" aria-label="Migrar para outra marca"><IconMove /></summary>
-                    <form action={migratePost} className="card-surface rename-form migrate-form">
-                      <b>Migrar para outra marca</b>
-                      <input type="hidden" name="id" value={p.id} />
-                      <select name="destOrgId" required defaultValue="" aria-label="Marca de destino">
-                        <option value="" disabled>Escolha a marca…</option>
-                        {destinations.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                      </select>
-                      <label className="mini-check"><input type="checkbox" name="applyIdentity" defaultChecked /> Aplicar nome, @ e foto da marca de destino</label>
-                      <small className="muted">O post sai desta marca e chega como rascunho.</small>
-                      <button className="btn small primary">Migrar</button>
-                    </form>
-                  </details>
-                )}
-                <form action={duplicatePost}>
-                  <input type="hidden" name="id" value={p.id} />
-                  <button className="btn small ghost" title="Duplicar" aria-label="Duplicar"><IconCopy /></button>
-                </form>
-                <form action={deletePost}>
-                  <input type="hidden" name="id" value={p.id} />
-                  <button className="btn small ghost danger" title="Excluir" aria-label="Excluir"><IconTrash /></button>
-                </form>
-              </div>
+              <div className="post-actions"><PostActions id={p.id} title={p.title} destinations={destinations} /></div>
             </article>
           ))}
         </div>

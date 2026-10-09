@@ -343,3 +343,33 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 .mini-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--ink-2); line-height: 1.35; }
 .mini-check input { margin-top: 2px; padding: 0; width: 15px; height: 15px; flex: none; accent-color: var(--primary); }
 .post-actions form.migrate-form { display: flex; }
+
+/* ============ alternador cards/lista ============ */
+.view-toggle { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; }
+.view-toggle button { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 0; border-radius: 9px; background: transparent; color: var(--ink-2); font-weight: 600; font-size: 13px; transition: background .15s, color .15s; }
+.view-toggle button svg { width: 16px; height: 16px; }
+.view-toggle button:hover { background: var(--surface-2); }
+.view-toggle button.on { background: var(--primary); color: #fff; box-shadow: 0 4px 10px -4px rgba(249, 115, 53, .6); }
+.list-posts { overflow: visible; }
+.list-posts th:first-child { border-top-left-radius: var(--radius); } .list-posts th:last-child { border-top-right-radius: var(--radius); }
+.list-posts td { padding-top: 10px; padding-bottom: 10px; }
+.list-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.list-title .chip { width: 26px; height: 32px; flex: none; border-radius: 7px; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .12); }
+.list-title .t { font-family: var(--font-head); font-weight: 700; letter-spacing: -.01em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.list-title:hover .t { color: var(--primary); }
+.post-actions.in-list { padding: 0; justify-content: flex-end; flex-wrap: nowrap; }
+.in-list .rename-form { bottom: auto; top: calc(100% + 6px); left: auto; right: 0; width: 280px; z-index: 30; }
+.list-posts .pill { cursor: pointer; }
+@media (max-width: 900px) { .view-toggle button span { display: none; } .view-toggle button { padding: 7px 10px; } }
+@media (max-width: 900px) {
+  .list-posts table, .list-posts tbody, .list-posts tr, .list-posts td { display: block; }
+  .list-posts thead { display: none; }
+  .list-posts tr { display: grid; grid-template-columns: 1fr auto; gap: 8px 10px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .list-posts tr:last-child { border-bottom: 0; }
+  .list-posts td { padding: 0; border: 0; }
+  .list-posts td.hide-s { display: none; }
+  .list-posts td:nth-child(1) { grid-column: 1 / -1; }
+  .list-posts td:nth-child(6) { text-align: right; }
+  .list-posts .post-actions.in-list { justify-content: flex-end; }
+  .in-list .rename-form { width: min(280px, calc(100vw - 56px)); }
+}
