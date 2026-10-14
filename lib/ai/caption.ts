@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { AI_MODEL, AiError, brandBlock, type BrandProfile } from './generate';
+import { AI_LIGHT_MODEL, AiError, brandBlock, type BrandProfile } from './generate';
 
 import { NETWORKS, type Network } from './networks';
 export { NETWORKS, type Network };
@@ -50,7 +50,7 @@ export async function generateCaptionText(i: {
   try {
     const client = new Anthropic();
     const res = await client.beta.messages.create({
-      model: AI_MODEL, max_tokens: 4000,
+      model: AI_LIGHT_MODEL, max_tokens: 4000,
       betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
       system: [SYSTEM, brandBlock(i.brand)].filter(Boolean).join('\n\n'),
       output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA } },

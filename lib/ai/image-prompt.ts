@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { AI_MODEL } from './generate';
+import { AI_LIGHT_MODEL } from './generate';
 import { ImageError } from './image';
 
 export type SlideContext = {
@@ -80,7 +80,7 @@ export async function deriveImagePrompt(ctx: SlideContext, brand: ArtBrand): Pro
   try {
     const client = new Anthropic();
     const res = await client.beta.messages.create({
-      model: AI_MODEL,
+      model: AI_LIGHT_MODEL,
       max_tokens: 4000,
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
@@ -151,7 +151,7 @@ export async function deriveImagePromptsForPost(
   try {
     const client = new Anthropic();
     const res = await client.beta.messages.create({
-      model: AI_MODEL, max_tokens: 6000,
+      model: AI_LIGHT_MODEL, max_tokens: 6000,
       betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
       system: SYSTEM_POST,
       output_config: { effort: 'low', format: { type: 'json_schema', schema: SCHEMA_POST } },

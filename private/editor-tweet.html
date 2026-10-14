@@ -200,6 +200,10 @@
     .panel { padding: 16px 14px 60px; }
     .thumbs-col { background: #EFEBE3; }
   }
+  .txt-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } @media (max-width: 560px) { .txt-cmp { grid-template-columns: 1fr; } }
+  .txt-box { border: 1px solid #E8E3D8; border-radius: 12px; padding: 10px 12px; background: #fff; font-size: 14px; line-height: 1.45; max-height: 46vh; overflow: auto; }
+  .txt-box.new { border-color: #F97335; background: #FFF8F4; } .txt-box h4 { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #8a857a; margin-bottom: 6px; } .txt-box.new h4 { color: #B8481C; }
+  .txt-box h2 { font-size: 17px; margin: 0 0 6px; } .txt-box p { margin: 0 0 6px; } .txt-box ul { margin: 0 0 6px 18px; } .txt-box .plain { white-space: pre-wrap; }
 </style>
 </head>
 <body>
@@ -234,6 +238,7 @@
   <aside class="panel">
     <section>
       <h3>Este slide</h3>
+      <button type="button" class="btn small" id="btnTxtAi" style="display:none;margin:0 0 10px">✨ Ajustar texto com IA</button>
       <label class="check"><input type="checkbox" id="optImage"> Mostrar imagem (entre o texto e as métricas)</label>
       <div id="imageFields">
         <div class="row" style="margin-bottom:10px">
@@ -319,6 +324,13 @@
       </div>
     </section>
   </aside>
+</div>
+
+<div class="gal-modal" id="txtModal" hidden>
+  <div class="gal-card aim-card" role="dialog" aria-modal="true" aria-labelledby="txtTitle">
+    <div class="gal-head"><b id="txtTitle">Ajustar texto com IA</b><button type="button" class="btn small ghost" id="txtClose" aria-label="Fechar">✕</button></div>
+    <div class="aim-body" id="txtBody"></div>
+  </div>
 </div>
 
 <div class="gal-modal" id="aiModal" hidden>
@@ -1072,6 +1084,73 @@ $('btnAll').addEventListener('click', exportAll); $('btnAll2').addEventListener(
 
 buildPalettes();
 renderCurrent(); fit();
+
+/* =============== ajustar o texto do slide com IA (sugere → você aprova ou pede novo ajuste) =============== */
+const txtOn = !!(HOST && HOST.slideTextUrl);
+const TXT_CHIPS = ['Mais curto', 'Mais direto', 'Mais impactante', 'Mais claro', 'Tom mais leve', 'Menos jargão', 'Gancho mais forte'];
+const TXT = { s: null, original: '', feedback: '', suggestion: '' };
+const txtIsTweet = () => HOST.editor === 'tweet';
+const txtGet = s => txtIsTweet() ? String(s.text || '') : String(s.html || '');
+const txtShow = html => { $('txtBody').innerHTML = html; };
+const txtRender = (t, cls) => txtIsTweet() ? `<div class="plain">${esc(t)}</div>` : (t || '<i>(vazio)</i>');
+function closeTxt() { $('txtModal').hidden = true; document.body.style.overflow = ''; }
+function txtOpen() {
+  const s = cur();
+  if (s.format === 'image') { alert('Este slide é só imagem: não tem texto para ajustar.'); return; }
+  Object.assign(TXT, { s, original: txtGet(s), feedback: '', suggestion: '' });
+  $('txtModal').hidden = false; document.body.style.overflow = 'hidden';
+  txtAsk();
+}
+function txtAsk() {
+  txtShow(`<div class="aim-lbl">O que você quer mudar neste slide?<small>A IA sugere um novo texto e você aprova antes de aplicar.</small></div>
+    <div class="txt-box"><h4>Texto atual</h4>${txtRender(TXT.original)}</div>
+    <textarea id="txtFb" rows="3" maxlength="800" placeholder="Ex.: deixe mais curto e troque o exemplo por algo do dia a dia…"></textarea>
+    <div class="aim-chips">${TXT_CHIPS.map(c => `<button type="button" data-chip="${esc(c)}">${esc(c)}</button>`).join('')}</div>
+    <div class="aim-actions"><button type="button" class="btn primary" id="txtGo">✨ Sugerir ajuste</button><button type="button" class="btn ghost" id="txtCancel">Cancelar</button></div>`);
+  document.querySelectorAll('#txtBody [data-chip]').forEach(b => b.onclick = () => { const t = $('txtFb'); t.value = (t.value.trim() ? t.value.trim() + '; ' : '') + b.dataset.chip.toLowerCase(); t.focus(); });
+  $('txtGo').onclick = () => { const v = $('txtFb').value.trim(); if (v.length < 3) { $('txtFb').focus(); return; } TXT.feedback = v; TXT.suggestion = ''; txtRequest(v); };
+  $('txtCancel').onclick = closeTxt; $('txtFb').focus();
+}
+async function txtRequest(feedback) {
+  txtShow('<div class="aim-wait"><div class="aim-spin"></div><b>Ajustando o texto…</b><small>Pode levar alguns segundos.</small></div>');
+  const s = TXT.s, i = Math.max(0, slides.indexOf(s));
+  try {
+    const r = await fetch(HOST.slideTextUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
+      editor: HOST.editor === 'tweet' ? 'tweet' : 'carrossel', current: TXT.original, format: s.format || 'tweet-card', slideIndex: i + 1, total: slides.length,
+      outline: slides.map((x, k) => `${k + 1}. ${slideText(x).slice(0, 140)}`), title: HOST.title || '', topic: g.topic || '',
+      tight: !!(s.showButton || s.showImage || s.format === 'text-image'), feedback, previous: TXT.suggestion || '',
+    }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'Não foi possível ajustar o texto.');
+    TXT.suggestion = j.text; txtReview(j.note || '');
+  } catch (e) {
+    txtShow(`<div class="aim-err"><b>Não deu certo</b><p>${esc(e.message)}</p><div class="aim-actions"><button type="button" class="btn primary" id="txtRetry">Tentar de novo</button><button type="button" class="btn" id="txtClose2">Fechar</button></div></div>`);
+    $('txtRetry').onclick = () => txtRequest(feedback); $('txtClose2').onclick = closeTxt;
+  }
+}
+function txtReview(note) {
+  txtShow(`<div class="txt-cmp"><div class="txt-box"><h4>Atual</h4>${txtRender(TXT.original)}</div><div class="txt-box new"><h4>Sugestão da IA</h4>${txtRender(TXT.suggestion)}</div></div>
+    ${note ? `<small class="aimsg">${esc(note)}</small>` : ''}
+    <div class="aim-actions"><button type="button" class="btn primary" id="txtApply">✓ Aprovar e aplicar</button><button type="button" class="btn ghost" id="txtCancel">Descartar</button></div>
+    <div class="aim-fb"><b style="font-size:13px">Não é bem isso? Peça um novo ajuste</b>
+      <textarea id="txtFb2" rows="2" maxlength="800" placeholder="Ex.: ainda está longo; mantenha o título como estava…"></textarea>
+      <button type="button" class="btn" id="txtAgain">↻ Ajustar de novo</button></div>`);
+  $('txtApply').onclick = txtApply; $('txtCancel').onclick = closeTxt;
+  $('txtAgain').onclick = () => { const v = $('txtFb2').value.trim(); if (v.length < 3) { $('txtFb2').focus(); return; } txtRequest(TXT.feedback + '\n(Novo pedido sobre a sugestão anterior): ' + v); };
+}
+function txtApply() {
+  const s = TXT.s;
+  if (txtIsTweet()) s.text = TXT.suggestion; else s.html = TXT.suggestion;
+  closeTxt();
+  if (s === cur()) { if (txtIsTweet()) { renderCurrent(); scheduleSave(); } else afterChange(true); } else { renderThumbs(); scheduleSave(); }
+}
+if (txtOn) {
+  $('btnTxtAi').style.display = '';
+  $('btnTxtAi').addEventListener('click', txtOpen);
+  $('txtClose').addEventListener('click', closeTxt);
+  $('txtModal').addEventListener('click', e => { if (e.target === $('txtModal')) closeTxt(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('txtModal').hidden) closeTxt(); });
+}
 </script>
 </body>
 </html>

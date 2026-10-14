@@ -33,6 +33,7 @@ export async function GET(req: Request) {
     saveUrl: `/api/posts/${post.id}`,
     title: post.title,
     imageUrl: '/api/ai/image',
+    slideTextUrl: '/api/ai/slide',
     brandImageBrief: ((await getBrandSettings(c.brandId))?.aiImageStyle ?? '').slice(0, 1500),
     assetsUrl: '/api/assets',
     imageEnabled: imageEnabled(),

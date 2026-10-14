@@ -3,6 +3,8 @@ import { MAX_SLIDES } from './constants';
 
 /** Modelo escolhido para a geração (maior qualidade de copy). */
 export const AI_MODEL = 'claude-opus-5-5';
+/** Modelo das tarefas curtas (descrição de imagem, legenda sob demanda): bem mais barato, qualidade equivalente nelas. */
+export const AI_LIGHT_MODEL = process.env.AI_LIGHT_MODEL || 'claude-sonnet-5-5';
 export { costUsd } from './constants';
 
 export class AiError extends Error {
@@ -241,7 +243,8 @@ export async function generatePost(input: GenerateInput): Promise<GenerateResult
       max_tokens: 16000,
       betas: ['server-side-fallback-2026-07-01'],
       fallbacks: 'default',
-      system: systemPrompt(input),
+      // o prompt de sistema se repete em todos os posts de um lote: cache de prompt (leitura custa ~10%)
+      system: [{ type: 'text', text: systemPrompt(input), cache_control: { type: 'ephemeral' } }],
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: cfg.schema } },
       messages: [{ role: 'user', content: userPrompt(input) }],
     });
@@ -252,7 +255,12 @@ export async function generatePost(input: GenerateInput): Promise<GenerateResult
     throw new AiError('Não foi possível falar com a IA.', true);
   }
 
-  const usage = { inputTokens: response.usage?.input_tokens ?? 0, outputTokens: response.usage?.output_tokens ?? 0 };
+  const u = response.usage as { input_tokens?: number; output_tokens?: number; cache_creation_input_tokens?: number | null; cache_read_input_tokens?: number | null } | undefined;
+  // tokens de entrada "equivalentes" ao preço normal: escrita no cache custa 1,25x e leitura 0,1x
+  const usage = {
+    inputTokens: Math.round((u?.input_tokens ?? 0) + (u?.cache_creation_input_tokens ?? 0) * 1.25 + (u?.cache_read_input_tokens ?? 0) * 0.1),
+    outputTokens: u?.output_tokens ?? 0,
+  };
   if (response.stop_reason === 'refusal') throw new AiError('A IA recusou gerar este conteúdo.');
   if (response.stop_reason === 'max_tokens') throw new AiError('A resposta ficou grande demais. Reduza o número de slides.');
 
