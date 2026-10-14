@@ -1481,7 +1481,7 @@ async function txtRequest(feedback) {
   try {
     const r = await fetch(HOST.slideTextUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
       editor: HOST.editor === 'tweet' ? 'tweet' : 'carrossel', current: TXT.original, format: s.format || 'tweet-card', slideIndex: i + 1, total: slides.length,
-      outline: slides.map((x, k) => `${k + 1}. ${slideText(x).slice(0, 140)}`), title: HOST.title || '', topic: g.topic || '',
+      outline: slides.map((x, k) => `${k + 1}. ${slideText(x).slice(0, 600)}`), title: HOST.title || '', topic: g.topic || '',
       tight: !!(s.showButton || s.showImage || s.format === 'text-image'), feedback, previous: TXT.suggestion || '',
     }) });
     const j = await r.json().catch(() => ({}));

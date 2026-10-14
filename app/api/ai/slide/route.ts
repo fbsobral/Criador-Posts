@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     const r = await adjustSlideText({
       editor, current: str(b?.current, 4000), format: str(b?.format, 40) || 'slide',
       slideIndex: Number(b?.slideIndex) || 1, total: Number(b?.total) || 1,
-      outline: (Array.isArray(b?.outline) ? b!.outline as unknown[] : []).slice(0, 14).map((l) => str(l, 160)),
+      outline: (Array.isArray(b?.outline) ? b!.outline as unknown[] : []).slice(0, 14).map((l) => str(l, 650)),
       title: str(b?.title, 120), topic: str(b?.topic, 80), feedback, previous: str(b?.previous, 4000) || undefined, tight: !!b?.tight,
       brand: {
         brandName: s?.displayName || brand?.name || '', niche: s?.aiNiche ?? '', audience: s?.aiAudience ?? '', voice: s?.aiVoice ?? '',

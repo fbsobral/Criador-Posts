@@ -30,7 +30,8 @@ const SYSTEM = `Você é um redator sênior de conteúdo para redes sociais. O u
 REGRAS
 - Aplique o feedback do usuário. Mude só o que o feedback pede ou o que for necessário para atendê-lo; preserve o resto (ideia, tom, fatos, estrutura).
 - Não invente fatos, números, datas, nomes ou fontes. Use apenas o que já está no slide, no contexto do post ou no feedback.
-- Mantenha coerência com os outros slides (não repita o que eles já dizem e não contradiga o roteiro).
+- Leia o POST INTEIRO antes de reescrever. O slide faz parte de uma sequência: continue a ideia do slide anterior, abra caminho para o seguinte e não repita argumentos, exemplos, expressões nem a chamada para ação que os outros slides já usam. Não contradiga nada do post e não antecipe o que outro slide vai explicar.
+- Se o feedback pedir algo que repetiria ou contradiria outro slide, atenda do jeito que preserva a coerência do post e explique em "note".
 - Respeite o tom de voz e as regras da marca. Português do Brasil. Evite clichês de IA ("mergulhe", "desvende", "no mundo de hoje").
 - Se houver "SUGESTÃO ANTERIOR (não aprovada)", parta dela e aplique o novo pedido, sem voltar atrás no que já estava bom.
 - "note": uma frase curta dizendo o que você mudou (ex.: "Encurtei o título e troquei o exemplo por um mais concreto").`;
@@ -51,7 +52,7 @@ export async function adjustSlideText(i: SlideTextInput): Promise<{ text: string
 
   const user = [
     `POST: ${i.title || '(sem título)'}${i.topic ? ` · tema: ${i.topic}` : ''}`,
-    i.outline.length ? `ROTEIRO COMPLETO (resumo de cada slide):\n${i.outline.map((l) => `- ${l}`).join('\n')}` : '',
+    i.outline.length ? `POST COMPLETO (texto de cada slide, na ordem; o slide a ajustar é o ${i.slideIndex}):\n${i.outline.map((l) => `- ${l}`).join('\n')}` : '',
     `ESTE É O SLIDE ${i.slideIndex} DE ${i.total} (formato: ${i.format}${i.tight ? '; tem imagem ou botão, então o espaço de texto é menor' : ''}).`,
     `TEXTO ATUAL DO SLIDE:\n${i.current || '(vazio)'}`,
     i.previous?.trim() ? `SUGESTÃO ANTERIOR (não aprovada):\n${i.previous.trim()}` : '',

@@ -70,6 +70,12 @@
   .logo-ph { font-size: 26px; color: var(--ph); border: 3px dashed var(--ph); border-radius: 16px; padding: 22px 36px; cursor: pointer; }
   .area { flex: none; padding: 0 140px; }
   .nologo .area { margin: auto 0; }
+  .bgimg { position: absolute !important; inset: 0; z-index: 0 !important; background-repeat: no-repeat; background-size: cover; pointer-events: none; }
+  .slide > :not(.bgimg) { position: relative; z-index: 1; }
+  /* posição do card: topo e base (o centro é o padrão) */
+  .slide.pos-top .area { order: 1; margin-top: 110px; } .slide.pos-top .logo-wrap { order: 2; } .slide.pos-top .logo-spacer { display: none; }
+  .slide.pos-bottom .area { margin-bottom: 110px; } .slide.pos-bottom .logo-spacer { display: none; }
+  .slide.nologo.pos-top .area { margin: 110px 0 auto; } .slide.nologo.pos-bottom .area { margin: auto 0 110px; }
   .card { width: 100%; background: var(--card); border-radius: 36px; padding: 52px 52px 46px; color: var(--text); }
   .who { display: flex; align-items: center; gap: 26px; margin-bottom: 40px; }
   .avatar { width: 112px; height: 112px; border-radius: 50%; flex: none; background: #cfd8d3 center / cover no-repeat; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
@@ -239,6 +245,15 @@
     <section>
       <h3>Este slide</h3>
       <button type="button" class="btn small" id="btnTxtAi" style="display:none;margin:0 0 10px">✨ Ajustar texto com IA</button>
+      <div class="field"><label for="optPos">Posição do card no slide</label>
+        <select id="optPos"><option value="top">Topo</option><option value="center">Centro</option><option value="bottom">Base</option></select></div>
+      <div class="field"><label>Imagem de fundo do slide</label>
+        <div class="row"><button class="btn small" id="btnBg">Enviar imagem</button><button class="btn small" id="btnBgRm">Remover</button></div></div>
+      <div id="bgFields" style="display:none">
+        <div class="field"><label for="optBgX">Foco horizontal: <b id="bgXVal"></b>%</label><input type="range" id="optBgX" min="0" max="100" step="1"></div>
+        <div class="field"><label for="optBgY">Foco vertical: <b id="bgYVal"></b>%</label><input type="range" id="optBgY" min="0" max="100" step="1"></div>
+        <div class="row" style="margin-bottom:10px"><button class="btn small" id="btnBgAll">Usar este fundo em todos os slides</button></div>
+      </div>
       <label class="check"><input type="checkbox" id="optImage"> Mostrar imagem (entre o texto e as métricas)</label>
       <div id="imageFields">
         <div class="row" style="margin-bottom:10px">
@@ -406,7 +421,7 @@ function picStyle(s) {
 function buildSlide(s, editable) {
   const c = g.colors;
   const el = document.createElement('div');
-  el.className = 'slide' + (g.showLogo === false ? ' nologo' : '');
+  el.className = 'slide' + (g.showLogo === false ? ' nologo' : '') + (s.cardPos === 'top' || s.cardPos === 'bottom' ? ' pos-' + s.cardPos : '');
   el.style.setProperty('--font', '"' + g.font + '"');
   el.style.setProperty('--bg', c.bg); el.style.setProperty('--card', c.card); el.style.setProperty('--text', c.text);
   el.style.setProperty('--name', c.name); el.style.setProperty('--handle', c.handle); el.style.setProperty('--accent2', c.accent2);
@@ -415,6 +430,7 @@ function buildSlide(s, editable) {
   const ce = editable ? 'contenteditable="plaintext-only" spellcheck="false"' : '';
   const logo = g.logo ? `<img class="logo" src="${g.logo}" alt="">` : (editable ? `<div class="logo-ph">Clique para enviar o logo</div>` : '');
   el.innerHTML = `
+    ${s.bgImage ? `<div class="bgimg" style="background-image:url('${s.bgImage}');background-position:${s.bgX ?? 50}% ${s.bgY ?? 50}%"></div>` : ''}
     ${g.showLogo === false ? '' : `<div class="logo-wrap" data-logo>${logo}</div>`}
     <div class="area"><div class="card ${s.showMetrics ? '' : 'noline'}">
       <div class="who">
@@ -499,6 +515,7 @@ function scheduleAllThumbs() { clearTimeout(thumbsT); thumbsT = setTimeout(rende
 /* =============== painel =============== */
 function updatePanel() {
   const s = cur();
+  $('optPos').value = s.cardPos || 'center'; $('btnBgRm').disabled = !s.bgImage; $('bgFields').style.display = s.bgImage ? 'block' : 'none'; $('optBgX').value = s.bgX ?? 50; $('bgXVal').textContent = s.bgX ?? 50; $('optBgY').value = s.bgY ?? 50; $('bgYVal').textContent = s.bgY ?? 50;
   $('optImage').checked = s.showImage; $('imageFields').style.display = s.showImage ? 'block' : 'none'; $('btnPicRm').disabled = !s.image; $('optRatio').value = s.ratio; $('optFit').value = s.fit || 'cover'; updateAdjPanel(); $('hField').style.display = s.ratio === 'custom' ? 'flex' : 'none'; $('optH').value = s.h; $('hVal').textContent = s.h;
   updateAiGen();
   $('optButton').checked = s.showButton; $('inButton').value = s.button; $('btnTextField').style.display = s.showButton ? 'flex' : 'none';
@@ -609,11 +626,17 @@ function readImage(file, max) {
 }
 picker.addEventListener('change', async () => {
   const file = picker.files[0]; picker.value = ''; if (!file) return;
-  let data; try { data = await readImage(file, pickTarget === 'pic' ? 1600 : pickTarget === 'logo' ? 1200 : 600); } catch (e) { alert('Não foi possível ler essa imagem.'); return; }
+  let data; try { data = await readImage(file, pickTarget === 'pic' || pickTarget === 'bg' ? 1600 : pickTarget === 'logo' ? 1200 : 600); } catch (e) { alert('Não foi possível ler essa imagem.'); return; }
   if (pickTarget === 'gal') { await storeImage(data, file.name); galSearch(($('galQ').value || '').trim()); return; }
+  if (pickTarget === 'bg') { const c = cur(); c.bgImage = await storeImage(data, file.name); c.bgX = 50; c.bgY = 50; change(); return; }
   if (pickTarget === 'pic') { cur().image = await storeImage(data, file.name); cur().showImage = true; } else g[pickTarget === 'logo' ? 'logo' : 'avatar'] = data;
   change();
 });
+$('optPos').addEventListener('change', e => { cur().cardPos = e.target.value; change(); });
+$('btnBg').addEventListener('click', () => openPicker('bg'));
+$('btnBgRm').addEventListener('click', () => { const c = cur(); c.bgImage = null; change(); });
+['X', 'Y'].forEach(a => $('optBg' + a).addEventListener('input', e => { const c = cur(); c['bg' + a] = +e.target.value; $('bg' + a + 'Val').textContent = e.target.value; const b = scaler.querySelector('.bgimg'); if (b) b.style.backgroundPosition = `${c.bgX ?? 50}% ${c.bgY ?? 50}%`; scheduleThumb(); scheduleSave(); }));
+$('btnBgAll').addEventListener('click', () => { const c = cur(); slides.forEach(x => { x.bgImage = c.bgImage; x.bgX = c.bgX ?? 50; x.bgY = c.bgY ?? 50; }); renderThumbs(); scheduleSave(); });
 $('btnAvatar').addEventListener('click', () => openPicker('avatar'));
 $('btnLogo').addEventListener('click', () => openPicker('logo'));
 $('btnAvatarRm').addEventListener('click', () => { g.avatar = null; change(); });
@@ -1117,7 +1140,7 @@ async function txtRequest(feedback) {
   try {
     const r = await fetch(HOST.slideTextUrl, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
       editor: HOST.editor === 'tweet' ? 'tweet' : 'carrossel', current: TXT.original, format: s.format || 'tweet-card', slideIndex: i + 1, total: slides.length,
-      outline: slides.map((x, k) => `${k + 1}. ${slideText(x).slice(0, 140)}`), title: HOST.title || '', topic: g.topic || '',
+      outline: slides.map((x, k) => `${k + 1}. ${slideText(x).slice(0, 600)}`), title: HOST.title || '', topic: g.topic || '',
       tight: !!(s.showButton || s.showImage || s.format === 'text-image'), feedback, previous: TXT.suggestion || '',
     }) });
     const j = await r.json().catch(() => ({}));
