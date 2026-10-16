@@ -1,8 +1,8 @@
 import { auth, clerkClient } from '@clerk/nextjs/server';
 import { getCtx } from '@/lib/ctx';
-import { inviteMember, removeMember } from '@/lib/actions';
+import { removeMember } from '@/lib/actions';
+import { InviteForm } from './invite-form';
 import { initials } from '@/lib/format';
-import { IconPlus } from '../../icons';
 
 const roleName = (r: string) => (r === 'org:admin' ? 'Administrador' : 'Membro');
 
@@ -58,11 +58,7 @@ export default async function UsersPage() {
       </div>
 
       {c.isBrandAdmin && (
-        <form action={inviteMember} className="card-surface invite">
-          <input name="email" type="email" placeholder="email@exemplo.com" required />
-          <select name="role"><option value="org:member">Membro</option><option value="org:admin">Administrador</option></select>
-          <button className="btn primary"><IconPlus /> Convidar</button>
-        </form>
+        <InviteForm />
       )}
 
       {all && (

@@ -264,6 +264,38 @@
   .txt-box { border: 1px solid #E8E3D8; border-radius: 12px; padding: 10px 12px; background: #fff; font-size: 14px; line-height: 1.45; max-height: 46vh; overflow: auto; }
   .txt-box.new { border-color: #F97335; background: #FFF8F4; } .txt-box h4 { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #8a857a; margin-bottom: 6px; } .txt-box.new h4 { color: #B8481C; }
   .txt-box h2 { font-size: 17px; margin: 0 0 6px; } .txt-box p { margin: 0 0 6px; } .txt-box ul { margin: 0 0 6px 18px; } .txt-box .plain { white-space: pre-wrap; }
+  /* ===== painel redesenhado: seções recolhíveis, chaves liga/desliga e botões segmentados ===== */
+  .panel { background: #FBFAF7; padding: 14px 14px 48px; gap: 0; }
+  .panel section.acc { display: block; flex: none; padding: 0; margin: 0 0 10px; border: 1px solid #E8E3D8; border-radius: 16px; background: #fff; overflow: hidden; box-shadow: 0 1px 2px rgba(22,20,15,.04); }
+  .panel section.acc:last-child { border: 1px solid #E8E3D8; }
+  .acc-h { width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 14px; background: none; border: 0; text-align: left; cursor: pointer; font: inherit; color: #16140F; }
+  .acc-h:hover { background: #FAF8F4; }
+  .acc-ic { flex: none; width: 34px; height: 34px; border-radius: 10px; background: #FFF1E8; color: #F97335; display: grid; place-items: center; }
+  .acc-ic svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .acc-t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .acc-t b { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-size: 14.5px; font-weight: 700; letter-spacing: -.01em; }
+  .acc-t small { font-size: 12px; color: #8a857a; }
+  .acc-chev { flex: none; width: 18px; height: 18px; fill: none; stroke: #8a857a; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .18s; }
+  .acc.open .acc-chev { transform: rotate(180deg); }
+  .acc-b { padding: 4px 14px 16px; border-top: 1px solid #F0ECE3; }
+  .acc:not(.open) .acc-b { display: none; }
+  .panel .sub { font-family: 'Plus Jakarta Sans', 'Inter', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8a857a; margin: 18px 0 8px; }
+  .acc-b > .sub:first-child { margin-top: 12px; }
+  .panel .hint { font-size: 12px; color: #8a857a; line-height: 1.4; margin: 2px 0 10px; }
+  .btn-ai { width: 100%; display: flex !important; align-items: center; justify-content: center; gap: 8px; padding: 11px 14px; margin: 12px 0 2px !important; border-radius: 12px; border: 1.5px dashed #F9B38F; background: #FFF8F4; color: #B8481C; font-weight: 700; font-size: 14px; }
+  .btn-ai:hover { background: #FFEFE5; border-color: #F97335; }
+  .panel label.check { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; margin: 0 0 6px; border: 1px solid #ECE7DC; border-radius: 12px; background: #FAF8F4; font-size: 13.5px; cursor: pointer; }
+  .panel label.check input { appearance: none; -webkit-appearance: none; order: 2; flex: none; width: 38px; height: 22px; margin: 0; border-radius: 99px; background: #d6d0c1; position: relative; cursor: pointer; transition: background .15s; }
+  .panel label.check input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: left .15s; }
+  .panel label.check input:checked { background: #F97335; } .panel label.check input:checked::after { left: 18px; }
+  .panel label.check input:focus-visible { outline: 3px solid rgba(249,115,53,.35); outline-offset: 2px; }
+  .seg { display: flex; gap: 3px; padding: 3px; border-radius: 12px; background: #F0ECE3; }
+  .seg button { flex: 1; padding: 7px 4px; border: 0; border-radius: 9px; background: transparent; font: inherit; font-size: 12.5px; font-weight: 600; color: #6d6962; cursor: pointer; }
+  .seg button:hover { color: #16140F; } .seg button.on { background: #fff; color: #16140F; box-shadow: 0 1px 3px rgba(22,20,15,.15); }
+  .field > label { font-weight: 600; font-size: 12.5px; color: #3a372f; }
+  .panel input[type=range] { accent-color: #F97335; width: 100%; }
+  .panel .row .btn { flex: 1 1 auto; }
+  .panel .acc-b .btn.small { padding: 7px 11px; }
 </style>
 </head>
 <body>
@@ -322,18 +354,18 @@
 
   <!-- Painel -->
   <aside class="panel">
-    <section>
-      <h3>Formato do slide</h3>
+    <section class="acc open" data-acc="slide"><button type="button" class="acc-h" aria-expanded="false"><span class="acc-ic"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span><span class="acc-t"><b>Este slide</b><small>Formato, texto e imagem</small></span><svg class="acc-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><div class="acc-b">
+      <div class="sub">Formato</div>
       <div class="fmt-grid" id="fmtGrid"></div>
-    </section>
-
-    <section>
-      <h3>Opções do slide</h3>
-      <button type="button" class="btn small" id="btnTxtAi" style="display:none;margin:0 0 10px">✨ Ajustar texto com IA</button>
+      <div class="sub">Texto</div>
+      <button type="button" class="btn btn-ai" id="btnTxtAi" style="display:none">✨ Ajustar texto com IA</button>
+      <p class="hint">Diga o que mudar: a IA sugere um novo texto e você aprova antes de aplicar.</p>
+      <div class="sub">Elementos do slide</div>
       <label class="check"><input type="checkbox" id="optProfile"> Mostrar perfil</label>
       <label class="check"><input type="checkbox" id="optMore"> Mostrar “Veja mais”</label>
       <div id="imgControls">
-        <div class="row" style="margin:12px 0 10px">
+        <div class="sub">Imagem</div>
+        <div class="row" style="margin:0 0 10px">
           <button class="btn small" id="btnSlotUp">Enviar imagem</button>
           <button class="btn small" id="btnSlotRm">Remover</button>
         </div>
@@ -352,7 +384,7 @@
         </div>
         <div class="field">
           <label for="optFit">Ajuste da imagem</label>
-          <select id="optFit"><option value="cover">Preencher (cortar)</option><option value="contain">Mostrar inteira</option></select>
+          <select id="optFit" data-seg><option value="cover" data-short="Preencher">Preencher (cortar)</option><option value="contain" data-short="Inteira">Mostrar inteira</option></select>
         </div>
         <div class="field" id="adjField" style="display:none">
           <label for="optZoom">Zoom da imagem: <b id="zoomVal">100</b>%</label>
@@ -363,10 +395,9 @@
         <label class="check"><input type="checkbox" id="optHAuto"> Altura automática</label>
         <div class="field" id="hField"><label for="optH">Altura: <b id="hVal"></b> px</label><input type="range" id="optH" min="150" max="1100" step="10"></div>
       </div>
-    </section>
+    </div></section>
 
-    <section>
-      <h3>Perfil e cabeçalho (todos os slides)</h3>
+    <section class="acc" data-acc="perfil"><button type="button" class="acc-h" aria-expanded="false"><span class="acc-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span><span class="acc-t"><b>Perfil e cabeçalho</b><small>Vale para todos os slides</small></span><svg class="acc-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><div class="acc-b">
       <div class="field"><label for="inName">Nome</label><input type="text" id="inName"></div>
       <div class="field"><label>Contas por rede <small style="font-weight:400;color:#8a857a">(● = a que aparece aqui no editor)</small></label><div class="accs" id="accs"></div></div>
       <div class="field"><label for="inTopic">Tema (acima do perfil, em caixa alta)</label><input type="text" id="inTopic"></div>
@@ -374,17 +405,16 @@
       <div class="field"><label for="inFont">Fonte do texto (todos os slides)</label><select id="inFont"></select></div>
       <div class="field">
         <label for="inWidth">Largura do texto</label>
-        <select id="inWidth"><option value="760">Estreita</option><option value="860">Padrão</option><option value="900">Larga</option></select>
+        <select id="inWidth" data-seg><option value="760">Estreita</option><option value="860">Padrão</option><option value="900">Larga</option></select>
       </div>
       <div class="row">
         <button class="btn small" id="btnAvatar">Trocar foto</button>
         <button class="btn small" id="btnAvatarRm">Remover foto</button>
       </div>
-      <p style="font-size:12px;color:#8a867f;margin-top:10px;line-height:1.4">Você também pode clicar na foto, no nome, no @, no tema e no ano direto no slide para editar.</p>
-    </section>
+      <p class="hint" style="margin-top:12px">Você também pode clicar na foto, no nome, no @, no tema e no ano direto no slide para editar.</p>
+    </div></section>
 
-    <section>
-      <h3>Cores do template</h3>
+    <section class="acc" data-acc="cores"><button type="button" class="acc-h" aria-expanded="false"><span class="acc-ic"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.5 17 3 12 3z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7" r="1"/><circle cx="15" cy="7.5" r="1"/></svg></span><span class="acc-t"><b>Cores</b><small>Tema e cores do template</small></span><svg class="acc-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><div class="acc-b">
       <div class="presets" id="presets"></div>
       <div id="hostPal" style="display:none">
         <h3 style="margin-top:4px">Cores salvas</h3>
@@ -393,10 +423,9 @@
       </div>
       <div class="colors" id="colors"></div>
       <button class="btn small" id="btnSavePal" style="margin-top:14px;display:none">Salvar cores como template</button>
-    </section>
+    </div></section>
 
-    <section>
-      <h3>Exportar e projeto</h3>
+    <section class="acc" data-acc="baixar"><button type="button" class="acc-h" aria-expanded="false"><span class="acc-ic"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg></span><span class="acc-t"><b>Baixar e salvar</b><small>PNG, PDF e projeto</small></span><svg class="acc-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><div class="acc-b">
       <div class="field"><label for="expTarget">Baixar para a conta</label><select id="expTarget"></select></div>
       <div class="row">
         <button class="btn small" id="btnOne" data-exp>Baixar este (PNG)</button>
@@ -405,7 +434,7 @@
         <button class="btn small" id="btnSave">Salvar projeto</button>
         <button class="btn small" id="btnOpen">Abrir projeto</button>
       </div>
-    </section>
+    </div></section>
   </aside>
 </div>
 
@@ -1515,6 +1544,31 @@ if (txtOn) {
   $('txtModal').addEventListener('click', e => { if (e.target === $('txtModal')) closeTxt(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('txtModal').hidden) closeTxt(); });
 }
+
+/* =============== painel: seções recolhíveis e botões segmentados =============== */
+(function () {
+  let st = {}; try { st = JSON.parse(localStorage.getItem('panelAcc') || '{}'); } catch (e) {}
+  document.querySelectorAll('.panel section.acc').forEach(sec => {
+    const k = sec.dataset.acc; if (k in st) sec.classList.toggle('open', !!st[k]);
+    const h = sec.querySelector('.acc-h'); h.setAttribute('aria-expanded', sec.classList.contains('open'));
+    h.addEventListener('click', () => {
+      const o = sec.classList.toggle('open'); h.setAttribute('aria-expanded', o); st[k] = o;
+      try { localStorage.setItem('panelAcc', JSON.stringify(st)); } catch (e) {}
+    });
+  });
+  document.querySelectorAll('select[data-seg]').forEach(sel => {
+    const d = document.createElement('div'); d.className = 'seg';
+    [...sel.options].forEach(o => {
+      const b = document.createElement('button'); b.type = 'button'; b.dataset.v = o.value; b.textContent = o.dataset.short || o.textContent;
+      b.addEventListener('click', () => { if (sel.value === o.value) return; sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); refreshSegs(); });
+      d.appendChild(b);
+    });
+    sel.after(d); sel.style.display = 'none'; sel._seg = d;
+  });
+})();
+function refreshSegs() { document.querySelectorAll('select[data-seg]').forEach(s => { if (s._seg) [...s._seg.children].forEach(b => b.classList.toggle('on', b.dataset.v === s.value)); }); }
+{ const _up = updatePanel; updatePanel = function () { _up.apply(this, arguments); refreshSegs(); }; }
+refreshSegs();
 </script>
 </body>
 </html>

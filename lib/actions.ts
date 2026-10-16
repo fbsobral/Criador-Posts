@@ -1,5 +1,7 @@
 'use server';
 
+import { headers } from 'next/headers';
+
 import { and, count, eq, gte, isNull, or, sql } from 'drizzle-orm';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -190,17 +192,41 @@ export async function deleteTemplate(formData: FormData) {
   revalidatePath('/admin/templates');
 }
 
-export async function inviteMember(formData: FormData) {
+export type InviteState = { ok?: string; error?: string } | null;
+
+/** Mensagem legível de um erro do Clerk (as mensagens de erro de Server Actions são escondidas em produção). */
+function clerkMessage(e: unknown): string {
+  const err = e as { errors?: { code?: string; longMessage?: string; message?: string }[]; message?: string };
+  const first = err?.errors?.[0];
+  const code = first?.code ?? '';
+  if (code === 'duplicate_record') return 'Esta pessoa já tem um convite pendente ou já faz parte da marca.';
+  if (code === 'form_identifier_invalid' || code === 'form_param_format_invalid') return 'E-mail inválido.';
+  if (code === 'organization_membership_quota_exceeded' || code === 'organization_invitation_quota_exceeded') return 'Limite de membros do plano do Clerk atingido.';
+  return first?.longMessage || first?.message || err?.message || 'Não foi possível enviar o convite.';
+}
+
+export async function inviteMember(_prev: InviteState, formData: FormData): Promise<InviteState> {
   const { userId, orgId, has } = await auth();
-  if (!userId || !orgId || !has({ role: 'org:admin' })) throw new Error('Apenas admins da marca');
+  if (!userId || !orgId || !has({ role: 'org:admin' })) return { error: 'Apenas administradores da marca podem convidar.' };
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(email)) return { error: 'Informe um e-mail válido.' };
   const role = formData.get('role') === 'org:admin' ? 'org:admin' : 'org:member';
-  await (await clerkClient()).organizations.createOrganizationInvitation({
-    organizationId: orgId,
-    emailAddress: String(formData.get('email')).trim(),
-    role,
-    inviterUserId: userId,
-  });
+  // o link do convite leva a pessoa para a tela de cadastro deste app
+  const h = await headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host');
+  const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https');
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || (host ? `${proto}://${host}` : '');
+  try {
+    await (await clerkClient()).organizations.createOrganizationInvitation({
+      organizationId: orgId, emailAddress: email, role, inviterUserId: userId,
+      ...(base ? { redirectUrl: `${base}/sign-up` } : {}),
+    });
+  } catch (e) {
+    console.error('[convite] falhou:', JSON.stringify((e as { errors?: unknown }).errors ?? String(e)));
+    return { error: clerkMessage(e) };
+  }
   revalidatePath('/admin/usuarios');
+  return { ok: `Convite enviado para ${email}.` };
 }
 
 export async function removeMember(formData: FormData) {
