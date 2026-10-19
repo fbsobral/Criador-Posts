@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState, useTransition } from 'react';
-import { setScriptStatus } from '@/lib/video-actions';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import { deleteScript, duplicateScript, setScriptStatus } from '@/lib/video-actions';
 import { PLATFORMS, STAGES, fmtSecs, stageOf, type Stage } from '@/lib/video';
-import { IconGrid, IconList } from '../../icons';
+import { IconBoard, IconCopy, IconList, IconTrash } from '../../icons';
 import { PartsBar } from './parts-bar';
 
 export type VideoRow = { id: string; title: string; hook: string; formatName: string; seconds: number; platform: string; status: Stage; ago: string; parts: { name: string; seconds: number }[] };
@@ -13,18 +13,14 @@ export type VideosMode = 'lista' | 'kanban';
 
 const platformLabel = (p: string) => PLATFORMS.find((x) => x.id === p)?.label ?? 'Reels';
 
-/** Alterna entre lista e kanban e lembra a escolha (cookie). */
+/** Alterna entre a lista e o quadro de produção (cada um tem a sua rota). */
 export function ModeToggle({ mode }: { mode: VideosMode }) {
   const router = useRouter();
-  const set = (m: VideosMode) => {
-    if (m === mode) return;
-    document.cookie = `videos_view=${m}; path=/; max-age=31536000; samesite=lax`;
-    router.replace(`/admin/videos?v=${m}`); router.refresh();
-  };
+  const go = (m: VideosMode) => { if (m !== mode) router.push(m === 'kanban' ? '/admin/videos/quadro' : '/admin/videos'); };
   return (
     <div className="view-toggle" role="group" aria-label="Modo de exibição">
-      <button type="button" className={mode === 'lista' ? 'on' : ''} onClick={() => set('lista')} aria-pressed={mode === 'lista'}><IconList /> <span>Lista</span></button>
-      <button type="button" className={mode === 'kanban' ? 'on' : ''} onClick={() => set('kanban')} aria-pressed={mode === 'kanban'}><IconGrid /> <span>Kanban</span></button>
+      <button type="button" className={mode === 'lista' ? 'on' : ''} onClick={() => go('lista')} aria-pressed={mode === 'lista'}><IconList /> <span>Lista</span></button>
+      <button type="button" className={mode === 'kanban' ? 'on' : ''} onClick={() => go('kanban')} aria-pressed={mode === 'kanban'}><IconBoard /> <span>Quadro de produção</span></button>
     </div>
   );
 }
@@ -37,8 +33,19 @@ function StageSelect({ value, onChange }: { value: Stage; onChange: (s: Stage) =
   );
 }
 
+function RowActions({ onDuplicate, onDelete }: { onDuplicate: () => void; onDelete: () => void }) {
+  return (
+    <span className="vd-actions">
+      <button type="button" className="btn small ghost" onClick={(e) => { e.stopPropagation(); onDuplicate(); }} title="Duplicar" aria-label="Duplicar roteiro"><IconCopy /></button>
+      <button type="button" className="btn small ghost danger" onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Excluir" aria-label="Excluir roteiro"><IconTrash /></button>
+    </span>
+  );
+}
+
 export function VideosView({ rows, mode }: { rows: VideoRow[]; mode: VideosMode }) {
+  const router = useRouter();
   const [items, setItems] = useState(rows);
+  useEffect(() => setItems(rows), [rows]); // dados novos do servidor (depois de duplicar, por exemplo)
   const [err, setErr] = useState('');
   const [, start] = useTransition();
   const [q, setQ] = useState('');
@@ -54,6 +61,12 @@ export function VideosView({ rows, mode }: { rows: VideoRow[]; mode: VideosMode 
       const r = await setScriptStatus(id, status);
       if (r.error) { setErr(r.error); setItems((a) => a.map((x) => (x.id === id ? { ...x, status: prev } : x))); }
     });
+  };
+  const duplicate = (id: string) => { setErr(''); start(async () => { const r = await duplicateScript(id); if (r.error) setErr(r.error); else router.refresh(); }); };
+  const remove = (id: string, title: string) => {
+    if (!confirm(`Excluir o roteiro “${title}”? Isso não pode ser desfeito.`)) return;
+    const prev = items; setErr(''); setItems((a) => a.filter((x) => x.id !== id));
+    start(async () => { const r = await deleteScript(id); if (r.error) { setErr(r.error); setItems(prev); } else router.refresh(); });
   };
   const counts = useMemo(() => Object.fromEntries(STAGES.map((s) => [s.id, items.filter((x) => x.status === s.id).length])) as Record<Stage, number>, [items]);
   const shown = items.filter((x) => (filter === 'all' || x.status === filter) && (!q.trim() || `${x.title} ${x.hook}`.toLowerCase().includes(q.trim().toLowerCase())));
@@ -75,7 +88,7 @@ export function VideosView({ rows, mode }: { rows: VideoRow[]; mode: VideosMode 
           </div>
 
           <div className="card-surface vd-list" role="table">
-            <div className="vd-row head" role="row"><span>Roteiro</span><span>Formato</span><span>Duração</span><span>Plataforma</span><span>Etapa</span><span>Atualizado</span></div>
+            <div className="vd-row head" role="row"><span>Roteiro</span><span>Formato</span><span>Duração</span><span>Plataforma</span><span>Etapa</span><span>Atualizado</span><span /></div>
             {shown.map((x) => (
               <div key={x.id} className="vd-row" role="row">
                 <Link href={`/admin/videos/${x.id}`} className="vd-row-main">
@@ -87,6 +100,7 @@ export function VideosView({ rows, mode }: { rows: VideoRow[]; mode: VideosMode 
                 <span className="vd-cell" data-l="Plataforma">{platformLabel(x.platform)}</span>
                 <span className="vd-cell"><StageSelect value={x.status} onChange={(s) => move(x.id, s)} /></span>
                 <span className="vd-cell muted" data-l="Atualizado">{x.ago}</span>
+                <RowActions onDuplicate={() => duplicate(x.id)} onDelete={() => remove(x.id, x.title)} />
               </div>
             ))}
             {shown.length === 0 && <div className="vd-none">Nenhum roteiro {filter !== 'all' ? `na etapa “${stageOf(filter).label}”` : 'encontrado'}.</div>}
@@ -113,7 +127,7 @@ export function VideosView({ rows, mode }: { rows: VideoRow[]; mode: VideosMode 
                         {x.hook && <p>“{x.hook.length > 90 ? `${x.hook.slice(0, 90)}…` : x.hook}”</p>}
                         <PartsBar parts={x.parts} small />
                         <div className="vd-kmeta"><span>{fmtSecs(x.seconds)}</span><i>·</i><span>{platformLabel(x.platform)}</span><i>·</i><span>{x.ago}</span></div>
-                        <div className="vd-kmove"><StageSelect value={x.status} onChange={(st) => move(x.id, st)} /></div>
+                        <div className="vd-kfoot"><div className="vd-kmove"><StageSelect value={x.status} onChange={(st) => move(x.id, st)} /></div><RowActions onDuplicate={() => duplicate(x.id)} onDelete={() => remove(x.id, x.title)} /></div>
                       </article>
                     ))}
                     {col.length === 0 && <div className="vd-col-empty">Solte um roteiro aqui</div>}

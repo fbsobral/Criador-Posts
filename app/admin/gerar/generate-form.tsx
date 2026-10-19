@@ -10,7 +10,7 @@ type Format = { id: string; name: string; description: string; editor: string };
 
 const PLACEHOLDER = {
   tema: 'Um tema por linha. Ex.:\nPor que a dívida pública preocupa\n5 erros ao financiar um imóvel\nFinanciamento ou consórcio?',
-  roteiro: 'Cole o roteiro deste post.\n\nSlide 1: Título forte...\nSlide 2: ...',
+  roteiro: 'Cole o texto deste post.\n\nSlide 1: Título forte...\nSlide 2: ...',
 };
 const SEP = /^\s*-{3,}\s*$/m;
 
@@ -51,7 +51,7 @@ export function GenerateForm({ formats, hasKey, hasImageKey }: { formats: Format
         </label>
         <label className={mode === 'roteiro' ? 'on' : ''}>
           <input type="radio" name="mode" value="roteiro" checked={mode === 'roteiro'} onChange={() => setMode('roteiro')} />
-          <b>Estruturar roteiros prontos</b><small>A IA só organiza em slides</small>
+          <b>Estruturar textos prontos</b><small>A IA só organiza em slides</small>
         </label>
       </div>
 
@@ -75,13 +75,13 @@ export function GenerateForm({ formats, hasKey, hasImageKey }: { formats: Format
         </label>
       ) : (
         <div className="scripts">
-          <div className="lbl">Roteiros ({filled} {filled === 1 ? 'preenchido' : 'preenchidos'}) · cada um vira um post</div>
+          <div className="lbl">Textos ({filled} {filled === 1 ? 'preenchido' : 'preenchidos'}) · cada um vira um post</div>
           {scripts.map((t, i) => (
             <div className="script-card" key={i}>
               <div className="script-head">
-                <b>Roteiro {i + 1}</b>
+                <b>Texto {i + 1}</b>
                 <span className="muted">{t.trim() ? `${t.trim().split(/\s+/).length} palavras` : 'vazio'}</span>
-                <button type="button" className="btn small ghost danger" onClick={() => removeScript(i)} aria-label={`Remover roteiro ${i + 1}`} title="Remover"><IconTrash /></button>
+                <button type="button" className="btn small ghost danger" onClick={() => removeScript(i)} aria-label={`Remover texto ${i + 1}`} title="Remover"><IconTrash /></button>
               </div>
               <textarea
                 ref={(el) => { cards.current[i] = el; }}
@@ -92,9 +92,9 @@ export function GenerateForm({ formats, hasKey, hasImageKey }: { formats: Format
             </div>
           ))}
           <button type="button" className="add-script" onClick={addScript} disabled={scripts.length >= MAX_ITEMS_PER_BATCH}>
-            <IconPlus /> Adicionar roteiro
+            <IconPlus /> Adicionar texto
           </button>
-          <small className="muted">Dica: se colar vários roteiros de uma vez separados por uma linha com <code>---</code>, eu divido em cartões para você.</small>
+          <small className="muted">Dica: se colar vários textos de uma vez separados por uma linha com <code>---</code>, eu divido em cartões para você.</small>
         </div>
       )}
 
@@ -120,7 +120,7 @@ export function GenerateForm({ formats, hasKey, hasImageKey }: { formats: Format
         <span>
           <b>Gerar também as imagens dos slides (Nano Banana)</b>
           <small>
-            As imagens entram nos espaços de imagem do carrossel e do Tweet Card. Se o roteiro descrever a imagem, a IA melhora a descrição antes de gerar; se não descrever, ela cria a partir do texto do slide. Cerca de {fmtUsd(IMAGE_COST_USD)} por imagem, até 4 por post.
+            As imagens entram nos espaços de imagem do carrossel e do Tweet Card. Se o texto descrever a imagem, a IA melhora a descrição antes de gerar; se não descrever, ela cria a partir do texto do slide. Cerca de {fmtUsd(IMAGE_COST_USD)} por imagem, até 4 por post.
             {!hasImageKey && <> <b style={{ color: 'var(--danger)' }}>Indisponível: configure GEMINI_API_KEY no servidor.</b></>}
           </small>
         </span>

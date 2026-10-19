@@ -257,7 +257,7 @@ export async function createBatch(_prev: BatchState, formData: FormData): Promis
   if (!process.env.ANTHROPIC_API_KEY) return { error: 'A chave da IA ainda não foi configurada no servidor (ANTHROPIC_API_KEY).' };
   const withImages = formData.get('withImages') === 'on';
   if (withImages && !imageEnabled()) return { error: 'A geração de imagens ainda não foi configurada no servidor (GEMINI_API_KEY).' };
-  if (!briefs.length) return { error: mode === 'roteiro' ? 'Cole pelo menos um roteiro.' : 'Escreva pelo menos um tema (um por linha).' };
+  if (!briefs.length) return { error: mode === 'roteiro' ? 'Cole pelo menos um texto.' : 'Escreva pelo menos um tema (um por linha).' };
   if (briefs.length > MAX_ITEMS_PER_BATCH) return { error: `Máximo de ${MAX_ITEMS_PER_BATCH} posts por lote (você enviou ${briefs.length}).` };
   if (briefs.some((b) => b.length > MAX_BRIEF_CHARS)) return { error: `Cada item pode ter até ${MAX_BRIEF_CHARS} caracteres.` };
 

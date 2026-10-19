@@ -11,7 +11,11 @@ import { IconPlus } from '../../icons';
 import { PostPreview } from '../post-preview';
 import { TemplateArt } from '../template-art';
 import { PostActions, type Destination } from './post-actions';
+import { IconPosts } from '../../icons';
+import { PageHead, EmptyState } from '../ui';
 import { ViewToggle, type PostsView } from './view-toggle';
+
+export const metadata = { title: 'Posts' };
 
 export default async function PostsPage({ searchParams }: { searchParams: Promise<{ moved?: string; v?: string }> }) {
   const { moved, v } = await searchParams;
@@ -47,13 +51,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <h1>Posts</h1>
-          <p>{rows.length === 0 ? 'Crie o primeiro post da marca.' : `${rows.length} ${rows.length === 1 ? 'post' : 'posts'} em ${c.brandName}.`}</p>
-        </div>
-        {rows.length > 0 && <ViewToggle view={view} />}
-      </div>
+      <PageHead title="Posts" description={rows.length === 0 ? 'Crie o primeiro post da marca.' : `${rows.length} ${rows.length === 1 ? 'post' : 'posts'} em ${c.brandName}.`} actions={rows.length > 0 && <ViewToggle view={view} />} />
 
       {moved && <div className="notice ok" style={{ marginBottom: 20 }} role="status">Post migrado para <b>{moved}</b>. Ele chegou lá como rascunho.</div>}
 
@@ -76,7 +74,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Promis
       </form>
 
       {rows.length === 0 ? (
-        <div className="empty"><b>Nenhum post ainda</b>Use o formulário acima para criar o primeiro.</div>
+        <EmptyState icon={<IconPosts />} title="Nenhum post ainda">Use o formulário acima para criar o primeiro.</EmptyState>
       ) : view === 'lista' ? (
         <div className="card-surface table-card list-posts">
           <table>

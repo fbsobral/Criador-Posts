@@ -6,6 +6,7 @@ const PLATFORM_GUIDE: Record<Platform, string> = {
   reels: 'Reels (Instagram): legenda curta com gancho na 1ª linha; 3 a 5 hashtags.',
   tiktok: 'TikTok: tom mais direto e coloquial; legenda de 1 a 2 frases; 3 a 5 hashtags, com uma ampla e as demais de nicho.',
   shorts: 'YouTube Shorts: título forte e descritivo; legenda de 1 a 2 frases; 2 a 4 hashtags (inclua #shorts).',
+  all: 'TODAS as plataformas (Reels, TikTok e Shorts): escreva um roteiro que funcione nas três, com linguagem direta e neutra (sem referências a recursos de uma rede específica). Legenda curta com gancho na 1ª linha, que sirva para qualquer uma; 4 a 6 hashtags amplas (nada exclusivo de uma plataforma).',
 };
 
 const STR = { type: 'string' } as const;

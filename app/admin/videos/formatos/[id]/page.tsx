@@ -1,10 +1,9 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { videoFormats } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
-import { IconBack } from '../../../../icons';
+import { PageHead } from '../../../ui';
 import { FormatEditor } from './format-editor';
 
 export default async function FormatPage({ params }: { params: Promise<{ id: string }> }) {
@@ -23,10 +22,11 @@ export default async function FormatPage({ params }: { params: Promise<{ id: str
   }
   return (
     <div className="page">
-      <Link href="/admin/videos/formatos" className="back"><IconBack /> Formatos</Link>
-      <div className="page-head" style={{ marginTop: 10 }}>
-        <div><h1>{initial.id ? 'Editar formato' : 'Novo formato'}</h1><p>Monte o vídeo em partes e escreva o que a IA deve fazer em cada uma. Quanto mais específica a instrução, melhor o roteiro.</p></div>
-      </div>
+      <PageHead
+        back={{ href: '/admin/videos/formatos', label: 'Formatos de vídeo' }}
+        title={initial.id ? 'Editar formato' : 'Novo formato'}
+        description="Monte o vídeo em partes e escreva o que a IA deve fazer em cada uma. Quanto mais específica a instrução, melhor o roteiro."
+      />
       <FormatEditor initial={initial} />
     </div>
   );

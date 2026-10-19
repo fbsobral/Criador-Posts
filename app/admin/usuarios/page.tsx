@@ -3,6 +3,9 @@ import { getCtx } from '@/lib/ctx';
 import { removeMember } from '@/lib/actions';
 import { InviteForm } from './invite-form';
 import { initials } from '@/lib/format';
+import { PageHead } from '../ui';
+
+export const metadata = { title: 'Usuários' };
 
 const roleName = (r: string) => (r === 'org:admin' ? 'Administrador' : 'Membro');
 
@@ -19,12 +22,7 @@ export default async function UsersPage() {
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <h1>Usuários</h1>
-          <p>Quem tem acesso a {c.brandName}. Administradores convidam e removem pessoas.</p>
-        </div>
-      </div>
+      <PageHead title="Usuários" description={`Quem tem acesso a ${c.brandName}. Administradores convidam e removem pessoas.`} />
 
       <div className="card-surface table-card">
         <table>

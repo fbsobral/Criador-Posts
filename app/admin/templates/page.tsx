@@ -6,6 +6,9 @@ import { createTemplate, deleteTemplate } from '@/lib/actions';
 import { EDITORS } from '@/lib/editors';
 import { IconPlus, IconTrash } from '../../icons';
 import { TemplateArt } from '../template-art';
+import { PageHead } from '../ui';
+
+export const metadata = { title: 'Templates' };
 
 export default async function TemplatesPage() {
   const c = (await getCtx())!;
@@ -14,12 +17,7 @@ export default async function TemplatesPage() {
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <h1>Templates</h1>
-          <p>Um template é o <b>formato do post</b>. Você escolhe um ao criar cada post em Posts.</p>
-        </div>
-      </div>
+      <PageHead title="Templates" description={<>Um template é o <b>formato do post de imagem</b> (carrossel ou Tweet Card). Você escolhe um ao criar cada post em Posts.</>} />
 
       <div className="cards">
         {rows.map((t) => (

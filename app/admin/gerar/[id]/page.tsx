@@ -6,7 +6,8 @@ import { generationBatches, generationItems, posts, templates } from '@/db/schem
 import { getCtx } from '@/lib/ctx';
 import { IMAGE_COST_USD, costUsd, fmtUsd } from '@/lib/ai/constants';
 import { deleteBatch, regenerateItem, retryFailed } from '@/lib/actions';
-import { IconBack, IconTrash } from '../../../icons';
+import { IconTrash } from '../../../icons';
+import { PageHead } from '../../ui';
 import { PostPreview } from '../../post-preview';
 import { AutoRefresh } from './auto-refresh';
 import { CopyCaption } from './copy-caption';
@@ -45,19 +46,17 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <Link href="/admin/gerar" className="back"><IconBack /> Gerar com IA</Link>
-          <h1 style={{ marginTop: 6 }}>{batch.mode === 'roteiro' ? 'Roteiros' : 'Temas'} · {tpl?.name ?? 'Lote'}</h1>
-          <p>{done} de {items.length} prontos{batch.withImages ? ` · ${imgs} ${imgs === 1 ? 'imagem' : 'imagens'}` : ''} · custo {fmtUsd(cost)} <AutoRefresh batchId={id} active={pending} /></p>
-        </div>
-        <div className="row-actions">
+      <PageHead
+        back={{ href: '/admin/gerar', label: 'Gerar posts com IA' }}
+        title={`${batch.mode === 'roteiro' ? 'Textos prontos' : 'Temas'} · ${tpl?.name ?? 'Lote'}`}
+        description={<>{done} de {items.length} prontos{batch.withImages ? ` · ${imgs} ${imgs === 1 ? 'imagem' : 'imagens'}` : ''} · custo {fmtUsd(cost)} <AutoRefresh batchId={id} active={pending} /></>}
+        actions={<>
           {failed > 0 && !pending && (
             <form action={retryFailed}><input type="hidden" name="batchId" value={id} /><button className="btn">Repetir {failed} com erro</button></form>
           )}
           <form action={deleteBatch}><input type="hidden" name="id" value={id} /><button className="btn ghost danger" title="Remove o lote do histórico (os posts ficam em Posts)"><IconTrash /> Excluir lote</button></form>
-        </div>
-      </div>
+        </>}
+      />
 
       <div className="progress" aria-label={`${pct}% concluído`}><span style={{ width: `${pct}%` }} /></div>
 

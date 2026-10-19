@@ -7,7 +7,10 @@ import { supportsAi } from '@/lib/ai/generate';
 import { IMAGE_COST_USD, costUsd, fmtUsd } from '@/lib/ai/constants';
 import { imageEnabled } from '@/lib/ai/image';
 import { timeAgo } from '@/lib/format';
+import { PageHead } from '../ui';
 import { GenerateForm } from './generate-form';
+
+export const metadata = { title: 'Gerar posts com IA' };
 
 export default async function GeneratePage() {
   const c = (await getCtx())!;
@@ -36,12 +39,7 @@ export default async function GeneratePage() {
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <h1>Gerar posts com IA</h1>
-          <p>Crie vários posts de uma vez. Eles chegam como <b>rascunhos</b> para você revisar e ajustar no editor.</p>
-        </div>
-      </div>
+      <PageHead title="Gerar posts com IA" description={<>Crie vários posts de imagem (carrossel e Tweet Card) de uma vez. Eles chegam como <b>rascunhos</b> para você revisar e ajustar no editor.</>} />
 
       {profileEmpty && (
         <div className="notice info" style={{ marginBottom: 20 }}>
@@ -65,7 +63,7 @@ export default async function GeneratePage() {
                 {batches.map(({ b, total, done, failed, inTok, outTok, imgs, first }) => (
                   <tr key={b.id}>
                     <td><Link href={`/admin/gerar/${b.id}`}><b>{first || 'Lote'}</b>{total > 1 && <span className="muted"> + {total - 1}</span>}</Link></td>
-                    <td className="hide-s muted">{b.mode === 'roteiro' ? 'Roteiros' : 'Temas'}</td>
+                    <td className="hide-s muted">{b.mode === 'roteiro' ? 'Textos prontos' : 'Temas'}</td>
                     <td>
                       <span className={`pill ${done === total ? 'published' : 'draft'}`}>{done}/{total}</span>
                       {failed > 0 && <span className="pill" style={{ marginLeft: 6, background: '#fdecea', color: 'var(--danger)' }}>{failed} com erro</span>}

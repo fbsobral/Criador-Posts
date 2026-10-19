@@ -3,11 +3,12 @@
 /** Uma parte do formato: o que acontece nela e quanto do tempo ocupa (peso relativo). */
 export type VideoPart = { id: string; name: string; instruction: string; percent: number };
 
-export type Platform = 'reels' | 'tiktok' | 'shorts';
+export type Platform = 'reels' | 'tiktok' | 'shorts' | 'all';
 export const PLATFORMS: { id: Platform; label: string; hint: string }[] = [
   { id: 'reels', label: 'Reels', hint: 'Instagram' },
   { id: 'tiktok', label: 'TikTok', hint: 'TikTok' },
   { id: 'shorts', label: 'Shorts', hint: 'YouTube' },
+  { id: 'all', label: 'Todas', hint: 'Reels, TikTok e Shorts' },
 ];
 
 export const DURATION_PRESETS = [15, 30, 45, 60, 90];

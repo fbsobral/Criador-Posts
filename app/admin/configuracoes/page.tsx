@@ -6,6 +6,9 @@ import { saveAiProfile, saveSettings } from '@/lib/actions';
 import { GLOBAL_PRESETS } from '@/lib/themes';
 import { PostPreview } from '../post-preview';
 import { AvatarField } from './avatar-field';
+import { PageHead } from '../ui';
+
+export const metadata = { title: 'Configurações' };
 
 export default async function SettingsPage() {
   const c = (await getCtx())!;
@@ -24,12 +27,7 @@ export default async function SettingsPage() {
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <h1>Configurações</h1>
-          <p>Padrões aplicados aos <b>novos</b> posts de {c.brandName}.{ro && ' Apenas administradores da marca podem editar.'}</p>
-        </div>
-      </div>
+      <PageHead title="Configurações" description={<>Padrões aplicados aos <b>novos</b> posts de {c.brandName}.{ro && ' Apenas administradores da marca podem editar.'}</>} />
 
       <div className="settings">
         <form action={saveSettings} className="card-surface form-card">

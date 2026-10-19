@@ -7,6 +7,10 @@ import { ASSET_THUMB_URL, ASSET_URL, searchAssets } from '@/lib/assets';
 import { importPostImages } from '@/lib/actions';
 import { timeAgo } from '@/lib/format';
 import { DeleteAsset, UploadButton } from './gallery-actions';
+import { PageHead, EmptyState } from '../ui';
+import { IconImage } from '../../icons';
+
+export const metadata = { title: 'Galeria de imagens' };
 
 export default async function GalleryPage({ searchParams }: { searchParams: Promise<{ q?: string; imported?: string; posts?: string }> }) {
   const { q = '', imported, posts: postsChanged } = await searchParams;
@@ -18,13 +22,7 @@ export default async function GalleryPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="page">
-      <div className="page-head">
-        <div>
-          <h1>Galeria de imagens</h1>
-          <p>{total === 0 ? 'As imagens da marca ficam aqui, para reaproveitar em outros posts.' : `${total} ${total === 1 ? 'imagem' : 'imagens'} em ${c.brandName} (${ai} geradas com IA).`}</p>
-        </div>
-        <div className="row-actions"><UploadButton /></div>
-      </div>
+      <PageHead title="Galeria de imagens" description={total === 0 ? 'As imagens da marca ficam aqui, para reaproveitar em outros posts.' : `${total} ${total === 1 ? 'imagem' : 'imagens'} em ${c.brandName} (${ai} geradas com IA).`} actions={<UploadButton />} />
 
       {imported !== undefined && (
         <div className="notice ok" style={{ marginBottom: 18 }} role="status">
@@ -44,7 +42,7 @@ export default async function GalleryPage({ searchParams }: { searchParams: Prom
       )}
 
       {hits.length === 0 ? (
-        <div className="empty"><b>{q ? 'Nenhuma imagem encontrada' : 'Galeria vazia'}</b>{q ? 'Tente outras palavras.' : 'Envie imagens ou gere com IA dentro de um post: elas aparecem aqui automaticamente.'}</div>
+        <EmptyState icon={<IconImage />} title={q ? 'Nenhuma imagem encontrada' : 'Galeria vazia'}>{q ? 'Tente outras palavras.' : 'Envie imagens ou gere com IA dentro de um post: elas aparecem aqui automaticamente.'}</EmptyState>
       ) : (
         <div className="gal-page-grid">
           {hits.map((h) => (
