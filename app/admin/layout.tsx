@@ -1,7 +1,7 @@
 import { OrganizationList, OrganizationSwitcher, UserButton } from '@clerk/nextjs';
 import { auth } from '@clerk/nextjs/server';
 import { getCtx } from '@/lib/ctx';
-import { IconImage, IconPosts, IconSettings, IconSpark, IconTemplates, IconUsers } from '../icons';
+import { IconImage, IconPosts, IconSettings, IconSpark, IconTemplates, IconUsers, IconVideo } from '../icons';
 import { NavLink } from './nav-link';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -37,13 +37,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <span className="av">{c.brandName.slice(0, 1).toUpperCase()}</span>
             <div style={{ minWidth: 0 }}><b>{c.brandName}</b><small>{c.isBrandAdmin ? 'Administrador' : 'Membro'}</small></div>
           </div>
-          <div className="nav-label">Marca</div>
+          <div className="nav-label">Posts de imagem</div>
           <NavLink href="/admin/posts" icon={<IconPosts />}>Posts</NavLink>
-          <NavLink href="/admin/gerar" icon={<IconSpark />}>Gerar com IA</NavLink>
+          <NavLink href="/admin/gerar" icon={<IconSpark />}>Gerar posts</NavLink>
           <NavLink href="/admin/galeria" icon={<IconImage />}>Galeria</NavLink>
-          <NavLink href="/admin/configuracoes" icon={<IconSettings />}>Configurações</NavLink>
-          <div className="nav-label">Geral</div>
           <NavLink href="/admin/templates" icon={<IconTemplates />}>Templates</NavLink>
+          <div className="nav-label">Roteiros de vídeo</div>
+          <NavLink href="/admin/videos" icon={<IconVideo />}>Roteiros</NavLink>
+          <div className="nav-label">Marca</div>
+          <NavLink href="/admin/configuracoes" icon={<IconSettings />}>Configurações</NavLink>
           <NavLink href="/admin/usuarios" icon={<IconUsers />}>Usuários</NavLink>
         </nav>
         <div className="side-bottom"><UserButton showName /></div>

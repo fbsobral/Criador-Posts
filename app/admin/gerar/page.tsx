@@ -38,7 +38,7 @@ export default async function GeneratePage() {
     <div className="page">
       <div className="page-head">
         <div>
-          <h1>Gerar com IA</h1>
+          <h1>Gerar posts com IA</h1>
           <p>Crie vários posts de uma vez. Eles chegam como <b>rascunhos</b> para você revisar e ajustar no editor.</p>
         </div>
       </div>

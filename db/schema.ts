@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import type { ScriptData, VideoPart } from '../lib/video';
 import { boolean, customType, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
@@ -211,4 +212,48 @@ export const assets = pgTable(
     index('assets_search_idx').using('gin', t.search),
     uniqueIndex('assets_brand_hash_idx').on(t.brandId, t.contentHash),
   ],
+);
+
+/** Formato de vídeo curto: partes em ordem, cada uma com instruções próprias. `brandId` nulo = global. */
+export const videoFormats = pgTable(
+  'video_formats',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    brandId: uuid('brand_id').references(() => brands.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description').notNull().default(''),
+    defaultSeconds: integer('default_seconds').notNull().default(45),
+    parts: jsonb('parts').$type<VideoPart[]>().notNull(),
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [index('video_formats_brand_idx').on(t.brandId)],
+);
+
+/** Roteiro de vídeo curto gerado (ou escrito) para Reels, TikTok ou Shorts. */
+export const videoScripts = pgTable(
+  'video_scripts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+    formatId: uuid('format_id').references(() => videoFormats.id, { onDelete: 'set null' }),
+    /** Nome do formato no momento da geração (o formato pode mudar ou ser excluído depois). */
+    formatName: text('format_name').notNull().default(''),
+    /** Gerados na mesma rodada compartilham o lote. */
+    batchId: uuid('batch_id'),
+    title: text('title').notNull().default('Sem título'),
+    platform: text('platform').notNull().default('reels'),
+    seconds: integer('seconds').notNull().default(45),
+    /** Ideia/ângulo que originou o roteiro. */
+    angle: text('angle').notNull().default(''),
+    status: text('status').notNull().default('draft'), // 'draft' | 'ready'
+    data: jsonb('data').$type<ScriptData>().notNull(),
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [index('video_scripts_brand_idx').on(t.brandId, t.updatedAt)],
 );

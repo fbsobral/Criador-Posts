@@ -20,7 +20,7 @@ export default async function GalleryPage({ searchParams }: { searchParams: Prom
     <div className="page">
       <div className="page-head">
         <div>
-          <h1>Galeria</h1>
+          <h1>Galeria de imagens</h1>
           <p>{total === 0 ? 'As imagens da marca ficam aqui, para reaproveitar em outros posts.' : `${total} ${total === 1 ? 'imagem' : 'imagens'} em ${c.brandName} (${ai} geradas com IA).`}</p>
         </div>
         <div className="row-actions"><UploadButton /></div>

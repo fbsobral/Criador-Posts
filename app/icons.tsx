@@ -16,3 +16,8 @@ export const IconList = () => (<svg {...base}><path d="M9 6h11M9 12h11M9 18h11" 
 export const IconImage = () => (<svg {...base}><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="9" cy="10" r="1.8" /><path d="M21 16l-5-5-9 9" /></svg>);
 export const IconSwap = () => (<svg {...base}><path d="M7 4L3 8l4 4" /><path d="M3 8h14a4 4 0 0 1 4 4" /><path d="M17 20l4-4-4-4" /><path d="M21 16H7a4 4 0 0 1-4-4" /></svg>);
 export const IconText = () => (<svg {...base}><path d="M4 7h16M4 12h16M4 17h10" /></svg>);
+
+export const IconVideo = () => (<svg {...base}><rect x="3" y="5" width="13" height="14" rx="3" /><path d="M16 10l5-3v10l-5-3" /></svg>);
+export const IconUp = () => (<svg {...base}><path d="M6 15l6-6 6 6" /></svg>);
+export const IconDown = () => (<svg {...base}><path d="M6 9l6 6 6-6" /></svg>);
+export const IconPlay = () => (<svg {...base}><path d="M7 5l12 7-12 7z" /></svg>);
