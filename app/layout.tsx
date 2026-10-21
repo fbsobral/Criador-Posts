@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
 import { ClerkProvider } from '@clerk/nextjs';
 import { ptBR } from '@clerk/localizations';
@@ -7,7 +7,11 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-jakarta', weight: ['600', '700', '800'], display: 'swap' });
 
-export const metadata: Metadata = { title: { default: 'Criador de Posts', template: '%s · Criador de Posts' } };
+export const metadata: Metadata = {
+  title: { default: 'Criador de Posts', template: '%s · Criador de Posts' },
+  appleWebApp: { capable: true, title: 'Criador de Posts', statusBarStyle: 'default' },
+};
+export const viewport: Viewport = { themeColor: '#F97335' };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
