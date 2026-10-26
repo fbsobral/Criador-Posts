@@ -6,7 +6,7 @@ Regras para manter as telas consistentes. Antes de criar uma tela nova, siga ist
 Três grupos, sempre nesta ordem:
 - **Posts de imagem:** Posts, Gerar posts, Galeria, Templates.
 - **Roteiros de vídeo:** Roteiros, Quadro de produção.
-- **Marca:** Configurações, Usuários.
+- **Marca:** Configurações, Personas, Usuários.
 
 Cada item do menu tem um nome curto (a barra do celular não mostra os títulos dos grupos). Subtelas (gerar, formatos, detalhe) ficam dentro da página do módulo, não no menu.
 

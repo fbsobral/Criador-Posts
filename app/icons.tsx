@@ -22,3 +22,4 @@ export const IconUp = () => (<svg {...base}><path d="M6 15l6-6 6 6" /></svg>);
 export const IconDown = () => (<svg {...base}><path d="M6 9l6 6 6-6" /></svg>);
 export const IconPlay = () => (<svg {...base}><path d="M7 5l12 7-12 7z" /></svg>);
 export const IconBoard = () => (<svg {...base}><rect x="3" y="4" width="5" height="16" rx="1.5" /><rect x="9.5" y="4" width="5" height="10" rx="1.5" /><rect x="16" y="4" width="5" height="13" rx="1.5" /></svg>);
+export const IconTarget = () => (<svg {...base}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.2" /></svg>);

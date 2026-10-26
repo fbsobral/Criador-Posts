@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import type { ScriptData, VideoPart } from '../lib/video';
+import type { PersonaData } from '../lib/persona';
 import { boolean, customType, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
@@ -59,6 +60,8 @@ export const brandSettings = pgTable('brand_settings', {
   aiImageStyle: text('ai_image_style').notNull().default(''),
   /** Regras das legendas (hashtags fixas, rodapé, tamanho, emojis…). */
   aiCaptionRules: text('ai_caption_rules').notNull().default(''),
+  /** Último ICP (perfil de cliente ideal) usado para gerar personas. */
+  personaIcp: text('persona_icp').notNull().default(''),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
@@ -256,4 +259,38 @@ export const videoScripts = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (t) => [index('video_scripts_brand_idx').on(t.brandId, t.updatedAt)],
+);
+
+/** Agrupamento de personas (uma coluna do quadro). */
+export const personaGroups = pgTable(
+  'persona_groups',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description').notNull().default(''),
+    position: integer('position').notNull().default(0),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [index('persona_groups_brand_idx').on(t.brandId, t.position)],
+);
+
+/** Persona (arquétipo de cliente). Ao excluir o grupo, a persona fica "sem grupo". */
+export const personas = pgTable(
+  'personas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+    groupId: uuid('group_id').references(() => personaGroups.id, { onDelete: 'set null' }),
+    name: text('name').notNull(),
+    /** Frase curta que resume a persona. */
+    tagline: text('tagline').notNull().default(''),
+    data: jsonb('data').$type<PersonaData>().notNull(),
+    position: integer('position').notNull().default(0),
+    source: text('source').notNull().default('manual'), // 'ai' | 'manual'
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [index('personas_brand_idx').on(t.brandId, t.groupId, t.position)],
 );
