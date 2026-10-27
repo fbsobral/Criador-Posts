@@ -22,8 +22,8 @@ export const IDEA_FIELDS: { key: keyof IdeaFields; label: string; rows: number; 
   { key: 'cause', label: 'Causa', rows: 2, max: 400, placeholder: 'Por que isso acontece (a causa coletiva, não a culpa da pessoa).', help: 'A raiz do problema, sem culpar quem sofre.' },
   { key: 'guide', label: 'Guia (enquadramento progressista)', rows: 3, max: 600, placeholder: 'Cuidado e proteção: uma cidade que cuida de quem mora nela, como uma casa onde todo mundo cabe.', help: 'Lakoff: o valor e a imagem que conduzem a conversa, sem repetir o discurso do outro lado nem se defender dele.' },
   { key: 'plan', label: 'Plano', rows: 3, max: 700, placeholder: 'O caminho em passos curtos: o que fazer e como a organização ajuda.', help: 'O que a pessoa pode fazer, em passos concretos.' },
-  { key: 'gain', label: 'Ganho', rows: 2, max: 400, placeholder: 'O que muda na vida dela quando o plano funciona.', help: 'O resultado concreto e visível.' },
-  { key: 'desire', label: 'Desejo', rows: 2, max: 400, placeholder: 'O que ela quer de verdade lá no fundo (segurança, dignidade, sossego).', help: 'A aspiração por trás da dor: o que quer ser ou sentir.' },
+  { key: 'gain', label: 'Ganho', rows: 2, max: 400, placeholder: 'O resultado prático da dor resolvida, o oposto do impacto (ex.: sobra dinheiro no fim do mês).', help: 'O resultado racional, concreto e visível: normalmente o oposto do impacto.' },
+  { key: 'desire', label: 'Desejo', rows: 2, max: 400, placeholder: 'Como ela se sente com a dor resolvida (tranquila, respeitada, segura, livre).', help: 'O resultado emocional: o sentimento de ter a dor resolvida.' },
   { key: 'cta', label: 'CTA', rows: 2, max: 300, placeholder: 'O próximo passo: manda pra quem passa por isso.', help: 'O convite final, claro e natural.' },
 ];
 export const EMPTY_FIELDS: IdeaFields = { pain: '', impact: '', cause: '', guide: '', plan: '', gain: '', desire: '', cta: '' };
@@ -60,7 +60,7 @@ export function ideaBrief(f: IdeaFields, persona: string, territory: string): st
 }
 /** Orientação extra para a IA (roteiro ou post) respeitar a ideia: arco didático, linguagem da persona, guia como bússola, sem números inventados. */
 export const IDEA_INSTRUCTIONS = `ESTE CONTEÚDO PARTE DE UMA IDEIA ESTRUTURADA. Siga estas regras:
-1) COMEÇO, MEIO E FIM, DIDÁTICO. Começo: a cena/dor que a pessoa reconhece. Meio: EXPLIQUE, em ordem de causa e efeito e com palavras simples, por que isso acontece, e depois o que fazer, em passos curtos e concretos. Fim: o que ela ganha e o convite (CTA). Cada frase deve levar à seguinte ("porque", "por isso", "aí", "então"). Fale como para um amigo que não entende do assunto.
+1) COMEÇO, MEIO E FIM, DIDÁTICO. Começo: a cena/dor que a pessoa reconhece. Meio: EXPLIQUE, em ordem de causa e efeito e com palavras simples, por que isso acontece, e depois o que fazer, em passos curtos e concretos. Fim: o ganho racional (o oposto do impacto: o que melhora na prática), o desejo (o sentimento de ter a dor resolvida) e o convite (CTA). Cada frase deve levar à seguinte ("porque", "por isso", "aí", "então"). Fale como para um amigo que não entende do assunto.
 2) CONCRETO, NÃO ABSTRATO. Troque palavras abstratas (transparência, repasse, equidade, sistema) por ações e situações visíveis do dia a dia da pessoa. Se usar um termo difícil, explique logo em seguida com uma frase simples.
 3) FALE COM A PERSONA: use o jeito de falar, os exemplos, o trabalho e as contas dela; se couber, responda à objeção dela.
 4) O GUIA é bússola: use o valor para escolher o ponto de vista e as palavras, mas NÃO narre a metáfora do guia nem diga "valor" ou "enquadramento". Só use imagem se vier do universo da própria persona.
