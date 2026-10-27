@@ -11,8 +11,8 @@ import { IconSpark } from '../../icons';
 type Choice = { id: string; mode: TerritoryMode; label: string; hint: string; count: number; depth: number };
 
 /** Gera territórios com IA em 2 passos: 1) o que gerar; 2) revisar o que entra no mapa. */
-export function TerritoryModal({ persona, parent, existingCount, hasKey, onClose }: {
-  persona: { id: string; name: string }; parent: { id: string; name: string } | null; existingCount: number; hasKey: boolean; onClose: () => void;
+export function TerritoryModal({ persona, parent, existingCount, hasKey, hasAbout, onClose }: {
+  persona: { id: string; name: string }; parent: { id: string; name: string } | null; existingCount: number; hasKey: boolean; hasAbout: boolean; onClose: () => void;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -82,7 +82,7 @@ export function TerritoryModal({ persona, parent, existingCount, hasKey, onClose
         {step === 'ask' ? (
           <>
             <div className="pe-modal-body">
-              <p className="muted">Para <b>{persona.name.replace(/,.*/, '')}</b>{parent ? <> · dentro de <b>{parent.name}</b></> : ''}</p>
+              <p className="muted">Para <b>{persona.name}</b>{parent ? <> · dentro de <b>{parent.name}</b></> : ''}</p>
               <div className="tr-choices">
                 {choices.map((c) => (
                   <button key={c.id} type="button" className={`tr-choice${c.id === choice ? ' on' : ''}`} onClick={() => pick(c)} aria-pressed={c.id === choice}><b>{c.label}</b><small>{c.hint}</small></button>
@@ -107,6 +107,7 @@ export function TerritoryModal({ persona, parent, existingCount, hasKey, onClose
                 <textarea rows={3} value={instructions} onChange={(e) => setInstructions(e.target.value)} maxLength={1200} placeholder="Ex.: Foque em quem ainda não tem reserva de emergência. Evite temas políticos." />
               </details>
               <div className="notice info">A IA considera o perfil da persona e <b>tudo que ela já tem no mapa</b>{existingCount > 0 ? <> ({existingCount} {existingCount === 1 ? 'território' : 'territórios'})</> : ''} para <b>não repetir</b> nada.</div>
+              {!hasAbout && <div className="notice warn">Você ainda não descreveu <b>o que a organização faz</b> (card no topo da página). Sem isso, os territórios ficam genéricos: eles partem só do que a persona busca.</div>}
               {!hasKey && <div className="notice warn">A IA não está configurada neste servidor (falta a <code>ANTHROPIC_API_KEY</code>).</div>}
               {busy && <div className="notice info" role="status">A IA está montando os territórios. {cur.mode === 'full' ? 'O mapa completo leva cerca de 30 a 60 segundos' : 'Leva cerca de 10 a 30 segundos'}; mantenha esta janela aberta.</div>}
               {err && <div className="notice err">{err}</div>}

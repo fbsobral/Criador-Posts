@@ -120,6 +120,13 @@
       "when": 1793093806642,
       "tag": "0016_territories",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793094697296,
+      "tag": "0017_org_about",
+      "breakpoints": true
     }
   ]
 }

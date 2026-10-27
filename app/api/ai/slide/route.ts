@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       title: str(b?.title, 120), topic: str(b?.topic, 80), feedback, previous: str(b?.previous, 4000) || undefined, tight: !!b?.tight,
       brand: {
         brandName: s?.displayName || brand?.name || '', niche: s?.aiNiche ?? '', audience: s?.aiAudience ?? '', voice: s?.aiVoice ?? '',
-        rules: s?.aiRules ?? '', cta: s?.aiCta ?? '', examples: s?.aiExamples ?? '', captionRules: s?.aiCaptionRules ?? '',
+        rules: s?.aiRules ?? '', cta: s?.aiCta ?? '', examples: s?.aiExamples ?? '', captionRules: s?.aiCaptionRules ?? '', about: s?.aiAbout ?? '',
       },
     });
     return Response.json({ text: r.text, note: r.note });

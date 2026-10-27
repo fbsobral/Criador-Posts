@@ -28,6 +28,8 @@ O QUE É UM TERRITÓRIO
 - Nomes curtos (2 a 6 palavras), claros e específicos. Nada de rótulos vagos ("Dicas", "Geral", "Outros"). A descrição tem uma frase dizendo o que entra ali e por que importa para a persona.
 - Irmãos (mesmo pai) cobrem assuntos DIFERENTES, sem sobreposição. Filhos aprofundam o pai, não o repetem.
 
+LIGAÇÃO COM A ORGANIZAÇÃO: os territórios ficam na interseção entre o que a persona quer, teme e precisa decidir e o que a ORGANIZAÇÃO faz e pode falar com autoridade (veja "O que a organização faz" na identidade da marca). Prefira territórios que levem, de forma natural, ao que a organização oferece ou sabe. Evite áreas sem nenhuma ligação com a organização; se um interesse da persona está fora do que ela faz, só inclua se houver uma ponte clara com a oferta ou com os temas da organização.
+
 REGRA DE OURO: NÃO REPITA o que já existe no mapa dessa persona (você recebe a árvore atual). Não crie o mesmo tema com outro nome nem variações triviais; complemente lacunas. Se um território já existe, não o inclua de novo.
 Se o mesmo tema já é usado em outras personas (você recebe a lista), reutilize EXATAMENTE o mesmo nome para ele, sem inventar sinônimos: isso permite ver os pontos em comum depois.
 

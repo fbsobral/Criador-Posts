@@ -94,7 +94,7 @@ export async function convertPostFormat(a: { brandId: string; userId: string; so
     instructions: instructions(retry), withImages: images.length > 0,
     brand: {
       brandName: settings?.displayName || brand?.name || '', niche: settings?.aiNiche ?? '', audience: settings?.aiAudience ?? '', voice: settings?.aiVoice ?? '',
-      rules: settings?.aiRules ?? '', cta: settings?.aiCta ?? '', examples: settings?.aiExamples ?? '', captionRules: settings?.aiCaptionRules ?? '',
+      rules: settings?.aiRules ?? '', cta: settings?.aiCta ?? '', examples: settings?.aiExamples ?? '', captionRules: settings?.aiCaptionRules ?? '', about: settings?.aiAbout ?? '',
     },
   });
 

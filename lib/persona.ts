@@ -27,3 +27,9 @@ export const lines = (t: string) => t.split('\n').map((l) => l.replace(/^\s*[-�
 
 /** Normaliza o nome do grupo para comparar ("Gestores " = "gestores"). */
 export const normName = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+
+/** "Juliana, a analista que quer sair da poupança" → primeiro nome e denominação. */
+export function splitPersonaName(n: string): { first: string; label: string } {
+  const i = n.indexOf(',');
+  return i < 0 ? { first: n.trim(), label: '' } : { first: n.slice(0, i).trim(), label: n.slice(i + 1).trim() };
+}

@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { createNode, deleteNode, moveNode, updateNode } from '@/lib/territory-actions';
-import { GROUP_COLORS } from '@/lib/persona';
+import { GROUP_COLORS, splitPersonaName } from '@/lib/persona';
 import { NODE_H, NODE_W, buildTree, descendantIds, edgePath, layoutTree, pathOf, type TNode } from '@/lib/territory';
 import { IconEdit, IconPlus, IconSpark, IconTrash } from '../../icons';
 import { usePan } from '../use-pan';
@@ -15,7 +15,7 @@ const DEPTH_COLORS = ['#F97335', '#1D9BF0', '#8B5CF6', '#1F9D63', '#E5484D', '#F
 const initialsOf = (n: string) => n.replace(/,.*/, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
 
 /** Mapa mental horizontal dos territórios de UMA persona: criar irmão/filho, arrastar para mudar o pai, recolher e gerar com IA. */
-export function MindMap({ persona, color, nodes: n0, hasKey }: { persona: PersonaLite; color: string; nodes: TNode[]; hasKey: boolean }) {
+export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout }: { persona: PersonaLite; color: string; nodes: TNode[]; hasKey: boolean; hasAbout: boolean }) {
   const router = useRouter();
   const [, start] = useTransition();
   const [nodes, setNodes] = useState(n0);
@@ -149,7 +149,7 @@ export function MindMap({ persona, color, nodes: n0, hasKey }: { persona: Person
                 onDragOver={(e) => { if (drag) { e.preventDefault(); setOver('root'); } }} onDragLeave={() => setOver(null)}
                 onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData('text/plain') || drag; setDrag(null); setOver(null); if (id) move(id, null); }}>
                 <span className="pe-av" style={{ background: personaColor }}>{initialsOf(persona.name)}</span>
-                <div><b>{persona.name.replace(/,.*/, '')}</b><small>{nodes.length} {nodes.length === 1 ? 'território' : 'territórios'}</small></div>
+                <div title={`${persona.name} · ${nodes.length} ${nodes.length === 1 ? 'território' : 'territórios'}`}><b>{splitPersonaName(persona.name).first}</b><small>{splitPersonaName(persona.name).label || persona.role || `${nodes.length} territórios`}</small></div>
               </div>
 
               {lay.placed.map((p) => {
@@ -216,8 +216,10 @@ export function MindMap({ persona, color, nodes: n0, hasKey }: { persona: Person
           </>
         ) : (
           <>
-            <b className="tr-panel-title">{persona.name.replace(/,.*/, '')}</b>
+            <b className="tr-panel-title">{persona.name}</b>
+            {persona.role && <div className="tr-meta">{persona.role}</div>}
             <p className="muted">{persona.tagline}</p>
+            <div className="tr-meta">{nodes.length} {nodes.length === 1 ? 'território' : 'territórios'} no mapa</div>
             <p className="muted" style={{ marginTop: 10 }}>Selecione um território para editar, criar filhos e irmãos ou gerar mais com IA. A IA sempre considera o que essa persona já tem no mapa.</p>
             <div className="tr-actions">
               <button type="button" className="btn small primary" onClick={() => setAi({ parent: null })}><IconSpark /> Gerar com IA</button>
@@ -227,7 +229,7 @@ export function MindMap({ persona, color, nodes: n0, hasKey }: { persona: Person
         )}
       </aside>
 
-      {ai && <TerritoryModal persona={persona} parent={ai.parent ? { id: ai.parent.id, name: ai.parent.name } : null} existingCount={nodes.length} hasKey={hasKey} onClose={() => setAi(null)} />}
+      {ai && <TerritoryModal persona={persona} parent={ai.parent ? { id: ai.parent.id, name: ai.parent.name } : null} existingCount={nodes.length} hasKey={hasKey} hasAbout={hasAbout} onClose={() => setAi(null)} />}
     </div>
   );
 }

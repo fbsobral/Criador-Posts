@@ -23,6 +23,8 @@ export type BrandProfile = {
   examples: string;
   /** Regras das legendas (hashtags fixas, rodapé, tamanho…). */
   captionRules?: string;
+  /** O que a organização faz: oferta, proposta de valor e temas em que quer ser autoridade. */
+  about?: string;
 };
 
 export type GenerateInput = {
@@ -74,7 +76,7 @@ const clean = (s: unknown, max = 400) => (typeof s === 'string' ? s.trim().slice
 /* ---------- instruções ---------- */
 export function brandBlock(b: BrandProfile): string {
   const lines = [
-    ['Marca', b.brandName], ['Nicho', b.niche], ['Público', b.audience], ['Tom de voz', b.voice],
+    ['Marca', b.brandName], ['O que a organização faz', b.about ?? ''], ['Nicho', b.niche], ['Público', b.audience], ['Tom de voz', b.voice],
     ['Regras (o que sempre/nunca fazer)', b.rules], ['Chamada para ação (CTA) padrão', b.cta], ['Regras das legendas', b.captionRules ?? ''],
   ].filter(([, v]) => v.trim());
   let out = lines.map(([k, v]) => `- ${k}: ${v.trim()}`).join('\n');

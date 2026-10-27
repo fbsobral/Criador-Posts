@@ -711,3 +711,14 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 .tr-matrix td.c { text-align: center; width: 64px; } .tr-matrix tr.top td { background: #FAF8F4; } .tr-matrix tbody tr { cursor: pointer; } .tr-matrix tbody tr:hover td { background: #FFFBF8; }
 .tr-matrix .dot { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; color: #fff; font-size: 11px; font-weight: 700; } .tr-matrix .gap { display: inline-block; width: 10px; height: 2px; background: var(--line-2); border-radius: 2px; }
 @media (max-width: 1100px) { .tr-layout { grid-template-columns: 1fr; } .tr-panel { position: static; } .tr-wrap { height: 62vh; } .tr-choices { grid-template-columns: 1fr; } }
+.tr-about { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; padding: 14px 18px; margin-bottom: 14px; flex-wrap: wrap; }
+.tr-about > div { flex: 1; min-width: 260px; } .tr-about b { font-family: var(--font-head); font-size: 13.5px; } .tr-about p { color: var(--ink-2); font-size: 13.5px; margin-top: 3px; line-height: 1.5; max-width: 920px; } .tr-about-text { white-space: pre-line; }
+.tr-about.empty { background: #FFF8F0; border-color: #FFD9C2; border-style: dashed; }
+.tr-about.editing { flex-direction: column; align-items: stretch; gap: 8px; } .tr-about.editing textarea { width: 100%; min-height: 170px; font-weight: 400; line-height: 1.5; }
+.tr-about-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.tr-tab-name { display: flex; flex-direction: column; line-height: 1.2; text-align: left; max-width: 230px; } .tr-tab-name b { font-size: 13px; } .tr-tab-name small { font-size: 11px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tr-chip-name { display: flex; flex-direction: column; line-height: 1.15; text-align: left; max-width: 190px; } .tr-chip-name small { font-size: 10.5px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tr-th-name { display: block; font-size: 10.5px; font-weight: 600; color: var(--ink-2); margin-top: 3px; text-transform: none; letter-spacing: 0; }
+.tr-root small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2; }
+.tr-root > div { min-width: 0; }
+.tr-tab { padding-top: 5px; padding-bottom: 5px; }

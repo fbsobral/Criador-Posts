@@ -62,6 +62,8 @@ export const brandSettings = pgTable('brand_settings', {
   aiCaptionRules: text('ai_caption_rules').notNull().default(''),
   /** Último ICP (perfil de cliente ideal) usado para gerar personas. */
   personaIcp: text('persona_icp').notNull().default(''),
+  /** O que a organização faz (oferta, proposta de valor, temas em que quer ser autoridade). Base para personas, territórios e todo conteúdo gerado. */
+  aiAbout: text('ai_about').notNull().default(''),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 

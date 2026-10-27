@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useRef, useState } from 'react';
-import { GROUP_COLORS } from '@/lib/persona';
+import { GROUP_COLORS, splitPersonaName } from '@/lib/persona';
 import { NODE_H, NODE_W, edgePath, layoutTree, mergeTrees, type Merged, type TNode, type TreeItem } from '@/lib/territory';
 import { usePan } from '../use-pan';
 import type { PersonaLite } from './mind-map';
@@ -49,12 +49,12 @@ export function GeneralView({ personas, nodes }: { personas: PersonaLite[]; node
           <div className="tr-legend">
             {personas.map((p) => (
               <button key={p.id} type="button" className={`tr-chip${filter === p.id ? ' on' : ''}`} onClick={() => setFilter(filter === p.id ? null : p.id)} title={`${p.name} (clique para filtrar)`}>
-                <span className="pe-av sm" style={{ background: colorOf(p.id) }}>{initialsOf(p.name)}</span>{p.name.replace(/,.*/, '')}
+                <span className="pe-av sm" style={{ background: colorOf(p.id) }}>{initialsOf(p.name)}</span><span className="tr-chip-name"><b>{splitPersonaName(p.name).first}</b>{splitPersonaName(p.name).label && <small>{splitPersonaName(p.name).label}</small>}</span>
               </button>
             ))}
           </div>
         </div>
-        <p className="muted tr-sum">{total} territórios únicos · {shared} em comum entre personas{filter ? ` · filtrado por ${personaOf(filter)?.name.replace(/,.*/, '')}` : ''}</p>
+        <p className="muted tr-sum">{total} territórios únicos · {shared} em comum entre personas{filter ? ` · filtrado por ${personaOf(filter)?.name}` : ''}</p>
 
         {mode === 'mapa' ? (
           <div className="tr-wrap" ref={wrapRef} onClick={(e) => { if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('tr-canvas')) setSelected(null); }}>
@@ -85,7 +85,7 @@ export function GeneralView({ personas, nodes }: { personas: PersonaLite[]; node
           <div className="tr-matrix card-surface">
             <table>
               <thead>
-                <tr><th>Território</th>{personas.map((p) => <th key={p.id} title={p.name}><span className="pe-av sm" style={{ background: colorOf(p.id) }}>{initialsOf(p.name)}</span></th>)}</tr>
+                <tr><th>Território</th>{personas.map((p) => <th key={p.id} title={p.name}><span className="pe-av sm" style={{ background: colorOf(p.id) }}>{initialsOf(p.name)}</span><small className="tr-th-name">{splitPersonaName(p.name).first}</small></th>)}</tr>
               </thead>
               <tbody>
                 {rows.map((m) => {
@@ -119,7 +119,7 @@ export function GeneralView({ personas, nodes }: { personas: PersonaLite[]; node
                 return (
                   <div key={id} className="tr-who-row">
                     <span className="pe-av sm" style={{ background: colorOf(id) }}>{initialsOf(p?.name ?? '?')}</span>
-                    <div><b>{p?.name.replace(/,.*/, '')}</b>{d && <small>{d.text}</small>}<Link href={`/admin/territorios?p=${id}`} className="vd-link">Abrir no mapa →</Link></div>
+                    <div><b>{p?.name}</b>{d && <small>{d.text}</small>}<Link href={`/admin/territorios?p=${id}`} className="vd-link">Abrir no mapa →</Link></div>
                   </div>
                 );
               })}

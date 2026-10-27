@@ -83,7 +83,7 @@ async function processItem(itemId: string) {
       brand: {
         brandName: settings.displayName || row.brandName,
         niche: settings.aiNiche, audience: settings.aiAudience, voice: settings.aiVoice,
-        rules: settings.aiRules, cta: settings.aiCta, examples: settings.aiExamples, captionRules: settings.aiCaptionRules,
+        rules: settings.aiRules, cta: settings.aiCta, examples: settings.aiExamples, captionRules: settings.aiCaptionRules, about: settings.aiAbout,
       },
     });
 

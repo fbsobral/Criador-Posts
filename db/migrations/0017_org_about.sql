@@ -1,0 +1,1 @@
+ALTER TABLE "brand_settings" ADD COLUMN "ai_about" text DEFAULT '' NOT NULL;

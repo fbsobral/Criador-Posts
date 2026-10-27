@@ -327,7 +327,7 @@ export async function saveAiProfile(formData: FormData) {
   if (!c.isBrandAdmin) throw new Error('Apenas admins da marca');
   const f = (k: string, max: number) => String(formData.get(k) ?? '').trim().slice(0, max);
   await db.update(brandSettings).set({
-    aiNiche: f('aiNiche', 500), aiAudience: f('aiAudience', 500), aiVoice: f('aiVoice', 800),
+    aiAbout: f('aiAbout', 3000), aiNiche: f('aiNiche', 500), aiAudience: f('aiAudience', 500), aiVoice: f('aiVoice', 800),
     aiRules: f('aiRules', 1500), aiCta: f('aiCta', 300), aiExamples: f('aiExamples', 4000), aiImageStyle: f('aiImageStyle', 1500), aiCaptionRules: f('aiCaptionRules', 800), updatedAt: new Date(),
   }).where(eq(brandSettings.brandId, c.brandId));
   revalidatePath('/admin/configuracoes');
@@ -386,7 +386,7 @@ export async function generateCaption(postId: string, network: string, instructi
     const caption = await generateCaptionText({
       script: toScript(editor, slides), title: row.post.title, network: net,
       instruction: String(instruction ?? '').slice(0, 600), previous: row.post.caption || undefined,
-      brand: { brandName: st?.displayName || br?.name || '', niche: st?.aiNiche ?? '', audience: st?.aiAudience ?? '', voice: st?.aiVoice ?? '', rules: st?.aiRules ?? '', cta: st?.aiCta ?? '', examples: st?.aiExamples ?? '', captionRules: st?.aiCaptionRules ?? '' },
+      brand: { brandName: st?.displayName || br?.name || '', niche: st?.aiNiche ?? '', audience: st?.aiAudience ?? '', voice: st?.aiVoice ?? '', rules: st?.aiRules ?? '', cta: st?.aiCta ?? '', examples: st?.aiExamples ?? '', captionRules: st?.aiCaptionRules ?? '', about: st?.aiAbout ?? '' },
     });
     await db.update(posts).set({ caption }).where(eq(posts.id, postId));
     return { caption };

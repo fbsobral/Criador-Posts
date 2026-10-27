@@ -3,7 +3,7 @@
 import { and, eq, gt, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
-import { personas, territories } from '@/db/schema';
+import { brandSettings, personas, territories } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { MAX_DEPTH, descendantIds, depthOf, type TNode } from '@/lib/territory';
 import type { SuggestedNode } from '@/lib/ai/territory';
@@ -113,4 +113,13 @@ export async function addSuggestedNodes(personaId: string, parentId: string | nu
   }
   done();
   return { added };
+}
+
+/** Salva "o que a organização faz" (só administradores). É a base de personas, territórios e todo conteúdo com IA. */
+export async function saveOrgAbout(text: string): Promise<{ error?: string }> {
+  const c = await ctx();
+  if (!c.isBrandAdmin) return { error: 'Apenas administradores da marca editam isto.' };
+  await db.update(brandSettings).set({ aiAbout: str(text, 3000), updatedAt: new Date() }).where(eq(brandSettings.brandId, c.brandId));
+  revalidatePath('/admin/territorios'); revalidatePath('/admin/configuracoes');
+  return {};
 }

@@ -19,7 +19,7 @@ export async function loadBrandProfile(brandId: string): Promise<BrandProfile> {
   ]);
   return {
     brandName: s?.displayName || b?.name || '', niche: s?.aiNiche ?? '', audience: s?.aiAudience ?? '', voice: s?.aiVoice ?? '',
-    rules: s?.aiRules ?? '', cta: s?.aiCta ?? '', examples: s?.aiExamples ?? '', captionRules: s?.aiCaptionRules ?? '',
+    rules: s?.aiRules ?? '', cta: s?.aiCta ?? '', examples: s?.aiExamples ?? '', captionRules: s?.aiCaptionRules ?? '', about: s?.aiAbout ?? '',
   };
 }
 
