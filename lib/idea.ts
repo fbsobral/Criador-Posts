@@ -50,3 +50,17 @@ export function territoryOptions(nodes: TNode[]): TerritoryOption[] {
   for (const pid of ids) walk(buildTree(nodes.filter((n) => n.personaId === pid)), 0, []);
   return out;
 }
+
+const LABELS: [keyof IdeaFields, string][] = [['pain', 'Dor'], ['impact', 'Impacto'], ['cause', 'Causa'], ['guide', 'Guia (enquadramento)'], ['plan', 'Plano'], ['gain', 'Ganho'], ['desire', 'Desejo'], ['cta', 'CTA']];
+const lines = (t: string) => t.split('\n').map((l) => l.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, '').trim()).filter(Boolean);
+
+/** A ideia como texto de entrada para a IA (roteiro ou post): a história inteira, na ordem. */
+export function ideaBrief(f: IdeaFields, persona: string, territory: string): string {
+  return [`IDEIA DE CONTEÚDO para a persona: ${persona || 'público geral'}${territory ? ` (território: ${territory})` : ''}`, ...LABELS.filter(([k]) => f[k]).map(([k, l]) => `${l.toUpperCase()}: ${k === 'plan' ? lines(f[k]).join(' → ') : f[k]}`)].join('\n');
+}
+/** Orientação extra para a IA respeitar a estrutura da ideia. */
+export const IDEA_INSTRUCTIONS = 'Siga a narrativa da ideia (dor → impacto → causa → plano → ganho → desejo → CTA). Abra pela dor na linguagem de rua da persona, conduza pelo GUIA como enquadramento (sem repetir nem negar o discurso do outro lado) e termine com a CTA. Não invente dados, números nem fontes que não estejam na ideia.';
+/** Título curto a partir da dor. */
+export const ideaTitle = (pain: string) => { const t = pain.replace(/^["“”'\s]+|["“”'\s]+$/g, '').replace(/\s+/g, ' '); return t.length > 120 ? `${t.slice(0, 117)}…` : t; };
+/** Pontos principais (os passos do plano, ou ganho e desejo) para o planejamento do roteiro. */
+export const ideaPoints = (f: IdeaFields) => [...lines(f.plan), f.gain, f.desire].filter(Boolean).slice(0, 6);

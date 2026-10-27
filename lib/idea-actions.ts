@@ -6,7 +6,8 @@ import { db } from '@/db';
 import { contentIdeas, personas, territories } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { pathOf, PUBLICO_ID, type TNode } from '@/lib/territory';
-import type { Idea, IdeaFields, IdeaInput, IdeaStatus } from '@/lib/idea';
+import { IDEA_INSTRUCTIONS, ideaBrief, type Idea, type IdeaFields, type IdeaInput, type IdeaStatus } from '@/lib/idea';
+import { createBatch } from '@/lib/actions';
 
 async function ctx() {
   const c = await getCtx();
@@ -91,4 +92,27 @@ export async function addSuggestedIdeas(personaId: string | null, territoryId: s
   await db.insert(contentIdeas).values(rows.slice(0, 20));
   done();
   return { added: rows.length };
+}
+
+/** Transforma uma ideia em post: cria um lote de 1 item com a história da ideia e abre o acompanhamento. Marca a ideia como "usada". */
+export async function createPostFromIdea(ideaId: string, templateId: string, slides: number, withImages: boolean): Promise<{ error?: string }> {
+  const c = await ctx();
+  const [row] = await db.select().from(contentIdeas).where(and(eq(contentIdeas.id, ideaId), eq(contentIdeas.brandId, c.brandId)));
+  if (!row) return { error: 'Ideia não encontrada.' };
+  const fd = new FormData();
+  fd.set('mode', 'tema'); // a IA escreve o post; o texto vai numa linha só (no modo tema cada linha seria um post)
+  fd.set('briefs', ideaBrief(row, row.personaName, row.territory).replace(/\s*\n\s*/g, ' | '));
+  fd.set('templateId', templateId); fd.set('slides', String(slides)); fd.set('instructions', IDEA_INSTRUCTIONS);
+  if (withImages) fd.set('withImages', 'on');
+  const prev = row.status;
+  await db.update(contentIdeas).set({ status: 'used', updatedAt: new Date() }).where(eq(contentIdeas.id, ideaId));
+  try {
+    const r = await createBatch(null, fd); // em caso de sucesso redireciona (lança NEXT_REDIRECT)
+    if (r?.error) { await db.update(contentIdeas).set({ status: prev }).where(eq(contentIdeas.id, ideaId)); return { error: r.error }; }
+    return {};
+  } catch (e) {
+    if (e instanceof Error && 'digest' in e && String((e as { digest?: string }).digest).startsWith('NEXT_REDIRECT')) { done(); throw e; }
+    await db.update(contentIdeas).set({ status: prev }).where(eq(contentIdeas.id, ideaId));
+    return { error: 'Não foi possível criar o post.' };
+  }
 }

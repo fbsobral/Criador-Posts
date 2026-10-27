@@ -5,16 +5,17 @@ import { useMemo, useState, useTransition } from 'react';
 import { IDEA_STATUS, territoryOptions, type Idea, type IdeaStatus } from '@/lib/idea';
 import { deleteIdea, setIdeaStatus } from '@/lib/idea-actions';
 import { PUBLICO_ID, type TNode } from '@/lib/territory';
-import { IconEdit, IconPlus, IconSpark, IconTrash } from '../../icons';
+import { IconEdit, IconPlus, IconPosts, IconSpark, IconTrash, IconVideo } from '../../icons';
 import { EmptyState } from '../ui';
 import { IdeaBody, ideaText } from './idea-body';
+import { IdeaConvertModal, type PostTemplateLite, type VideoFormatLite } from './idea-convert-modal';
 import { IdeaDrawer } from './idea-drawer';
 import { IdeaModal } from './idea-modal';
 
 type P = { id: string; name: string };
 
-export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial }: {
-  ideas: Idea[]; personas: P[]; nodes: TNode[]; hasKey: boolean; hasAbout: boolean; initial: { persona: string; territory: string; generate: boolean };
+export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, formats, templates }: {
+  ideas: Idea[]; personas: P[]; nodes: TNode[]; hasKey: boolean; hasAbout: boolean; formats: VideoFormatLite[]; templates: PostTemplateLite[]; initial: { persona: string; territory: string; generate: boolean };
 }) {
   const router = useRouter();
   const [, start] = useTransition();
@@ -27,6 +28,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial }:
   const [ai, setAi] = useState<{ persona: string; territory: string } | null>(initial.generate ? { persona: initialTerritory?.personaId ?? initial.persona ?? '', territory: initialTerritory?.id ?? '' } : null);
   const [edit, setEdit] = useState<Idea | 'new' | null>(null);
   const [copied, setCopied] = useState('');
+  const [convert, setConvert] = useState<{ idea: Idea; mode: 'script' | 'post' } | null>(null);
   const [local, setLocal] = useState<Record<string, IdeaStatus>>({});
 
   const shown = ideas.filter((i) => {
@@ -95,6 +97,10 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial }:
                   </select>
                 </header>
                 <IdeaBody f={i} />
+                <div className="id-make">
+                  <button type="button" className="btn small primary" onClick={() => setConvert({ idea: i, mode: 'script' })} title="Gera um roteiro de vídeo a partir desta ideia"><IconVideo /> Criar roteiro</button>
+                  <button type="button" className="btn small primary" onClick={() => setConvert({ idea: i, mode: 'post' })} title="Gera um post de imagem a partir desta ideia"><IconPosts /> Criar post</button>
+                </div>
                 <footer>
                   <button type="button" className="btn small ghost" onClick={() => copy(i)}>{copied === i.id ? 'Copiado ✓' : 'Copiar'}</button>
                   <button type="button" className="btn small" onClick={() => setEdit(i)}><IconEdit /> Editar</button>
@@ -107,6 +113,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial }:
       )}
 
       {ai && <IdeaModal personas={personas} options={opts} initialPersona={ai.persona} initialTerritory={ai.territory} hasKey={hasKey} hasAbout={hasAbout} onClose={() => setAi(null)} />}
+      {convert && <IdeaConvertModal idea={convert.idea} mode={convert.mode} formats={formats} templates={templates} hasKey={hasKey} onClose={() => setConvert(null)} />}
       {edit && <IdeaDrawer idea={edit === 'new' ? null : edit} personas={personas} options={opts} defaults={{ persona, territory }} onClose={() => setEdit(null)} />}
     </>
   );

@@ -847,3 +847,5 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 .tr-picker-item .tr-tab-name { flex: 1; min-width: 0; max-width: none; } .tr-picker-item i { font-style: normal; font-size: 11.5px; color: var(--muted); background: var(--surface-2); border-radius: 99px; padding: 1px 7px; }
 .id-sec ol { margin: 3px 0 0; padding-left: 20px; font-size: 13.5px; line-height: 1.5; } .id-sec ol li { margin: 2px 0; }
 .id-more { border-top: 1px dashed var(--line-2); padding-top: 8px; display: flex; flex-direction: column; gap: 10px; } .id-more summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; } .id-more[open] summary { color: var(--ink); }
+.id-make { display: flex; gap: 8px; flex-wrap: wrap; } .id-make .btn svg { width: 14px; height: 14px; }
+.id-from { background: var(--surface-2); border-radius: 12px; padding: 10px 14px; } .id-from span { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--primary); } .id-from p { margin: 2px 0; font-weight: 600; font-size: 14px; line-height: 1.4; } .id-from small { color: var(--muted); }
