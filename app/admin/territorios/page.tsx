@@ -4,11 +4,14 @@ import { db } from '@/db';
 import { brandSettings, personaGroups, personas, territories } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { GROUP_COLORS, splitPersonaName } from '@/lib/persona';
+import { priorityOf } from '@/lib/priority';
 import { PUBLICO_ID, type TNode } from '@/lib/territory';
 import { PageHead } from '../ui';
 import { AboutCard } from './about-card';
 import { GeneralView } from './general-view';
 import { MindMap } from './mind-map';
+import { PersonaPicker } from './persona-picker';
+import { PriorityBar } from './priority-bar';
 
 export const metadata = { title: 'Territórios' };
 
@@ -19,9 +22,9 @@ export default async function TerritoriosPage({ searchParams }: { searchParams: 
   const { p } = await searchParams;
   const [people, rows, [bs], groups] = await Promise.all([
     db.select({ id: personas.id, name: personas.name, tagline: personas.tagline, data: personas.data, groupId: personas.groupId }).from(personas).where(eq(personas.brandId, c.brandId)).orderBy(personas.position, personas.createdAt),
-    db.select({ id: territories.id, personaId: territories.personaId, parentId: territories.parentId, name: territories.name, description: territories.description, position: territories.position, source: territories.source })
+    db.select({ id: territories.id, personaId: territories.personaId, parentId: territories.parentId, name: territories.name, description: territories.description, position: territories.position, source: territories.source, score: territories.score, scoreReason: territories.scoreReason })
       .from(territories).where(eq(territories.brandId, c.brandId)),
-    db.select({ about: brandSettings.aiAbout, icp: brandSettings.personaIcp, aud: brandSettings.aiAudience }).from(brandSettings).where(eq(brandSettings.brandId, c.brandId)),
+    db.select({ about: brandSettings.aiAbout, icp: brandSettings.personaIcp, aud: brandSettings.aiAudience, pc: brandSettings.priorityConfig }).from(brandSettings).where(eq(brandSettings.brandId, c.brandId)),
     db.select({ id: personaGroups.id, name: personaGroups.name }).from(personaGroups).where(eq(personaGroups.brandId, c.brandId)).orderBy(personaGroups.position, personaGroups.createdAt),
   ]);
   const gIndex = new Map(groups.map((g, i) => [g.id, i]));
@@ -29,6 +32,8 @@ export default async function TerritoriosPage({ searchParams }: { searchParams: 
   // mesma cor do grupo no quadro de Personas
   const colorOfGroup = (gid: string | null) => (gid && gIndex.has(gid) ? GROUP_COLORS[gIndex.get(gid)! % GROUP_COLORS.length] : '#8A857A');
   const about = bs?.about ?? '';
+  const priority = priorityOf(bs?.pc);
+  const hasKey = !!process.env.ANTHROPIC_API_KEY || process.env.AI_MOCK === '1';
   const nodes = rows.map((r) => ({ ...r, personaId: r.personaId ?? PUBLICO_ID })) as TNode[];
   const list = people.map((x) => ({ id: x.id, name: x.name, tagline: x.tagline, role: x.data.role, color: colorOfGroup(x.groupId), group: x.groupId ? gName.get(x.groupId) : undefined, groupId: x.groupId }));
   const icpText = bs?.icp || bs?.aud || '';
@@ -45,38 +50,23 @@ export default async function TerritoriosPage({ searchParams }: { searchParams: 
     <div className="page tr-page">
       <PageHead
         title="Territórios"
-        description={general ? 'Visão geral: os mapas de todas as personas e do público geral juntos, sem repetições.' : current?.id === PUBLICO_ID ? 'Territórios do público como um todo (sem persona). A IA considera o ICP e todas as personas.' : 'O mapa de temas de conteúdo desta persona. A IA foca só nela. Gere com IA ou crie à mão, com quantos níveis precisar.'}
+        description="Os temas de conteúdo de cada persona, em mapa, com a prioridade de cada pauta."
+        actions={<PriorityBar config={priority} scores={nodes.map((n) => n.score ?? null)} total={nodes.length} canEdit={c.isBrandAdmin} hasKey={hasKey} />}
       />
       <AboutCard about={about} canEdit={c.isBrandAdmin} />
-      <nav className="tr-tabs" aria-label="Personas">
-        <div className="tr-tabgroup">
-          <span className="tr-tabgroup-label">Visões</span>
-          <div className="tr-tabrow">
-            <Link href={`/admin/territorios?p=${PUBLICO_ID}`} className={`tr-tab geral${!general && current?.id === PUBLICO_ID ? ' on' : ''}`} aria-current={!general && current?.id === PUBLICO_ID ? 'page' : undefined} title="Territórios sem persona: consideram o ICP e todas as personas"><span className="tr-tab-name"><b>Público geral</b><small>sem persona</small></span><i>{countOf(PUBLICO_ID)}</i></Link>
-            <Link href="/admin/territorios?p=geral" className={`tr-tab geral${general ? ' on' : ''}`} aria-current={general ? 'page' : undefined}><span>Geral</span><i>{nodes.length}</i></Link>
-          </div>
-        </div>
-        {[...groups.map((g) => ({ key: g.id, label: g.name, color: colorOfGroup(g.id), items: list.filter((x) => x.groupId === g.id) })), { key: 'none', label: 'Sem grupo', color: '#8A857A', items: list.filter((x) => !x.groupId || !gIndex.has(x.groupId)) }]
-          .filter((g) => g.items.length > 0)
-          .map((g) => (
-            <div key={g.key} className="tr-tabgroup">
-              <span className="tr-tabgroup-label"><i style={{ background: g.color }} />{g.label}<em>{g.items.length}</em></span>
-              <div className="tr-tabrow">
-                {g.items.map((x) => (
-                  <Link key={x.id} href={`/admin/territorios?p=${x.id}`} className={`tr-tab${!general && current?.id === x.id ? ' on' : ''}`} aria-current={!general && current?.id === x.id ? 'page' : undefined}>
-                    <span className="pe-av sm" style={{ background: x.color }}>{initialsOf(x.name)}</span>
-                    <span className="tr-tab-name" title={x.name}><b>{splitPersonaName(x.name).first}</b>{splitPersonaName(x.name).label && <small>{splitPersonaName(x.name).label}</small>}</span><i>{countOf(x.id)}</i>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          ))}
+      <nav className="tr-tabs" aria-label="Personas e visões">
+        <Link href={`/admin/territorios?p=${PUBLICO_ID}`} className={`tr-tab geral${!general && current?.id === PUBLICO_ID ? ' on' : ''}`} aria-current={!general && current?.id === PUBLICO_ID ? 'page' : undefined} title="Territórios sem persona: consideram o ICP e todas as personas"><span className="tr-tab-name"><b>Público geral</b><small>sem persona</small></span><i>{countOf(PUBLICO_ID)}</i></Link>
+        <Link href="/admin/territorios?p=geral" className={`tr-tab geral${general ? ' on' : ''}`} aria-current={general ? 'page' : undefined}><span>Visão geral</span><i>{nodes.length}</i></Link>
+        <span className="tr-tabs-sep" aria-hidden />
+        <PersonaPicker currentId={!general && current && current.id !== PUBLICO_ID ? current.id : null}
+          groups={[...groups.map((g) => ({ key: g.id, label: g.name, color: colorOfGroup(g.id), items: list.filter((x) => x.groupId === g.id) })), { key: 'none', label: 'Sem grupo', color: '#8A857A', items: list.filter((x) => !x.groupId || !gIndex.has(x.groupId)) }]
+            .filter((g) => g.items.length > 0).map((g) => ({ ...g, items: g.items.map((x) => ({ id: x.id, name: x.name, color: x.color, count: countOf(x.id) })) }))} />
       </nav>
 
       {general ? (
         <GeneralView personas={withPublico} nodes={nodes} />
       ) : current ? (
-        <MindMap key={current.id} persona={current} color={(current as { color?: string }).color ?? GROUP_COLORS[idx % GROUP_COLORS.length]} nodes={nodes.filter((n) => n.personaId === current.id)} hasKey={!!process.env.ANTHROPIC_API_KEY || process.env.AI_MOCK === '1'} hasAbout={!!about.trim()} />
+        <MindMap key={current.id} persona={current} color={(current as { color?: string }).color ?? GROUP_COLORS[idx % GROUP_COLORS.length]} nodes={nodes.filter((n) => n.personaId === current.id)} hasKey={hasKey} priority={priority} hasAbout={!!about.trim()} />
       ) : null}
     </div>
   );

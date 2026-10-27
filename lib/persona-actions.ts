@@ -1,6 +1,6 @@
 'use server';
 
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { brandSettings, personaGroups, personas } from '@/db/schema';
@@ -98,6 +98,27 @@ export async function movePersona(id: string, groupId: string | null): Promise<{
 export async function deletePersona(id: string): Promise<{ error?: string }> {
   const c = await ctx();
   await db.delete(personas).where(and(eq(personas.id, id), eq(personas.brandId, c.brandId)));
+  done();
+  return {};
+}
+
+/** Ações em massa: mover várias personas para um grupo (nulo = sem grupo). */
+export async function movePersonas(ids: string[], groupId: string | null): Promise<{ error?: string }> {
+  const c = await ctx();
+  const g = await ownGroup(c.brandId, groupId);
+  let pos = await nextPosition(c.brandId, g);
+  for (const id of ids.slice(0, 200)) {
+    await db.update(personas).set({ groupId: g, position: pos++, updatedAt: new Date() }).where(and(eq(personas.id, id), eq(personas.brandId, c.brandId)));
+  }
+  done();
+  return {};
+}
+
+/** Exclui várias personas (os territórios delas saem junto; as ideias ficam, sem persona). */
+export async function deletePersonas(ids: string[]): Promise<{ error?: string }> {
+  const c = await ctx();
+  if (!ids.length) return {};
+  await db.delete(personas).where(and(inArray(personas.id, ids.slice(0, 200)), eq(personas.brandId, c.brandId)));
   done();
   return {};
 }

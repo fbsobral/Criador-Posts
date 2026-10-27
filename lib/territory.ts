@@ -1,6 +1,6 @@
 /** Tipos, árvore e layout do mapa mental de territórios (servidor e navegador). */
 
-export type TNode = { id: string; personaId: string; parentId: string | null; name: string; description: string; position: number; source: string };
+export type TNode = { id: string; personaId: string; parentId: string | null; name: string; description: string; position: number; source: string; score?: number | null; scoreReason?: string };
 
 /** Identificador do mapa sem persona ("Público geral") no navegador; no banco é persona_id nulo. */
 export const PUBLICO_ID = 'publico';

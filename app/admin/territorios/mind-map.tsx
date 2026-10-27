@@ -1,12 +1,16 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
-import { createNode, deleteNode, moveNode, updateNode } from '@/lib/territory-actions';
+import { createNode, deleteNode, moveNode, setScore, updateNode } from '@/lib/territory-actions';
 import { GROUP_COLORS, splitPersonaName } from '@/lib/persona';
 import { NODE_H, NODE_W, buildTree, descendantIds, edgePath, layoutTree, pathOf, type TNode } from '@/lib/territory';
 import { IconEdit, IconPlus, IconSpark, IconTrash } from '../../icons';
 import { usePan } from '../use-pan';
+import { levelOf, type PriorityConfig } from '@/lib/priority';
+import { Menu } from './menu';
+import { ReclassifyButton } from './reclassify-button';
 import { TerritoryModal } from './territory-modal';
 
 export type PersonaLite = { id: string; name: string; tagline: string; role: string; /** cor do grupo da persona */ color?: string; group?: string };
@@ -15,7 +19,7 @@ const DEPTH_COLORS = ['#F97335', '#1D9BF0', '#8B5CF6', '#1F9D63', '#E5484D', '#F
 const initialsOf = (n: string) => n.replace(/,.*/, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
 
 /** Mapa mental horizontal dos territórios de UMA persona: criar irmão/filho, arrastar para mudar o pai, recolher e gerar com IA. */
-export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout }: { persona: PersonaLite; color: string; nodes: TNode[]; hasKey: boolean; hasAbout: boolean }) {
+export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority }: { persona: PersonaLite; color: string; nodes: TNode[]; hasKey: boolean; hasAbout: boolean; priority: PriorityConfig }) {
   const router = useRouter();
   const [, start] = useTransition();
   const [nodes, setNodes] = useState(n0);
@@ -96,6 +100,12 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout }: { perso
     start(async () => { await updateNode(n.id, { name: v, description: n.description }); });
   };
 
+  const saveScore = (n: TNode, raw: string) => {
+    const v = raw.trim() === '' ? null : Math.min(100, Math.max(1, Math.round(Number(raw)) || 1));
+    if (v === (n.score ?? null)) return;
+    setNodes((a) => a.map((x) => (x.id === n.id ? { ...x, score: v, scoreReason: v ? 'Definido à mão.' : '' } : x)));
+    start(async () => { const r = await setScore(n.id, v); if (r.error) setErr(r.error); });
+  };
   const toggleCollapse = (id: string) => setCollapsed((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const parents = nodes.filter((x) => nodes.some((c) => c.parentId === x.id)).map((x) => x.id);
 
@@ -127,8 +137,12 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout }: { perso
             <button type="button" className="btn small" onClick={() => add(null)}><IconPlus /> Área de 1º nível</button>
           </div>
           <div className="row-actions">
-            <button type="button" className="btn small ghost" onClick={() => setCollapsed(new Set(parents))} disabled={!parents.length}>Recolher tudo</button>
-            <button type="button" className="btn small ghost" onClick={() => setCollapsed(new Set())} disabled={!collapsed.size}>Expandir tudo</button>
+            <Menu label="Mais" align="right">
+              <ReclassifyButton className="tr-menu-item" target={{ scope: 'persona', personaId: persona.id }} count={nodes.length} label="Reclassificar este mapa" disabled={!hasKey || !priority.criteria.length} onError={setErr} />
+              <button type="button" className="tr-menu-item" data-close onClick={() => setCollapsed(new Set(parents))} disabled={!parents.length}>Recolher tudo</button>
+              <button type="button" className="tr-menu-item" data-close onClick={() => setCollapsed(new Set())} disabled={!collapsed.size}>Expandir tudo</button>
+              <p className="tr-menu-note"><kbd>Tab</kbd> filho · <kbd>Enter</kbd> irmão · <kbd>F2</kbd> renomear · <kbd>Espaço</kbd> recolher. Arraste um território sobre outro para mudar o pai.</p>
+            </Menu>
             <div className="tr-zoom" role="group" aria-label="Zoom">
               <button type="button" onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))} aria-label="Diminuir">−</button>
               <span>{Math.round(zoom * 100)}%</span>
@@ -172,6 +186,7 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout }: { perso
                     ) : (
                       <span className="tr-name" title={n.description || n.name}>{n.name}</span>
                     )}
+                    {n.score ? <span className="tr-score" style={{ ['--c' as string]: levelOf(n.score, priority.levels)?.color }} title={`${levelOf(n.score, priority.levels)?.name ?? ''} · ${n.scoreReason || 'score'}`}>{n.score}</span> : null}
                     {p.hasKids && (
                       <button type="button" className="tr-fold" onClick={(e) => { e.stopPropagation(); toggleCollapse(n.id); }} aria-label={p.collapsed ? 'Expandir' : 'Recolher'} title={p.collapsed ? 'Expandir' : 'Recolher'}>
                         {p.collapsed ? kidsCount(n.id) : '‹'}
@@ -196,7 +211,6 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout }: { perso
             </div>
           </div>
         </div>
-        <p className="tr-keys">Dica: clique num território e use <kbd>Tab</kbd> para criar um filho, <kbd>Enter</kbd> para um irmão, <kbd>F2</kbd> para renomear, <kbd>Espaço</kbd> para recolher. Arraste um território sobre outro para mudar o pai.</p>
       </div>
 
       <aside className="tr-panel card-surface">
@@ -205,22 +219,34 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout }: { perso
             <div className="tr-crumb">{pathOf(nodes, sel.id).map((x, i, a) => <span key={i}>{x}{i < a.length - 1 ? ' › ' : ''}</span>)}</div>
             <div className="field"><label htmlFor="tn">Nome</label><input id="tn" key={sel.id + sel.name} defaultValue={sel.name} maxLength={80} onBlur={(e) => saveName(sel, e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} /></div>
             <div className="field"><label htmlFor="td">Descrição</label><textarea id="td" key={sel.id} rows={4} defaultValue={sel.description} maxLength={400} placeholder="O que entra neste território e por que importa para a persona" onBlur={(e) => saveDesc(sel, e.target.value)} /></div>
+            <div className="field">
+              <label htmlFor="ts">Prioridade (score 1 a 100)</label>
+              <div className="tr-score-box" style={{ ['--c' as string]: levelOf(sel.score, priority.levels)?.color }}>
+                <input id="ts" type="number" min={1} max={100} key={sel.id + String(sel.score)} defaultValue={sel.score ?? ''} placeholder="—" onBlur={(e) => saveScore(sel, e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
+                {levelOf(sel.score, priority.levels) && <span className="tr-score-lvl">{levelOf(sel.score, priority.levels)!.name}</span>}
+              </div>
+              {sel.scoreReason && <p className="tr-score-why">{sel.scoreReason}</p>}
+            </div>
             <div className="tr-meta">{kidsCount(sel.id)} {kidsCount(sel.id) === 1 ? 'território dentro' : 'territórios dentro'} · {sel.source === 'ai' ? 'criado pela IA' : 'criado à mão'}</div>
             <div className="tr-actions">
+              <button type="button" className="btn small primary" onClick={() => setAi({ parent: sel })}><IconSpark /> Gerar com IA</button>
               <button type="button" className="btn small" onClick={() => addChild(sel.id)}><IconPlus /> Filho</button>
               <button type="button" className="btn small" onClick={() => addSibling(sel)}><IconPlus /> Irmão</button>
-              <button type="button" className="btn small primary" onClick={() => setAi({ parent: sel })}><IconSpark /> Gerar com IA</button>
-              <button type="button" className="btn small" onClick={() => startEdit(sel.id, sel.name)}><IconEdit /> Renomear</button>
-              <button type="button" className="btn small ghost danger" onClick={() => remove(sel)}><IconTrash /> Excluir</button>
+              <Menu label="Mais" align="right">
+                <Link href={`/admin/ideias?t=${sel.id}`} className="tr-menu-item">💡 Criar ideias de conteúdo</Link>
+                <ReclassifyButton className="tr-menu-item" target={{ scope: 'node', nodeId: sel.id }} count={kidsCount(sel.id) + 1} label={kidsCount(sel.id) ? 'Reclassificar este e filhos' : 'Reclassificar'} disabled={!hasKey || !priority.criteria.length} onError={setErr} />
+                <button type="button" className="tr-menu-item" data-close onClick={() => startEdit(sel.id, sel.name)}><IconEdit /> Renomear</button>
+                <button type="button" className="tr-menu-item danger" data-close onClick={() => remove(sel)}><IconTrash /> Excluir</button>
+              </Menu>
             </div>
           </>
         ) : (
           <>
             <b className="tr-panel-title">{persona.name}</b>
             {persona.role && <div className="tr-meta">{persona.role}</div>}
-            <p className="muted">{persona.tagline}</p>
+            <p className="muted tr-tagline">{persona.tagline}</p>
             <div className="tr-meta">{nodes.length} {nodes.length === 1 ? 'território' : 'territórios'} no mapa</div>
-            <p className="muted" style={{ marginTop: 10 }}>Selecione um território para editar, criar filhos e irmãos ou gerar mais com IA. A IA sempre considera o que essa persona já tem no mapa.</p>
+            <p className="muted">Selecione um território para editar, criar filhos ou gerar mais com IA.</p>
             <div className="tr-actions">
               <button type="button" className="btn small primary" onClick={() => setAi({ parent: null })}><IconSpark /> Gerar com IA</button>
               <button type="button" className="btn small" onClick={() => add(null)}><IconPlus /> Área de 1º nível</button>

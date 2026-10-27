@@ -134,6 +134,20 @@
       "when": 1793094867002,
       "tag": "0018_territory_no_persona",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793108516045,
+      "tag": "0019_content_ideas",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793108732600,
+      "tag": "0020_territory_priority",
+      "breakpoints": true
     }
   ]
 }

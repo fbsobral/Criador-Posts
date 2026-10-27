@@ -1,0 +1,35 @@
+import { eq, desc } from 'drizzle-orm';
+import { db } from '@/db';
+import { contentIdeas, personas, territories } from '@/db/schema';
+import { getCtx } from '@/lib/ctx';
+import { brandSettings } from '@/db/schema';
+import type { Idea, IdeaStatus } from '@/lib/idea';
+import { PUBLICO_ID, type TNode } from '@/lib/territory';
+import { PageHead } from '../ui';
+import { IdeasView } from './ideas-view';
+
+export const metadata = { title: 'Ideias de conteúdo' };
+
+export default async function IdeiasPage({ searchParams }: { searchParams: Promise<{ p?: string; t?: string; gerar?: string }> }) {
+  const c = (await getCtx())!;
+  const sp = await searchParams;
+  const [rows, people, nodes, [bs]] = await Promise.all([
+    db.select().from(contentIdeas).where(eq(contentIdeas.brandId, c.brandId)).orderBy(desc(contentIdeas.createdAt)),
+    db.select({ id: personas.id, name: personas.name }).from(personas).where(eq(personas.brandId, c.brandId)).orderBy(personas.position, personas.createdAt),
+    db.select({ id: territories.id, personaId: territories.personaId, parentId: territories.parentId, name: territories.name, description: territories.description, position: territories.position, source: territories.source })
+      .from(territories).where(eq(territories.brandId, c.brandId)),
+    db.select({ about: brandSettings.aiAbout }).from(brandSettings).where(eq(brandSettings.brandId, c.brandId)),
+  ]);
+  const ideas: Idea[] = rows.map((r) => ({
+    id: r.id, personaId: r.personaId, personaName: r.personaName, territoryId: r.territoryId, territory: r.territory,
+    pain: r.pain, guide: r.guide, args: r.args, cta: r.cta, status: r.status as IdeaStatus, source: r.source, createdAt: r.createdAt.toISOString(),
+  }));
+  const tnodes = nodes.map((n) => ({ ...n, personaId: n.personaId ?? PUBLICO_ID })) as TNode[];
+  return (
+    <div className="page">
+      <PageHead title="Ideias de conteúdo" description="Cada ideia liga uma persona e um território a uma dor real, a um enquadramento (guia), aos argumentos e a uma chamada indireta. Gere com IA a partir de um território ou escreva à mão." />
+      <IdeasView ideas={ideas} personas={people} nodes={tnodes} hasKey={!!process.env.ANTHROPIC_API_KEY || process.env.AI_MOCK === '1'} hasAbout={!!(bs?.about ?? '').trim()}
+        initial={{ persona: sp.p ?? '', territory: sp.t ?? '', generate: sp.gerar === '1' || !!sp.t }} />
+    </div>
+  );
+}

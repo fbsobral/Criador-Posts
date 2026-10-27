@@ -1,7 +1,7 @@
 import { OrganizationList, OrganizationSwitcher, UserButton } from '@clerk/nextjs';
 import { auth } from '@clerk/nextjs/server';
 import { getCtx } from '@/lib/ctx';
-import { IconImage, IconPosts, IconSettings, IconSpark, IconTemplates, IconUsers, IconVideo, IconBoard, IconTarget, IconMap } from '../icons';
+import { IconImage, IconPosts, IconSettings, IconSpark, IconTemplates, IconUsers, IconVideo, IconBoard, IconTarget, IconMap, IconBulb } from '../icons';
 import { NavLink } from './nav-link';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -48,6 +48,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div className="nav-label">Estratégia</div>
           <NavLink href="/admin/personas" icon={<IconTarget />}>Personas</NavLink>
           <NavLink href="/admin/territorios" icon={<IconMap />}>Territórios</NavLink>
+          <NavLink href="/admin/ideias" icon={<IconBulb />}>Ideias de conteúdo</NavLink>
           <div className="nav-label">Marca</div>
           <NavLink href="/admin/configuracoes" icon={<IconSettings />}>Configurações</NavLink>
           <NavLink href="/admin/usuarios" icon={<IconUsers />}>Usuários</NavLink>

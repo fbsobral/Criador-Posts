@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
-import { createGroup, deleteGroup, deletePersona, movePersona, updateGroup } from '@/lib/persona-actions';
+import { createGroup, deleteGroup, deletePersona, deletePersonas, movePersona, movePersonas, updateGroup } from '@/lib/persona-actions';
 import { GROUP_COLORS } from '@/lib/persona';
 import { IconEdit, IconPlus, IconSpark, IconTrash } from '../../icons';
 import { EmptyState, PageHead } from '../ui';
@@ -28,6 +28,8 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
   const [gName, setGName] = useState(''); const [gDesc, setGDesc] = useState('');
   const [adding, setAdding] = useState(false); const [newName, setNewName] = useState('');
   const [err, setErr] = useState('');
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  useEffect(() => setSel((s) => new Set([...s].filter((id) => p0.some((p) => p.id === id)))), [p0]);
 
   const ungrouped = people.filter((p) => !p.groupId);
   const cols = [...groups.map((g, i) => ({ id: g.id, name: g.name, description: g.description, color: GROUP_COLORS[i % GROUP_COLORS.length], real: true })),
@@ -45,6 +47,20 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
     if (!confirm(`Excluir a persona “${p.name}”?`)) return;
     const prev = people; setPeople((a) => a.filter((x) => x.id !== p.id));
     start(async () => { const r = await deletePersona(p.id); if (r.error) { setErr(r.error); setPeople(prev); } else router.refresh(); });
+  };
+  const toggleSel = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const setMany = (ids: string[], on: boolean) => setSel((s) => { const n = new Set(s); ids.forEach((id) => (on ? n.add(id) : n.delete(id))); return n; });
+  const bulkMove = (to: string) => {
+    const ids = [...sel], target = to === NONE ? null : to; if (!ids.length) return;
+    const prev = people; setErr('');
+    setPeople((a) => a.map((p) => (sel.has(p.id) ? { ...p, groupId: target } : p)));
+    start(async () => { const r = await movePersonas(ids, target); if (r.error) { setErr(r.error); setPeople(prev); } else { setSel(new Set()); router.refresh(); } });
+  };
+  const bulkRemove = () => {
+    const ids = [...sel]; if (!ids.length) return;
+    if (!confirm(`Excluir ${ids.length} ${ids.length === 1 ? 'persona' : 'personas'}? Os territórios delas também serão excluídos. Isso não pode ser desfeito.`)) return;
+    const prev = people; setPeople((a) => a.filter((p) => !sel.has(p.id)));
+    start(async () => { const r = await deletePersonas(ids); if (r.error) { setErr(r.error); setPeople(prev); } else { setSel(new Set()); router.refresh(); } });
   };
   const startRename = (g: { id: string; name: string; description: string }) => { setEditing(g.id); setGName(g.name); setGDesc(g.description); };
   const saveRename = (id: string) => {
@@ -99,7 +115,7 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
               <section key={c.id} className={`pe-col${over === c.id && drag ? ' over' : ''}`} aria-label={c.name}
                 onDragOver={(e) => { if (drag) { e.preventDefault(); setOver(c.id); } }}
                 onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOver(null); }}
-                onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData('text/plain') || drag; setDrag(null); setOver(null); if (id) move(id, c.id); }}>
+                onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData('text/plain') || drag; setDrag(null); setOver(null); if (id) { if (sel.has(id) && sel.size > 1) bulkMove(c.id); else move(id, c.id); } }}>
                 {editing === c.id ? (
                   <div className="pe-col-edit">
                     <input value={gName} onChange={(e) => setGName(e.target.value)} maxLength={60} autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveRename(c.id); if (e.key === 'Escape') setEditing(null); }} aria-label="Nome do grupo" />
@@ -109,6 +125,7 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
                 ) : (
                   <header>
                     <div className="pe-col-top">
+                      {col.length > 0 && <input type="checkbox" className="pe-check" checked={col.every((p) => sel.has(p.id))} onChange={(e) => setMany(col.map((p) => p.id), e.target.checked)} aria-label={`Selecionar todas de ${c.name}`} title="Selecionar todas deste grupo" />}
                       <i className="vd-dot" style={{ background: c.color }} /><b>{c.name}</b><span>{col.length}</span>
                       <div className="pe-col-tools">
                         <button type="button" className="btn small ghost" onClick={() => setDrawer({ persona: null, groupId: c.real ? c.id : null })} title="Adicionar persona" aria-label="Adicionar persona"><IconPlus /></button>
@@ -121,10 +138,11 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
                 )}
                 <div className="pe-col-body">
                   {col.map((p) => (
-                    <article key={p.id} className={`pe-card${drag === p.id ? ' dragging' : ''}`} draggable
+                    <article key={p.id} className={`pe-card${drag === p.id ? ' dragging' : ''}${sel.has(p.id) ? ' selected' : ''}`} draggable
                       onDragStart={(e) => { e.dataTransfer.setData('text/plain', p.id); e.dataTransfer.effectAllowed = 'move'; setDrag(p.id); }} onDragEnd={() => { setDrag(null); setOver(null); }}
-                      onClick={() => setDrawer({ persona: p, groupId: p.groupId })}>
+                      onClick={() => { if (sel.size) toggleSel(p.id); else setDrawer({ persona: p, groupId: p.groupId }); }}>
                       <div className="pe-card-head">
+                        <input type="checkbox" className="pe-check" checked={sel.has(p.id)} onClick={(e) => e.stopPropagation()} onChange={() => toggleSel(p.id)} aria-label={`Selecionar ${p.name}`} />
                         <span className="pe-av" style={{ background: colorOf(p.groupId) }}>{initialsOf(p.name)}</span>
                         <div><b>{p.name}</b><small>{[p.data.role, p.data.age].filter(Boolean).join(' · ') || '—'}</small></div>
                         <span className="pe-card-tools">
@@ -162,6 +180,19 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
         </div>
       )}
 
+      {sel.size > 0 && (
+        <div className="pe-bulk" role="toolbar" aria-label="Ações em massa">
+          <b>{sel.size} {sel.size === 1 ? 'selecionada' : 'selecionadas'}</b>
+          <button type="button" className="btn small ghost" onClick={() => setSel(new Set(people.map((p) => p.id)))} disabled={sel.size === people.length}>Selecionar todas ({people.length})</button>
+          <select value="" onChange={(e) => { if (e.target.value) bulkMove(e.target.value); }} aria-label="Mover selecionadas para o grupo">
+            <option value="">Mover para o grupo…</option>
+            {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            <option value={NONE}>Sem grupo</option>
+          </select>
+          <button type="button" className="btn small danger" onClick={bulkRemove}><IconTrash /> Excluir</button>
+          <button type="button" className="btn small ghost" onClick={() => setSel(new Set())}>Limpar seleção</button>
+        </div>
+      )}
       {drawer && <PersonaDrawer key={`${drawer.persona?.id ?? `new-${drawer.groupId}`}${drawer.refine ? '-r' : ''}`} persona={drawer.persona} defaultGroupId={drawer.groupId} groups={groups} startRefine={!!drawer.refine} onClose={() => setDrawer(null)} />}
       {suggest && <SuggestModal initialIcp={icp} existingCount={people.length} groupNames={groups.map((g) => g.name)} hasKey={hasKey} onClose={() => setSuggest(false)} />}
     </div>

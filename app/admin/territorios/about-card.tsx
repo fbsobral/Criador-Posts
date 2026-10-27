@@ -27,35 +27,35 @@ export function AboutCard({ about, canEdit }: { about: string; canEdit: boolean 
     setEditing(false); router.refresh();
   });
 
-  if (editing) {
-    return (
-      <div className="card-surface tr-about editing">
-        <label htmlFor="about"><b>O que a organização faz</b></label>
-        <p className="muted">É a base dos territórios: eles nascem do que a persona busca <b>e</b> do que a sua organização pode falar com autoridade. Também alimenta personas, posts e roteiros.</p>
-        <textarea id="about" rows={8} value={text} onChange={(e) => setText(e.target.value)} maxLength={3000} placeholder={GUIDE} autoFocus />
-        <div className="tr-about-foot">
-          <small className="muted">{text.length}/3000</small>
-          {err && <span className="vd-err">{err}</span>}
-          <div className="row-actions">
-            <button type="button" className="btn small" onClick={() => { setText(about); setEditing(false); setErr(''); }}>Cancelar</button>
-            <button type="button" className="btn small primary" onClick={save} disabled={pending}>{pending ? 'Salvando…' : 'Salvar'}</button>
+  const summary = about.replace(/\s+/g, ' ').trim();
+  return (
+    <>
+      <div className={`tr-about${empty ? ' empty' : ''}`}>
+        <span className="tr-about-label">O que a organização faz</span>
+        <span className="tr-about-text" title={summary}>{empty ? 'Ainda não definido. Os territórios ficam mais úteis quando partem da sua oferta.' : summary}</span>
+        {canEdit
+          ? <button type="button" className={`btn small${empty ? ' primary' : ' ghost'}`} onClick={() => { setText(about); setEditing(true); }}><IconEdit /> {empty ? 'Descrever' : 'Editar'}</button>
+          : empty && <small className="muted">Peça a um administrador.</small>}
+      </div>
+      {editing && (
+        <div className="pe-overlay center" onMouseDown={(e) => { if (e.target === e.currentTarget) { setText(about); setEditing(false); setErr(''); } }}>
+          <div className="pe-modal" role="dialog" aria-modal="true" aria-label="O que a organização faz">
+            <header><h2>O que a organização faz</h2><button type="button" className="btn small ghost" onClick={() => { setText(about); setEditing(false); setErr(''); }} aria-label="Fechar">✕</button></header>
+            <div className="pe-modal-body">
+              <p className="muted">É a base dos territórios: eles nascem do que a persona busca <b>e</b> do que a sua organização pode falar com autoridade. Também alimenta personas, posts e roteiros.</p>
+              <textarea id="about" rows={10} value={text} onChange={(e) => setText(e.target.value)} maxLength={3000} placeholder={GUIDE} autoFocus />
+              {err && <div className="notice err">{err}</div>}
+            </div>
+            <footer>
+              <small className="muted">{text.length}/3000</small>
+              <div className="row-actions">
+                <button type="button" className="btn" onClick={() => { setText(about); setEditing(false); setErr(''); }}>Cancelar</button>
+                <button type="button" className="btn primary" onClick={save} disabled={pending}>{pending ? 'Salvando…' : 'Salvar'}</button>
+              </div>
+            </footer>
           </div>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`card-surface tr-about${empty ? ' empty' : ''}`}>
-      <div>
-        <b>O que a organização faz</b>
-        {empty
-          ? <p>Defina o que a organização faz. Os territórios ficam muito mais úteis quando partem da <b>sua oferta e dos temas em que você quer ser referência</b>, e não só do que a persona procura.</p>
-          : <p className="tr-about-text">{about.length > 340 ? `${about.slice(0, 340)}…` : about}</p>}
-      </div>
-      {canEdit
-        ? <button type="button" className={`btn small${empty ? ' primary' : ''}`} onClick={() => { setText(about); setEditing(true); }}><IconEdit /> {empty ? 'Descrever' : 'Editar'}</button>
-        : empty && <small className="muted">Peça a um administrador para preencher.</small>}
-    </div>
+      )}
+    </>
   );
 }

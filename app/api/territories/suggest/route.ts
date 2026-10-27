@@ -5,6 +5,7 @@ import { getCtx } from '@/lib/ctx';
 import { AiError } from '@/lib/ai/generate';
 import { suggestTerritories, type TerritoryMode } from '@/lib/ai/territory';
 import { MAX_TERRITORY_NODES_PER_RUN, PUBLICO_ID, outline, pathOf, type TNode } from '@/lib/territory';
+import { priorityOf } from '@/lib/priority';
 import { loadBrandProfile } from '@/lib/video-server';
 
 export const maxDuration = 120;
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
 
   const count = Math.min(MAX_TERRITORY_NODES_PER_RUN, Math.max(1, Math.round(Number(b?.count)) || (mode === 'first' ? 6 : 5)));
   const depth = Math.min(4, Math.max(1, Math.round(Number(b?.depth)) || (mode === 'full' ? 3 : 1)));
-  const [s] = await db.select({ icp: brandSettings.personaIcp, aud: brandSettings.aiAudience }).from(brandSettings).where(eq(brandSettings.brandId, c.brandId));
+  const [s] = await db.select({ icp: brandSettings.personaIcp, aud: brandSettings.aiAudience, pc: brandSettings.priorityConfig }).from(brandSettings).where(eq(brandSettings.brandId, c.brandId));
   const icp = s?.icp || s?.aud || '';
   const brand = await loadBrandProfile(c.brandId);
   const people = publico ? await db.select({ name: personas.name, tagline: personas.tagline, data: personas.data }).from(personas).where(eq(personas.brandId, c.brandId)).limit(30) : [];
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
       siblingNames: mine.filter((n) => n.parentId === parentId).map((n) => n.name),
       otherPersonas: [],
       instructions: String(b?.instructions ?? '').slice(0, 1200),
+      priority: priorityOf(s?.pc),
     });
     return Response.json({ nodes: r.nodes });
   } catch (e) {

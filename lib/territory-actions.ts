@@ -6,6 +6,7 @@ import { db } from '@/db';
 import { brandSettings, personas, territories } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { MAX_DEPTH, PUBLICO_ID, descendantIds, depthOf, type TNode } from '@/lib/territory';
+import { clampScore, sanitizePriority, type PriorityConfig } from '@/lib/priority';
 import type { SuggestedNode } from '@/lib/ai/territory';
 
 async function ctx() {
@@ -28,7 +29,7 @@ async function ownPersona(brandId: string, personaId: string | null) {
 }
 async function loadNodes(brandId: string, personaId: string | null): Promise<TNode[]> {
   const pid = toPid(personaId);
-  const rows = await db.select({ id: territories.id, parentId: territories.parentId, name: territories.name, description: territories.description, position: territories.position, source: territories.source })
+  const rows = await db.select({ id: territories.id, parentId: territories.parentId, name: territories.name, description: territories.description, position: territories.position, source: territories.source, score: territories.score, scoreReason: territories.scoreReason })
     .from(territories).where(and(eq(territories.brandId, brandId), personaCond(pid)));
   return rows.map((r) => ({ ...r, personaId: pid ?? PUBLICO_ID }));
 }
@@ -116,7 +117,7 @@ export async function addSuggestedNodes(personaId: string, parentId: string | nu
     const key = parent ?? 'root';
     const pos = counters.get(key) ?? (await nextPos(c.brandId, personaId, parent ?? null));
     counters.set(key, pos + 1);
-    const [r] = await db.insert(territories).values({ brandId: c.brandId, personaId: toPid(personaId), parentId: parent ?? null, name, description: str(x.description, 400), position: pos, source: 'ai', createdBy: c.userId }).returning({ id: territories.id });
+    const [r] = await db.insert(territories).values({ brandId: c.brandId, personaId: toPid(personaId), parentId: parent ?? null, name, description: str(x.description, 400), position: pos, score: x.score ? clampScore(x.score) : null, scoreReason: str(x.reason, 200), source: 'ai', createdBy: c.userId }).returning({ id: territories.id });
     idByRef.set(x.ref, r.id); depthByRef.set(x.ref, d); added++;
   }
   done();
@@ -130,4 +131,22 @@ export async function saveOrgAbout(text: string): Promise<{ error?: string }> {
   await db.update(brandSettings).set({ aiAbout: str(text, 3000), updatedAt: new Date() }).where(eq(brandSettings.brandId, c.brandId));
   revalidatePath('/admin/territorios'); revalidatePath('/admin/configuracoes');
   return {};
+}
+
+/** Muda o score à mão (1 a 100; vazio = sem classificação). */
+export async function setScore(id: string, score: number | null): Promise<{ error?: string }> {
+  const c = await ctx();
+  await db.update(territories).set({ score: score == null ? null : clampScore(score), scoreReason: score == null ? '' : 'Definido à mão.', updatedAt: new Date() }).where(and(eq(territories.id, id), eq(territories.brandId, c.brandId)));
+  done();
+  return {};
+}
+
+/** Critérios e faixas de prioridade (só administradores). */
+export async function savePriorityConfig(input: PriorityConfig): Promise<{ error?: string; config?: PriorityConfig }> {
+  const c = await ctx();
+  if (!c.isBrandAdmin) return { error: 'Apenas administradores da marca editam isto.' };
+  const config = sanitizePriority(input);
+  await db.update(brandSettings).set({ priorityConfig: config, updatedAt: new Date() }).where(eq(brandSettings.brandId, c.brandId));
+  done();
+  return { config };
 }

@@ -64,6 +64,8 @@ export const brandSettings = pgTable('brand_settings', {
   personaIcp: text('persona_icp').notNull().default(''),
   /** O que a organização faz (oferta, proposta de valor, temas em que quer ser autoridade). Base para personas, territórios e todo conteúdo gerado. */
   aiAbout: text('ai_about').notNull().default(''),
+  /** Critérios e faixas de prioridade dos territórios (nulo = padrão do app). */
+  priorityConfig: jsonb('priority_config').$type<import('@/lib/priority').PriorityConfig>(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
@@ -309,10 +311,40 @@ export const territories = pgTable(
     name: text('name').notNull(),
     description: text('description').notNull().default(''),
     position: integer('position').notNull().default(0),
+    /** Prioridade da pauta: 1 a 100 (nulo = ainda sem classificação). */
+    score: integer('score'),
+    scoreReason: text('score_reason').notNull().default(''),
     source: text('source').notNull().default('manual'), // 'ai' | 'manual'
     createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (t) => [index('territories_persona_idx').on(t.brandId, t.personaId, t.parentId, t.position)],
+);
+
+/** Ideia de conteúdo: pode nascer de um território (ou não). Guarda o nome da persona e o caminho do território como texto, para sobreviver se forem excluídos. */
+export const contentIdeas = pgTable(
+  'content_ideas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+    personaId: uuid('persona_id').references(() => personas.id, { onDelete: 'set null' }),
+    personaName: text('persona_name').notNull().default(''),
+    territoryId: uuid('territory_id').references(() => territories.id, { onDelete: 'set null' }),
+    /** Caminho do território (ex.: "Moradia › Aluguel"). */
+    territory: text('territory').notNull().default(''),
+    /** Dor, em linguagem de rua. */
+    pain: text('pain').notNull(),
+    /** Guia: o enquadramento progressista (Lakoff). */
+    guide: text('guide').notNull().default(''),
+    args: jsonb('args').$type<string[]>().notNull().default([]),
+    /** CTA indireta. */
+    cta: text('cta').notNull().default(''),
+    status: text('status').notNull().default('idea'), // 'idea' | 'approved' | 'used'
+    source: text('source').notNull().default('manual'), // 'ai' | 'manual'
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [index('content_ideas_brand_idx').on(t.brandId, t.personaId, t.createdAt)],
 );

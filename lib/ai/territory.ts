@@ -2,8 +2,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODEL, AiError, brandBlock, type BrandProfile } from './generate';
 import type { PersonaData } from '../persona';
 import { MAX_TERRITORY_NODES_PER_RUN } from '../territory';
+import { clampScore, type PriorityConfig } from '../priority';
+import { priorityBlock } from './priority';
 
-export type SuggestedNode = { ref: string; parentRef: string; name: string; description: string };
+export type SuggestedNode = { ref: string; parentRef: string; name: string; description: string; score?: number; reason?: string };
 export type TerritoryMode = 'first' | 'expand' | 'full';
 
 const STR = { type: 'string' } as const;
@@ -12,7 +14,7 @@ const SCHEMA = {
   properties: {
     nodes: {
       type: 'array',
-      items: { type: 'object', additionalProperties: false, required: ['ref', 'parent_ref', 'name', 'description'], properties: { ref: STR, parent_ref: STR, name: STR, description: STR } },
+      items: { type: 'object', additionalProperties: false, required: ['ref', 'parent_ref', 'name', 'description', 'score', 'reason'], properties: { ref: STR, parent_ref: STR, name: STR, description: STR, score: { type: 'integer' }, reason: STR } },
     },
   },
 };
@@ -35,7 +37,8 @@ FOCO: se a tarefa é para uma PERSONA, foque só nela: não considere o público
 
 FORMATO DA RESPOSTA
 - Lista plana "nodes". Cada item: "ref" (um identificador curto e único, ex.: "a1", "a1b"), "parent_ref" (o "ref" do pai dentro desta lista, ou "" para o que entra direto no ponto de partida indicado), "name", "description".
-- Um filho sempre vem depois do seu pai na lista.`;
+- Um filho sempre vem depois do seu pai na lista.
+- "score" (1 a 100) e "reason" (uma frase curta): a prioridade da pauta, pelos CRITÉRIOS DE PRIORIDADE abaixo.`;
 
 function personaBlock(p: { name: string; tagline: string; role: string; data: PersonaData }) {
   const L = (t: string, a: string[]) => (a.length ? `\n- ${t}: ${a.join('; ')}` : '');
@@ -61,6 +64,7 @@ export type SuggestArgs = {
   /** Nomes de nível 1 usados em outras personas. */
   otherPersonas: string[];
   instructions: string;
+  priority: PriorityConfig;
 };
 
 /** Sugere territórios (só o 1º nível, filhos de um nó, ou uma subárvore completa), sem repetir o que a persona já tem. Não grava nada. */
@@ -70,8 +74,8 @@ export async function suggestTerritories(a: SuggestArgs): Promise<{ nodes: Sugge
     await new Promise((r) => setTimeout(r, 900));
     const nodes: SuggestedNode[] = [];
     for (let i = 0; i < n; i++) {
-      nodes.push({ ref: `m${i}`, parentRef: '', name: `${a.parentPath.at(-1) ?? 'Território'} ${i + 1}`, description: 'Descrição de exemplo.' });
-      if (a.mode !== 'first') for (let j = 0; j < 2; j++) nodes.push({ ref: `m${i}_${j}`, parentRef: `m${i}`, name: `Subtema ${i + 1}.${j + 1}`, description: 'Descrição de exemplo.' });
+      nodes.push({ ref: `m${i}`, parentRef: '', name: `${a.parentPath.at(-1) ?? 'Território'} ${i + 1}`, description: 'Descrição de exemplo.', score: a.priority.criteria.length ? 50 + i : undefined, reason: a.priority.criteria.length ? 'Exemplo.' : '' });
+      if (a.mode !== 'first') for (let j = 0; j < 2; j++) nodes.push({ ref: `m${i}_${j}`, parentRef: `m${i}`, name: `Subtema ${i + 1}.${j + 1}`, description: 'Descrição de exemplo.', score: a.priority.criteria.length ? 50 + i : undefined, reason: a.priority.criteria.length ? 'Exemplo.' : '' });
     }
     return { nodes: dedupe(nodes, a), inputTokens: 1500, outputTokens: 1200 };
   }
@@ -96,14 +100,14 @@ export async function suggestTerritories(a: SuggestArgs): Promise<{ nodes: Sugge
   try {
     const res = await new Anthropic().beta.messages.create({
       model: AI_MODEL, max_tokens: 12000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
-      system: [SYSTEM, brandBlock(a.brand)].filter(Boolean).join('\n\n'),
+      system: [SYSTEM, a.priority.criteria.length ? priorityBlock(a.priority) : 'Não há critérios de prioridade definidos: devolva score 0 e reason "" em todos os itens.', brandBlock(a.brand)].filter(Boolean).join('\n\n'),
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } },
       messages: [{ role: 'user', content: user }],
     });
     if (res.stop_reason === 'refusal') throw new AiError('A IA recusou gerar territórios.');
     if (res.stop_reason === 'max_tokens') throw new AiError('A resposta ficou grande demais. Peça menos itens ou menos níveis.', true);
-    const raw = JSON.parse(res.content.find((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')?.text ?? '') as { nodes?: { ref?: string; parent_ref?: string; name?: string; description?: string }[] };
-    const nodes = (raw.nodes ?? []).slice(0, MAX_TERRITORY_NODES_PER_RUN + 10).map((x, i) => ({ ref: clean(x.ref, 20) || `n${i}`, parentRef: clean(x.parent_ref, 20), name: clean(x.name, 80), description: clean(x.description, 220) })).filter((x) => x.name);
+    const raw = JSON.parse(res.content.find((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')?.text ?? '') as { nodes?: { ref?: string; parent_ref?: string; name?: string; description?: string; score?: number; reason?: string }[] };
+    const nodes = (raw.nodes ?? []).slice(0, MAX_TERRITORY_NODES_PER_RUN + 10).map((x, i) => ({ ref: clean(x.ref, 20) || `n${i}`, parentRef: clean(x.parent_ref, 20), name: clean(x.name, 80), description: clean(x.description, 220), score: a.priority.criteria.length ? clampScore((x as { score?: number }).score) : undefined, reason: clean((x as { reason?: string }).reason, 200) })).filter((x) => x.name);
     const out = dedupe(nodes, a);
     if (!out.length) throw new AiError('A IA não trouxe nada novo para este ponto. Tente outra instrução.', true);
     const u = res.usage as { input_tokens?: number; output_tokens?: number } | undefined;
