@@ -253,9 +253,7 @@
   .nw .tag { display: inline-block; background: var(--tagbg); color: var(--tagtext); font-weight: 600; font-size: 30px; letter-spacing: .16em; text-transform: uppercase; padding: 14px 36px; border-radius: 99px; margin-bottom: 30px; outline: none; min-width: 80px; }
   .nw .ttl { font-weight: 800; font-size: var(--fs, 62px); line-height: 1.1; letter-spacing: -.01em; color: var(--title); outline: none; white-space: pre-wrap; word-wrap: break-word; min-height: 1.1em; }
   .nw .sub { font-weight: 500; font-size: var(--fs, 62px); line-height: 1.18; letter-spacing: -.01em; color: var(--text); outline: none; white-space: pre-wrap; word-wrap: break-word; margin-top: 4px; min-height: 1.2em; }
-  .nw .bdg { position: absolute !important; right: 0; width: 262px; height: 520px; z-index: 2 !important; pointer-events: none; }
-  .nw .bdg > i { position: absolute; border-radius: 50%; background: var(--dots); width: 84px; height: 84px; }
-  .nw .circ { position: absolute; left: 55px; top: 0; width: 176px; height: 176px; border-radius: 50%; background: var(--badge); display: flex; align-items: center; justify-content: center; overflow: hidden; pointer-events: auto; cursor: pointer; }
+  .nw .circ { position: absolute !important; top: 64px; right: 64px; width: var(--bs, 160px); height: var(--bs, 160px); border-radius: 50%; background: var(--badge); display: flex; align-items: center; justify-content: center; overflow: hidden; z-index: 2 !important; cursor: pointer; }
   .nw .circ img { width: 74%; height: 74%; object-fit: contain; display: block; }
   .nw .circ span { color: rgba(255,255,255,.55); font-weight: 700; font-size: 30px; letter-spacing: .1em; }
   .stage .nw [data-f] { cursor: text; }
@@ -294,7 +292,7 @@
   </main>
 
   <aside class="panel">
-    <section class="acc open" data-acc="slide"><button type="button" class="acc-h" aria-expanded="false"><span class="acc-ic"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span><span class="acc-t"><b>Este slide</b><small>Textos, imagem e selo</small></span><svg class="acc-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><div class="acc-b">
+    <section class="acc open" data-acc="slide"><button type="button" class="acc-h" aria-expanded="false"><span class="acc-ic"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span><span class="acc-t"><b>Este slide</b><small>Textos, imagem e logo</small></span><svg class="acc-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><div class="acc-b">
       <div class="sub">Textos</div>
       <p class="hint">Clique na etiqueta, no título e no texto direto no slide para editar.</p>
       <label class="check"><input type="checkbox" id="optTag"> Mostrar etiqueta</label>
@@ -330,18 +328,18 @@
           <small class="aimsg">Dica: arraste a imagem direto no slide para reposicionar o corte.</small>
         </div>
         <div class="field"><label for="optFade">Escurecimento embaixo: <b id="fadeVal"></b>%</label><input type="range" id="optFade" min="0" max="100" step="5"></div>
-      <div class="sub">Selo do logo</div>
-      <label class="check"><input type="checkbox" id="optBadge"> Mostrar selo e pontos</label>
-      <div class="field" id="badgeField"><label for="optBadgeY">Posição vertical: <b id="badgeYVal"></b>%</label><input type="range" id="optBadgeY" min="8" max="75" step="1"></div>
+      <div class="sub">Logo no canto superior direito</div>
+      <label class="check"><input type="checkbox" id="optBadge"> Mostrar logo</label>
+      <div class="field" id="badgeField"><label for="optBadgeSize">Tamanho do logo: <b id="badgeSizeVal"></b> px</label><input type="range" id="optBadgeSize" min="90" max="260" step="5"></div>
     </div></section>
 
     <section class="acc" data-acc="perfil"><button type="button" class="acc-h" aria-expanded="false"><span class="acc-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span><span class="acc-t"><b>Logo e fonte</b><small>Vale para todos os slides</small></span><svg class="acc-chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><div class="acc-b">
-      <div class="sub">Logo do selo</div>
+      <div class="sub">Logo</div>
       <div class="row">
         <button class="btn small" id="btnLogo">Enviar logo</button>
         <button class="btn small" id="btnLogoRm">Remover logo</button>
       </div>
-      <p class="hint" style="margin-top:10px">Por padrão usa a foto da marca (Configurações). Vale para todos os slides.</p>
+      <p class="hint" style="margin-top:10px">Por padrão usa a foto da marca (Configurações). Vale para todos os slides. O logo fica num círculo; use "Fundo do logo" em Cores para combinar.</p>
       <div class="field" style="margin-top:12px"><label for="inFont">Fonte</label><select id="inFont"></select></div>
       <div hidden>
         <input type="text" id="inName">
@@ -409,18 +407,18 @@ const ICO_RETWEET = `<svg viewBox="0 0 24 24"><path d="M17 2l4 4-4 4"/><path d="
 const ICO_HEART = `<svg viewBox="0 0 24 24"><path d="M20.8 5.6a5.2 5.2 0 0 0-7.4 0L12 7l-1.4-1.4a5.2 5.2 0 0 0-7.4 7.4L12 21.8l8.8-8.8a5.2 5.2 0 0 0 0-7.4z"/></svg>`;
 
 /* =============== modelo =============== */
-const DEF_COLORS = { bg: '#000000', title: '#FFFFFF', text: '#FFFFFF', tagbg: '#3C4966', tagtext: '#E6EAF2', badge: '#3C4966', dots: '#3C4966', ph: '#8A94A8' };
+const DEF_COLORS = { bg: '#000000', title: '#FFFFFF', text: '#FFFFFF', tagbg: '#3C4966', tagtext: '#E6EAF2', badge: '#3C4966', ph: '#8A94A8' };
 const THEMES = {
   noite:    { name: 'Noite',    c: { ...DEF_COLORS } },
-  vermelho: { name: 'Vermelho', c: { bg: '#14040A', title: '#FFFFFF', text: '#FFFFFF', tagbg: '#C8102E', tagtext: '#FFFFFF', badge: '#C8102E', dots: '#C8102E', ph: '#B08A92' } },
-  azul:     { name: 'Azul',     c: { bg: '#06122B', title: '#FFFFFF', text: '#E8F0FF', tagbg: '#1D4ED8', tagtext: '#FFFFFF', badge: '#1D4ED8', dots: '#1D4ED8', ph: '#8FA3C7' } },
-  floresta: { name: 'Floresta', c: { bg: '#04150E', title: '#FFFFFF', text: '#EAF6F0', tagbg: '#1F9D63', tagtext: '#FFFFFF', badge: '#1F9D63', dots: '#1F9D63', ph: '#86B09C' } },
-  claro:    { name: 'Claro',    c: { bg: '#F7F5F0', title: '#111111', text: '#1F1F1F', tagbg: '#111111', tagtext: '#FFFFFF', badge: '#111111', dots: '#111111', ph: '#8A857A' } },
-  ouro:     { name: 'Ouro',     c: { bg: '#120C00', title: '#FFFFFF', text: '#FFF4D6', tagbg: '#F59E0B', tagtext: '#1A1100', badge: '#F59E0B', dots: '#F59E0B', ph: '#B3A27A' } }
+  vermelho: { name: 'Vermelho', c: { bg: '#14040A', title: '#FFFFFF', text: '#FFFFFF', tagbg: '#C8102E', tagtext: '#FFFFFF', badge: '#C8102E', ph: '#B08A92' } },
+  azul:     { name: 'Azul',     c: { bg: '#06122B', title: '#FFFFFF', text: '#E8F0FF', tagbg: '#1D4ED8', tagtext: '#FFFFFF', badge: '#1D4ED8', ph: '#8FA3C7' } },
+  floresta: { name: 'Floresta', c: { bg: '#04150E', title: '#FFFFFF', text: '#EAF6F0', tagbg: '#1F9D63', tagtext: '#FFFFFF', badge: '#1F9D63', ph: '#86B09C' } },
+  claro:    { name: 'Claro',    c: { bg: '#F7F5F0', title: '#111111', text: '#1F1F1F', tagbg: '#111111', tagtext: '#FFFFFF', badge: '#111111', ph: '#8A857A' } },
+  ouro:     { name: 'Ouro',     c: { bg: '#120C00', title: '#FFFFFF', text: '#FFF4D6', tagbg: '#F59E0B', tagtext: '#1A1100', badge: '#F59E0B', ph: '#B3A27A' } }
 };
-const COLOR_FIELDS = [['bg', 'Fundo / degradê'], ['title', 'Título'], ['text', 'Texto'], ['tagbg', 'Etiqueta'], ['tagtext', 'Texto da etiqueta'], ['badge', 'Selo (círculo)'], ['dots', 'Pontos decorativos']];
+const COLOR_FIELDS = [['bg', 'Fundo / degradê'], ['title', 'Título'], ['text', 'Texto'], ['tagbg', 'Etiqueta'], ['tagtext', 'Texto da etiqueta'], ['badge', 'Fundo do logo']];
 const FONTS = ['Montserrat', 'Plus Jakarta Sans', 'Inter', 'Manrope', 'DM Sans', 'Poppins', 'Space Grotesk', 'Work Sans', 'Kanit', 'Barlow', 'Oswald'];
-const newSlide = (o = {}) => Object.assign({ tag: 'ECONOMIA', showTag: true, title: 'TÍTULO DA NOTÍCIA', text: 'Escreva aqui o resumo da notícia em até três linhas.', size: '62', fade: 60, showBadge: true, badgeY: 44, showImage: true, image: null, fit: 'cover', ratio: '4/5' }, o);
+const newSlide = (o = {}) => Object.assign({ tag: 'ECONOMIA', showTag: true, title: 'TÍTULO DA NOTÍCIA', text: 'Escreva aqui o resumo da notícia em até três linhas.', size: '62', fade: 60, showBadge: true, badgeSize: 160, showImage: true, image: null, fit: 'cover', ratio: '4/5' }, o);
 
 const KEY = 'editor-noticia-v1';
 const HOST = window.CARROSSEL || null;
@@ -443,20 +441,20 @@ const cur = () => slides[idx];
 const scaler = $('scaler');
 
 /* =============== slide =============== */
-const DOTS = [[60, 181], [136, 181], [199, 181], [60, 261], [136, 261], [199, 261], [136, 346], [199, 346], [190, 422]];
 function buildSlide(s, editable) {
   const c = g.colors;
   const el = document.createElement('div');
   el.className = 'slide nw';
   el.style.setProperty('--font', '"' + g.font + '"');
-  ['bg', 'title', 'text', 'tagbg', 'tagtext', 'badge', 'dots', 'ph'].forEach(k => el.style.setProperty('--' + k, c[k]));
+  ['bg', 'title', 'text', 'tagbg', 'tagtext', 'badge', 'ph'].forEach(k => el.style.setProperty('--' + k, c[k]));
   el.style.setProperty('--fs', s.size + 'px');
   el.style.setProperty('--go', String((s.fade ?? 60) / 100));
+  el.style.setProperty('--bs', (s.badgeSize ?? 160) + 'px');
   const ce = editable ? 'contenteditable="plaintext-only" spellcheck="false"' : '';
   const img = s.image
     ? `<div class="nw-img" data-pic><div class="slot-bg" style="${bgCss(s)}"></div></div>`
     : (editable ? `<div class="nw-img" data-pic><div class="nw-ph">Imagem de fundo<small>Clique ou arraste uma imagem</small><div class="ph-btns">${(HOST && HOST.imageEnabled) ? `<button type="button" class="ph-ai" data-ai>✨ Gerar com IA</button>` : ''}${(HOST && HOST.assetsUrl) ? `<button type="button" class="ph-ai ph-gal" data-gal>📚 Galeria</button>` : ''}</div></div></div>` : `<div class="nw-img"></div>`);
-  const badge = s.showBadge === false ? '' : `<div class="bdg" style="top:${s.badgeY ?? 44}%"><div class="circ" ${editable ? 'data-logo' : ''}>${g.logo ? `<img src="${g.logo}" alt="">` : (editable ? '<span>LOGO</span>' : '')}</div>${DOTS.map(([x, y]) => `<i style="left:${x}px;top:${y}px"></i>`).join('')}</div>`;
+  const badge = s.showBadge === false ? '' : `<div class="circ" ${editable ? 'data-logo' : ''}>${g.logo ? `<img src="${g.logo}" alt="">` : (editable ? '<span>LOGO</span>' : '')}</div>`;
   el.innerHTML = `${img}<div class="grad"></div>${badge}
     <div class="txt">
       ${s.showTag !== false && (s.tag || editable) ? `<span class="tag" data-f="tag" ${ce}>${esc(s.tag || '')}</span>` : ''}
@@ -523,7 +521,7 @@ function updatePanel() {
   $('optTag').checked = s.showTag !== false; $('tagField').style.display = s.showTag !== false ? 'flex' : 'none'; $('inTag').value = s.tag || '';
   $('optSize').value = s.size; $('btnPicRm').disabled = !s.image; $('optFit').value = s.fit || 'cover'; updateAdjPanel();
   $('optFade').value = s.fade ?? 60; $('fadeVal').textContent = s.fade ?? 60;
-  $('optBadge').checked = s.showBadge !== false; $('badgeField').style.display = s.showBadge !== false ? 'flex' : 'none'; $('optBadgeY').value = s.badgeY ?? 44; $('badgeYVal').textContent = s.badgeY ?? 44;
+  $('optBadge').checked = s.showBadge !== false; $('badgeField').style.display = s.showBadge !== false ? 'flex' : 'none'; $('optBadgeSize').value = s.badgeSize ?? 160; $('badgeSizeVal').textContent = s.badgeSize ?? 160;
   updateAiGen();
   $('btnLogoRm').disabled = !g.logo;
   $('inName').value = g.name; syncAccInputs(); $('inFont').value = g.font;
@@ -536,7 +534,7 @@ $('optTag').addEventListener('change', e => { cur().showTag = e.target.checked; 
 $('inTag').addEventListener('input', e => { cur().tag = e.target.value; const n = scaler.querySelector('[data-f="tag"]'); if (n && document.activeElement !== n) n.textContent = e.target.value; scheduleThumb(); scheduleSave(); });
 $('optFade').addEventListener('input', e => { cur().fade = +e.target.value; $('fadeVal').textContent = e.target.value; const sl = scaler.querySelector('.slide'); if (sl) sl.style.setProperty('--go', String(+e.target.value / 100)); scheduleThumb(); scheduleSave(); });
 $('optBadge').addEventListener('change', e => { cur().showBadge = e.target.checked; change(); });
-$('optBadgeY').addEventListener('input', e => { cur().badgeY = +e.target.value; $('badgeYVal').textContent = e.target.value; const b = scaler.querySelector('.bdg'); if (b) b.style.top = e.target.value + '%'; scheduleThumb(); scheduleSave(); });
+$('optBadgeSize').addEventListener('input', e => { cur().badgeSize = +e.target.value; $('badgeSizeVal').textContent = e.target.value; const sl = scaler.querySelector('.slide'); if (sl) sl.style.setProperty('--bs', e.target.value + 'px'); scheduleThumb(); scheduleSave(); });
 $('btnPic').addEventListener('click', () => openPicker('pic'));
 $('btnPicRm').addEventListener('click', () => { cur().image = null; cur().imgAdj = null; change(); });
 $('optSize').addEventListener('change', e => { cur().size = e.target.value; change(); });
