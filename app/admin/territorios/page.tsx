@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { eq } from 'drizzle-orm';
+import { and, count, eq, inArray, isNotNull } from 'drizzle-orm';
 import { db } from '@/db';
-import { brandSettings, personaGroups, personas, territories } from '@/db/schema';
+import { brandSettings, contentIdeas, personaGroups, personas, territories } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { GROUP_COLORS, splitPersonaName } from '@/lib/persona';
 import { priorityOf } from '@/lib/priority';
@@ -20,13 +20,17 @@ const initialsOf = (n: string) => n.replace(/,.*/, '').split(/\s+/).filter(Boole
 export default async function TerritoriosPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
   const c = (await getCtx())!;
   const { p } = await searchParams;
-  const [people, rows, [bs], groups] = await Promise.all([
+  const [people, rows, [bs], groups, approvedRows] = await Promise.all([
     db.select({ id: personas.id, name: personas.name, tagline: personas.tagline, data: personas.data, groupId: personas.groupId }).from(personas).where(eq(personas.brandId, c.brandId)).orderBy(personas.position, personas.createdAt),
     db.select({ id: territories.id, personaId: territories.personaId, parentId: territories.parentId, name: territories.name, description: territories.description, position: territories.position, source: territories.source, score: territories.score, scoreReason: territories.scoreReason })
       .from(territories).where(eq(territories.brandId, c.brandId)),
     db.select({ about: brandSettings.aiAbout, icp: brandSettings.personaIcp, aud: brandSettings.aiAudience, pc: brandSettings.priorityConfig }).from(brandSettings).where(eq(brandSettings.brandId, c.brandId)),
     db.select({ id: personaGroups.id, name: personaGroups.name }).from(personaGroups).where(eq(personaGroups.brandId, c.brandId)).orderBy(personaGroups.position, personaGroups.createdAt),
+    // ideias aprovadas (ou já usadas, que passaram pela aprovação) por território
+    db.select({ id: contentIdeas.territoryId, n: count() }).from(contentIdeas)
+      .where(and(eq(contentIdeas.brandId, c.brandId), isNotNull(contentIdeas.territoryId), inArray(contentIdeas.status, ['approved', 'used']))).groupBy(contentIdeas.territoryId),
   ]);
+  const approved = Object.fromEntries(approvedRows.map((r) => [r.id as string, r.n]));
   const gIndex = new Map(groups.map((g, i) => [g.id, i]));
   const gName = new Map(groups.map((g) => [g.id, g.name]));
   // mesma cor do grupo no quadro de Personas
@@ -66,7 +70,7 @@ export default async function TerritoriosPage({ searchParams }: { searchParams: 
       {general ? (
         <GeneralView personas={withPublico} nodes={nodes} />
       ) : current ? (
-        <MindMap key={current.id} persona={current} color={(current as { color?: string }).color ?? GROUP_COLORS[idx % GROUP_COLORS.length]} nodes={nodes.filter((n) => n.personaId === current.id)} hasKey={hasKey} priority={priority} hasAbout={!!about.trim()} />
+        <MindMap key={current.id} persona={current} color={(current as { color?: string }).color ?? GROUP_COLORS[idx % GROUP_COLORS.length]} nodes={nodes.filter((n) => n.personaId === current.id)} hasKey={hasKey} priority={priority} approved={approved} hasAbout={!!about.trim()} />
       ) : null}
     </div>
   );

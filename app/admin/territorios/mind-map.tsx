@@ -19,7 +19,7 @@ const DEPTH_COLORS = ['#F97335', '#1D9BF0', '#8B5CF6', '#1F9D63', '#E5484D', '#F
 const initialsOf = (n: string) => n.replace(/,.*/, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
 
 /** Mapa mental horizontal dos territórios de UMA persona: criar irmão/filho, arrastar para mudar o pai, recolher e gerar com IA. */
-export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority }: { persona: PersonaLite; color: string; nodes: TNode[]; hasKey: boolean; hasAbout: boolean; priority: PriorityConfig }) {
+export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority, approved = {} }: { persona: PersonaLite; color: string; nodes: TNode[]; hasKey: boolean; hasAbout: boolean; priority: PriorityConfig; approved?: Record<string, number> }) {
   const router = useRouter();
   const [, start] = useTransition();
   const [nodes, setNodes] = useState(n0);
@@ -186,6 +186,7 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority 
                     ) : (
                       <span className="tr-name" title={n.description || n.name}>{n.name}</span>
                     )}
+                    {approved[n.id] ? <span className="tr-check" title={`${approved[n.id]} ${approved[n.id] === 1 ? 'ideia aprovada' : 'ideias aprovadas'} neste tema`}>✓</span> : null}
                     {n.score ? <span className="tr-score" style={{ ['--c' as string]: levelOf(n.score, priority.levels)?.color }} title={`${levelOf(n.score, priority.levels)?.name ?? ''} · ${n.scoreReason || 'score'}`}>{n.score}</span> : null}
                     {p.hasKids && (
                       <button type="button" className="tr-fold" onClick={(e) => { e.stopPropagation(); toggleCollapse(n.id); }} aria-label={p.collapsed ? 'Expandir' : 'Recolher'} title={p.collapsed ? 'Expandir' : 'Recolher'}>
@@ -227,6 +228,7 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority 
               </div>
               {sel.scoreReason && <p className="tr-score-why">{sel.scoreReason}</p>}
             </div>
+            {approved[sel.id] ? <Link href={`/admin/ideias?t=${sel.id}&ver=1`} className="tr-approved">✓ {approved[sel.id]} {approved[sel.id] === 1 ? 'ideia aprovada' : 'ideias aprovadas'} · ver</Link> : null}
             <div className="tr-meta">{kidsCount(sel.id)} {kidsCount(sel.id) === 1 ? 'território dentro' : 'territórios dentro'} · {sel.source === 'ai' ? 'criado pela IA' : 'criado à mão'}</div>
             <div className="tr-actions">
               <button type="button" className="btn small primary" onClick={() => setAi({ parent: sel })}><IconSpark /> Gerar com IA</button>

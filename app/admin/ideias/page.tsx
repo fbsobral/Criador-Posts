@@ -11,7 +11,7 @@ import { IdeasView } from './ideas-view';
 
 export const metadata = { title: 'Ideias de conteúdo' };
 
-export default async function IdeiasPage({ searchParams }: { searchParams: Promise<{ p?: string; t?: string; gerar?: string }> }) {
+export default async function IdeiasPage({ searchParams }: { searchParams: Promise<{ p?: string; t?: string; gerar?: string; ver?: string }> }) {
   const c = (await getCtx())!;
   const sp = await searchParams;
   const [rows, people, nodes, [bs], vformats, tpls] = await Promise.all([
@@ -34,7 +34,7 @@ export default async function IdeiasPage({ searchParams }: { searchParams: Promi
       <IdeasView ideas={ideas} personas={people} nodes={tnodes} hasKey={!!process.env.ANTHROPIC_API_KEY || process.env.AI_MOCK === '1'} hasAbout={!!(bs?.about ?? '').trim()}
         formats={vformats.map((f) => ({ id: f.id, name: f.name, description: f.description, defaultSeconds: f.defaultSeconds, parts: f.parts }))}
         templates={tpls.filter((t) => supportsAi(t.editor)).map((t) => ({ id: t.id, name: t.name, description: t.description, editor: t.editor }))}
-        initial={{ persona: sp.p ?? '', territory: sp.t ?? '', generate: sp.gerar === '1' || !!sp.t }} />
+        initial={{ persona: sp.p ?? '', territory: sp.t ?? '', generate: sp.gerar === '1' || (!!sp.t && sp.ver !== '1') }} />
     </div>
   );
 }
