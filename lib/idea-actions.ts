@@ -6,7 +6,7 @@ import { db } from '@/db';
 import { contentIdeas, personas, territories } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { pathOf, PUBLICO_ID, type TNode } from '@/lib/territory';
-import type { Idea, IdeaInput, IdeaStatus } from '@/lib/idea';
+import type { Idea, IdeaFields, IdeaInput, IdeaStatus } from '@/lib/idea';
 
 async function ctx() {
   const c = await getCtx();
@@ -36,12 +36,11 @@ async function resolve(brandId: string, i: { personaId: string | null; territory
   }
   return { personaId, personaName, territoryId, territory };
 }
-const cleanArgs = (a: unknown) => (Array.isArray(a) ? a : []).map((x) => str(x, 300)).filter(Boolean).slice(0, 8);
-const fields = (i: IdeaInput) => ({ pain: str(i.pain, 400), guide: str(i.guide, 600), args: cleanArgs(i.args), cta: str(i.cta, 300) });
+const fields = (i: IdeaFields) => ({ pain: str(i.pain, 400), impact: str(i.impact, 400), cause: str(i.cause, 400), guide: str(i.guide, 600), plan: str(i.plan, 700), gain: str(i.gain, 400), desire: str(i.desire, 400), cta: str(i.cta, 300) });
 
 const toIdea = (r: typeof contentIdeas.$inferSelect): Idea => ({
   id: r.id, personaId: r.personaId, personaName: r.personaName, territoryId: r.territoryId, territory: r.territory,
-  pain: r.pain, guide: r.guide, args: r.args, cta: r.cta, status: r.status as IdeaStatus, source: r.source, createdAt: r.createdAt.toISOString(),
+  pain: r.pain, impact: r.impact, cause: r.cause, guide: r.guide, plan: r.plan, gain: r.gain, desire: r.desire, cta: r.cta, status: r.status as IdeaStatus, source: r.source, createdAt: r.createdAt.toISOString(),
 });
 
 export async function createIdea(input: IdeaInput): Promise<{ idea?: Idea; error?: string }> {
@@ -83,11 +82,11 @@ export async function deleteIdea(id: string): Promise<{ error?: string }> {
 }
 
 /** Grava as ideias que o usuário aprovou na revisão da IA. */
-export async function addSuggestedIdeas(personaId: string | null, territoryId: string | null, items: { pain: string; guide: string; args: string[]; cta: string }[]): Promise<{ added?: number; error?: string }> {
+export async function addSuggestedIdeas(personaId: string | null, territoryId: string | null, items: IdeaFields[]): Promise<{ added?: number; error?: string }> {
   const c = await ctx();
   const r = await resolve(c.brandId, { personaId, territoryId, territory: '' });
   if ('error' in r) return { error: r.error };
-  const rows = items.map((x) => ({ brandId: c.brandId, ...r, ...fields({ ...x, personaId, territoryId, territory: '' }), source: 'ai', createdBy: c.userId })).filter((x) => x.pain);
+  const rows = items.map((x) => ({ brandId: c.brandId, ...r, ...fields(x), source: 'ai', createdBy: c.userId })).filter((x) => x.pain);
   if (!rows.length) return { error: 'Nenhuma ideia para adicionar.' };
   await db.insert(contentIdeas).values(rows.slice(0, 20));
   done();

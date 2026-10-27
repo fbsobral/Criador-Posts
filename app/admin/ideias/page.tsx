@@ -22,12 +22,12 @@ export default async function IdeiasPage({ searchParams }: { searchParams: Promi
   ]);
   const ideas: Idea[] = rows.map((r) => ({
     id: r.id, personaId: r.personaId, personaName: r.personaName, territoryId: r.territoryId, territory: r.territory,
-    pain: r.pain, guide: r.guide, args: r.args, cta: r.cta, status: r.status as IdeaStatus, source: r.source, createdAt: r.createdAt.toISOString(),
+    pain: r.pain, impact: r.impact, cause: r.cause, guide: r.guide, plan: r.plan, gain: r.gain, desire: r.desire, cta: r.cta, status: r.status as IdeaStatus, source: r.source, createdAt: r.createdAt.toISOString(),
   }));
   const tnodes = nodes.map((n) => ({ ...n, personaId: n.personaId ?? PUBLICO_ID })) as TNode[];
   return (
     <div className="page">
-      <PageHead title="Ideias de conteúdo" description="Cada ideia liga uma persona e um território a uma dor real, a um enquadramento (guia), aos argumentos e a uma chamada indireta. Gere com IA a partir de um território ou escreva à mão." />
+      <PageHead title="Ideias de conteúdo" description="Cada ideia conta uma história para uma persona: da dor ao impacto, à causa, ao guia (enquadramento), ao plano, ao ganho, ao desejo e à CTA. Gere com IA a partir de um território ou escreva à mão." />
       <IdeasView ideas={ideas} personas={people} nodes={tnodes} hasKey={!!process.env.ANTHROPIC_API_KEY || process.env.AI_MOCK === '1'} hasAbout={!!(bs?.about ?? '').trim()}
         initial={{ persona: sp.p ?? '', territory: sp.t ?? '', generate: sp.gerar === '1' || !!sp.t }} />
     </div>

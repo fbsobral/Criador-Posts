@@ -335,10 +335,18 @@ export const contentIdeas = pgTable(
     territory: text('territory').notNull().default(''),
     /** Dor, em linguagem de rua. */
     pain: text('pain').notNull(),
+    /** Impacto da dor na vida da pessoa. */
+    impact: text('impact').notNull().default(''),
+    /** Causa (coletiva, não culpa individual). */
+    cause: text('cause').notNull().default(''),
     /** Guia: o enquadramento progressista (Lakoff). */
     guide: text('guide').notNull().default(''),
-    args: jsonb('args').$type<string[]>().notNull().default([]),
-    /** CTA indireta. */
+    /** Plano: o caminho, passo a passo. */
+    plan: text('plan').notNull().default(''),
+    /** Ganho concreto quando o plano funciona. */
+    gain: text('gain').notNull().default(''),
+    /** Desejo de fundo (o que a pessoa quer ser/sentir). */
+    desire: text('desire').notNull().default(''),
     cta: text('cta').notNull().default(''),
     status: text('status').notNull().default('idea'), // 'idea' | 'approved' | 'used'
     source: text('source').notNull().default('manual'), // 'ai' | 'manual'

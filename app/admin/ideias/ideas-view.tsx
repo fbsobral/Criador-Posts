@@ -7,6 +7,7 @@ import { deleteIdea, setIdeaStatus } from '@/lib/idea-actions';
 import { PUBLICO_ID, type TNode } from '@/lib/territory';
 import { IconEdit, IconPlus, IconSpark, IconTrash } from '../../icons';
 import { EmptyState } from '../ui';
+import { IdeaBody, ideaText } from './idea-body';
 import { IdeaDrawer } from './idea-drawer';
 import { IdeaModal } from './idea-modal';
 
@@ -32,7 +33,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial }:
     if (persona && (persona === PUBLICO_ID ? i.personaId !== null : i.personaId !== persona)) return false;
     if (territory && i.territoryId !== territory) return false;
     if (status && (local[i.id] ?? i.status) !== status) return false;
-    if (q.trim() && !`${i.pain} ${i.guide} ${i.args.join(' ')} ${i.cta} ${i.territory}`.toLowerCase().includes(q.trim().toLowerCase())) return false;
+    if (q.trim() && !`${i.pain} ${i.impact} ${i.cause} ${i.guide} ${i.plan} ${i.gain} ${i.desire} ${i.cta} ${i.territory}`.toLowerCase().includes(q.trim().toLowerCase())) return false;
     return true;
   });
   const count = (s: IdeaStatus) => ideas.filter((i) => (local[i.id] ?? i.status) === s).length;
@@ -40,7 +41,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial }:
   const changeStatus = (i: Idea, s: IdeaStatus) => { setLocal((l) => ({ ...l, [i.id]: s })); start(async () => { await setIdeaStatus(i.id, s); router.refresh(); }); };
   const remove = (i: Idea) => { if (!confirm('Excluir esta ideia?')) return; start(async () => { await deleteIdea(i.id); router.refresh(); }); };
   const copy = async (i: Idea) => {
-    const t = `Persona: ${i.personaName}\nTerritório: ${i.territory || '—'}\n\nDOR\n${i.pain}\n\nGUIA (enquadramento)\n${i.guide}\n\nARGUMENTOS\n${i.args.map((a) => `- ${a}`).join('\n')}\n\nCTA INDIRETA\n${i.cta}`;
+    const t = ideaText(i, i.personaName, i.territory);
     try { await navigator.clipboard.writeText(t); setCopied(i.id); setTimeout(() => setCopied(''), 1600); } catch { /* sem clipboard */ }
   };
   const personaOpts = [...personas, { id: PUBLICO_ID, name: 'Público geral' }];
@@ -93,10 +94,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial }:
                     {IDEA_STATUS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
                   </select>
                 </header>
-                <div className="id-sec"><span>Dor</span><p className="id-pain">{i.pain}</p></div>
-                {i.guide && <div className="id-sec"><span>Guia</span><p>{i.guide}</p></div>}
-                {i.args.length > 0 && <div className="id-sec"><span>Argumentos</span><ul>{i.args.map((a, k) => <li key={k}>{a}</li>)}</ul></div>}
-                {i.cta && <div className="id-sec"><span>CTA indireta</span><p>{i.cta}</p></div>}
+                <IdeaBody f={i} />
                 <footer>
                   <button type="button" className="btn small ghost" onClick={() => copy(i)}>{copied === i.id ? 'Copiado ✓' : 'Copiar'}</button>
                   <button type="button" className="btn small" onClick={() => setEdit(i)}><IconEdit /> Editar</button>

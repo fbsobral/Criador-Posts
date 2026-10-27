@@ -7,6 +7,7 @@ import type { SuggestedIdea } from '@/lib/ai/idea';
 import { ESTIMATED_COST_IDEA_BASE, ESTIMATED_COST_PER_IDEA, type TerritoryOption } from '@/lib/idea';
 import { addSuggestedIdeas } from '@/lib/idea-actions';
 import { PUBLICO_ID } from '@/lib/territory';
+import { IdeaBody } from './idea-body';
 import { IconSpark } from '../../icons';
 
 /** Gera ideias com IA em 2 passos: 1) persona, território e quantidade; 2) revisar o que entra. */
@@ -73,10 +74,10 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
                 <summary>Instruções extras <span className="muted">(opcional)</span></summary>
                 <textarea rows={3} value={instructions} onChange={(e) => setInstructions(e.target.value)} maxLength={1200} placeholder="Ex.: Foque em quem paga aluguel. Use a imagem de “casa” como metáfora." />
               </details>
-              <div className="notice info">A IA escreve a <b>dor em linguagem de rua</b>, o <b>guia</b> (enquadramento progressista, à la Lakoff), os <b>argumentos</b> e a <b>CTA indireta</b>, sem repetir as ideias que já existem para este território.</div>
-              {!hasAbout && <div className="notice warn">Você ainda não descreveu <b>o que a organização faz</b> (em Territórios). Sem isso, a CTA fica genérica.</div>}
+              <div className="notice info">A IA escreve a <b>dor em linguagem de rua</b>, o <b>impacto</b>, a <b>causa</b>, o <b>guia</b> (enquadramento progressista, à la Lakoff), o <b>plano</b>, o <b>ganho</b>, o <b>desejo</b> e a <b>CTA</b>, sem repetir as ideias que já existem para este território.</div>
+              {!hasAbout && <div className="notice warn">Você ainda não descreveu <b>o que a organização faz</b> (em Territórios). Sem isso, o plano e a CTA ficam genéricos.</div>}
               {!hasKey && <div className="notice warn">A IA não está configurada neste servidor (falta a <code>ANTHROPIC_API_KEY</code>).</div>}
-              {busy && <div className="notice info" role="status">A IA está escrevendo as ideias. Leva cerca de 15 a 40 segundos; mantenha esta janela aberta.</div>}
+              {busy && <div className="notice info" role="status">A IA está escrevendo as ideias. Leva cerca de 20 a 50 segundos; mantenha esta janela aberta.</div>}
               {err && <div className="notice err">{err}</div>}
             </div>
             <footer>
@@ -93,10 +94,7 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
                   <label key={i} className={`id-rev${off.has(i) ? ' off' : ''}`}>
                     <input type="checkbox" checked={!off.has(i)} onChange={() => setOff((s) => { const n = new Set(s); if (n.has(i)) n.delete(i); else n.add(i); return n; })} />
                     <div>
-                      <div className="id-sec"><span>Dor</span><p className="id-pain">{x.pain}</p></div>
-                      <div className="id-sec"><span>Guia</span><p>{x.guide}</p></div>
-                      <div className="id-sec"><span>Argumentos</span><ul>{x.args.map((a, k) => <li key={k}>{a}</li>)}</ul></div>
-                      <div className="id-sec"><span>CTA indireta</span><p>{x.cta}</p></div>
+                      <IdeaBody f={x} full />
                     </div>
                   </label>
                 ))}

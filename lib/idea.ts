@@ -7,25 +7,30 @@ export const IDEA_STATUS: { id: IdeaStatus; label: string }[] = [
   { id: 'used', label: 'Já usada' },
 ];
 
-export type Idea = {
+/** Os campos de texto de uma ideia, na ordem da narrativa: dor → impacto → causa → guia → plano → ganho → desejo → CTA. */
+export type IdeaFields = { pain: string; impact: string; cause: string; guide: string; plan: string; gain: string; desire: string; cta: string };
+export type Idea = IdeaFields & {
   id: string; personaId: string | null; personaName: string; territoryId: string | null; territory: string;
-  pain: string; guide: string; args: string[]; cta: string; status: IdeaStatus; source: string; createdAt: string;
+  status: IdeaStatus; source: string; createdAt: string;
 };
 /** O que o usuário preenche (ou a IA sugere) numa ideia. */
-export type IdeaInput = { personaId: string | null; territoryId: string | null; territory: string; pain: string; guide: string; args: string[]; cta: string };
+export type IdeaInput = IdeaFields & { personaId: string | null; territoryId: string | null; territory: string };
+
+export const IDEA_FIELDS: { key: keyof IdeaFields; label: string; rows: number; max: number; placeholder: string; help: string }[] = [
+  { key: 'pain', label: 'Dor (linguagem de rua)', rows: 3, max: 400, placeholder: '“Todo mês eu pago o aluguel e não sobra nada pra mim.”', help: 'Como a pessoa fala de boca, sem jargão e sem "marketês".' },
+  { key: 'impact', label: 'Impacto', rows: 2, max: 400, placeholder: 'O que essa dor faz na vida dela: contas, saúde, família, tempo.', help: 'As consequências concretas da dor no dia a dia.' },
+  { key: 'cause', label: 'Causa', rows: 2, max: 400, placeholder: 'Por que isso acontece (a causa coletiva, não a culpa da pessoa).', help: 'A raiz do problema, sem culpar quem sofre.' },
+  { key: 'guide', label: 'Guia (enquadramento progressista)', rows: 3, max: 600, placeholder: 'Cuidado e proteção: uma cidade que cuida de quem mora nela, como uma casa onde todo mundo cabe.', help: 'Lakoff: o valor e a imagem que conduzem a conversa, sem repetir o discurso do outro lado nem se defender dele.' },
+  { key: 'plan', label: 'Plano', rows: 3, max: 700, placeholder: 'O caminho em passos curtos: o que fazer e como a organização ajuda.', help: 'O que a pessoa pode fazer, em passos concretos.' },
+  { key: 'gain', label: 'Ganho', rows: 2, max: 400, placeholder: 'O que muda na vida dela quando o plano funciona.', help: 'O resultado concreto e visível.' },
+  { key: 'desire', label: 'Desejo', rows: 2, max: 400, placeholder: 'O que ela quer de verdade lá no fundo (segurança, dignidade, sossego).', help: 'A aspiração por trás da dor: o que quer ser ou sentir.' },
+  { key: 'cta', label: 'CTA', rows: 2, max: 300, placeholder: 'O próximo passo: manda pra quem passa por isso.', help: 'O convite final, claro e natural.' },
+];
+export const EMPTY_FIELDS: IdeaFields = { pain: '', impact: '', cause: '', guide: '', plan: '', gain: '', desire: '', cta: '' };
 
 export const MAX_IDEAS_PER_RUN = 8;
-export const ESTIMATED_COST_PER_IDEA = 0.012;
+export const ESTIMATED_COST_PER_IDEA = 0.022;
 export const ESTIMATED_COST_IDEA_BASE = 0.01;
-
-export const FIELD_HELP = {
-  persona: 'Quem vai se reconhecer nesta ideia.',
-  territory: 'O tema (do mapa de Territórios) de onde a ideia nasce. Pode ficar em branco.',
-  pain: 'A dor, do jeito que a pessoa fala na rua, sem jargão e sem "marketês".',
-  guide: 'O enquadramento (Lakoff): o valor e a imagem que guiam a conversa, sem repetir o discurso do outro lado nem se defender dele.',
-  args: 'Os argumentos, já dentro do enquadramento: fatos e exemplos que sustentam o guia.',
-  cta: 'A chamada indireta: um convite natural (olhar, perceber, conversar, compartilhar), sem vender.',
-} as const;
 
 import { buildTree, type TNode, type TreeItem } from './territory';
 

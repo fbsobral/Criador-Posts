@@ -148,6 +148,13 @@
       "when": 1793108732600,
       "tag": "0020_territory_priority",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793112170040,
+      "tag": "0021_idea_structure",
+      "breakpoints": true
     }
   ]
 }
