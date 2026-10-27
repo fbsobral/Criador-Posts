@@ -28,6 +28,18 @@ export function PostPreview({ editor, theme, colors, text }: PreviewData) {
     );
   }
 
+  if (editor === 'noticia') {
+    const c = { bg: '#000000', title: '#FFFFFF', text: '#FFFFFF', tagbg: '#3C4966', tagtext: '#E6EAF2', badge: '#3C4966', ...(colors ?? {}) };
+    return (
+      <div className="pv" style={{ background: `linear-gradient(to top, ${c.bg} 38%, #3a3a3a)`, padding: '9%', justifyContent: 'flex-end', gap: 6, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', right: -6, top: '34%', width: 22, height: 22, borderRadius: '50%', background: c.badge }} />
+        <span style={{ alignSelf: 'flex-start', fontSize: 6, letterSpacing: '.12em', background: c.tagbg, color: c.tagtext, borderRadius: 99, padding: '2px 7px' }}>NOTÍCIA</span>
+        <h4 style={{ color: c.title, margin: 0 }}>{first || 'Novo post'}</h4>
+        {rest.length > 0 && <p style={{ color: c.text, margin: 0 }}>{rest.join(' ')}</p>}
+      </div>
+    );
+  }
+
   const t = { bg: '#FAF8F5', title: '#0A0A0A', text: '#1A1A1A', ...(theme ?? {}) };
   return (
     <div className="pv" style={{ background: t.bg, color: t.title }}>

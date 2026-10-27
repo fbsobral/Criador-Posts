@@ -36,7 +36,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Promis
       slides: sql<number>`case when jsonb_typeof(${posts.data}->'slides') = 'array' then jsonb_array_length(${posts.data}->'slides') else 0 end`,
       theme: sql<Record<string, string> | null>`${posts.data}->'g'->'theme'`,
       colors: sql<Record<string, string> | null>`${posts.data}->'g'->'colors'`,
-      text: sql<string | null>`coalesce(left(${posts.data}->'slides'->0->>'html', 900), left(${posts.data}->'slides'->0->>'text', 400))`,
+      text: sql<string | null>`coalesce(left(${posts.data}->'slides'->0->>'html', 900), left(nullif(concat_ws(E'\n', ${posts.data}->'slides'->0->>'title', ${posts.data}->'slides'->0->>'text'), ''), 400))`,
       author: users.name,
       format: templates.name,
       editor: templates.editor,
@@ -81,7 +81,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Promis
             <thead><tr><th>Post</th><th className="hide-s">Formato</th><th>Status</th><th className="hide-s">Slides</th><th className="hide-s">Atualizado</th><th className="right"></th></tr></thead>
             <tbody>
               {rows.map(({ p, slides, theme, colors, author, format, editor }) => {
-                const bg = (editor === 'tweet' ? colors?.bg : theme?.bg) ?? '#EDEAE5';
+                const bg = ((editor === 'tweet' || editor === 'noticia') ? colors?.bg : theme?.bg) ?? '#EDEAE5';
                 return (
                   <tr key={p.id}>
                     <td>

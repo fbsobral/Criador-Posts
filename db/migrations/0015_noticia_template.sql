@@ -1,0 +1,1 @@
+INSERT INTO "templates" ("name", "description", "editor") VALUES ('Capa de Notícia', 'Foto em tela cheia com degradê, etiqueta, título e texto de destaque, e selo com o logo da marca. Para manchetes e notícias.', 'noticia');

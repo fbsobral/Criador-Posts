@@ -15,6 +15,18 @@ export function TemplateArt({ editor, className }: { editor: string; className?:
       </svg>
     );
   }
+  if (editor === 'noticia') {
+    return (
+      <svg className={className} viewBox="0 0 46 58" fill="none">
+        <defs><linearGradient id="nw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a8f99" /><stop offset=".55" stop-color="#2a2d33" /><stop offset="1" stop-color="#000" /></linearGradient></defs>
+        <rect width="46" height="58" rx="5" fill="url(#nw)" />
+        <circle cx="40" cy="25" r="5.5" fill="#3C4966" /><circle cx="41" cy="35" r="3.6" fill="#3C4966" /><circle cx="35" cy="35" r="3.6" fill="#3C4966" /><circle cx="42" cy="42" r="3.6" fill="#3C4966" />
+        <rect x="5" y="36" width="16" height="4" rx="2" fill="#3C4966" />
+        <rect x="5" y="43" width="30" height="3" rx="1.5" fill="#fff" />
+        <rect x="5" y="48" width="24" height="2.2" rx="1.1" fill="#fff" opacity=".85" />
+      </svg>
+    );
+  }
   return (
     <svg className={className} viewBox="0 0 46 58" fill="none">
       <rect width="46" height="58" rx="5" fill="#FAF8F5" stroke="#E0DACC" />
