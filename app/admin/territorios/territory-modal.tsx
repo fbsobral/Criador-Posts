@@ -91,7 +91,7 @@ export function TerritoryModal({ persona, parent, existingCount, hasKey, onClose
               <div className="field">
                 <label>{cur.mode === 'full' ? 'Quantas áreas de 1º nível?' : cur.mode === 'first' ? 'Quantas áreas?' : 'Quantos filhos diretos?'}</label>
                 <div className="vd-chips">
-                  {[3, 4, 5, 6, 8].map((n) => <button key={n} type="button" className={`vd-chip${count === n ? ' on' : ''}`} onClick={() => setCount(n)}>{n}</button>)}
+                  {[1, 2, 3, 4, 5, 6, 8].map((n) => <button key={n} type="button" className={`vd-chip${count === n ? ' on' : ''}`} onClick={() => setCount(n)}>{n}</button>)}
                 </div>
               </div>
               {(cur.mode === 'full' || (cur.mode === 'expand' && cur.id === 'sub')) && (
