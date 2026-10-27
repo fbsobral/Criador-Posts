@@ -27,11 +27,11 @@ export async function POST(req: Request) {
 
   const count = Math.min(MAX_TERRITORY_NODES_PER_RUN, Math.max(1, Math.round(Number(b?.count)) || (mode === 'first' ? 6 : 5)));
   const depth = Math.min(4, Math.max(1, Math.round(Number(b?.depth)) || (mode === 'full' ? 3 : 1)));
-  const [s] = await db.select({ icp: brandSettings.personaIcp }).from(brandSettings).where(eq(brandSettings.brandId, c.brandId));
+  const [s] = await db.select({ icp: brandSettings.personaIcp, aud: brandSettings.aiAudience }).from(brandSettings).where(eq(brandSettings.brandId, c.brandId));
   try {
     const r = await suggestTerritories({
       persona: { name: persona.name, tagline: persona.tagline, role: persona.data.role, data: persona.data },
-      brand: await loadBrandProfile(c.brandId), icp: s?.icp ?? '', mode, count, depth,
+      brand: await loadBrandProfile(c.brandId), icp: s?.icp || s?.aud || '', mode, count, depth,
       parentPath: parentId ? pathOf(mine, parentId) : [],
       existingOutline: outline(mine),
       siblingNames: mine.filter((n) => n.parentId === parentId).map((n) => n.name),

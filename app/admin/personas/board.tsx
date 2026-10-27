@@ -80,7 +80,7 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
 
       {icp && !empty && (
         <div className="card-surface pe-icp">
-          <div><b>Seu ICP</b><p>{icp.length > 260 ? `${icp.slice(0, 260)}…` : icp}</p></div>
+          <div><b>Seu ICP</b> <small className="muted">· o mesmo "Público ideal" das Configurações</small><p>{icp.length > 260 ? `${icp.slice(0, 260)}…` : icp}</p></div>
           <button type="button" className="btn small" onClick={() => setSuggest(true)}>Editar e gerar mais</button>
         </div>
       )}

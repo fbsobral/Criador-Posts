@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
 import { colorPalettes } from '@/db/schema';
@@ -65,7 +66,9 @@ export default async function SettingsPage() {
           <p className="muted" style={{ marginTop: -10 }}>Quanto melhor você descrever, mais os posts gerados soam como a sua marca. Isso é usado em toda geração em <b>Gerar com IA</b>.</p>
           <label className="field">O que a organização faz<textarea name="aiAbout" defaultValue={s.aiAbout} disabled={ro} rows={6} maxLength={3000} placeholder={'Descreva com detalhes: o que vocês vendem ou fazem, para quem, o que os diferencia e sobre quais temas querem ser referência. Também o que a organização NÃO faz. Os territórios, as personas e todo o conteúdo gerado partem daqui.'} /></label>
           <label className="field">Nicho (em uma frase)<textarea name="aiNiche" defaultValue={s.aiNiche} disabled={ro} rows={2} placeholder="Ex.: educação financeira para quem quer sair das dívidas" /></label>
-          <label className="field">Público<textarea name="aiAudience" defaultValue={s.aiAudience} disabled={ro} rows={2} placeholder="Ex.: brasileiros de 25 a 45 anos, sem formação em finanças" /></label>
+          <label className="field">Público ideal (ICP)<textarea name="personaIcp" defaultValue={s.personaIcp || s.aiAudience} disabled={ro} rows={5} maxLength={4000} placeholder="Ex.: brasileiros de 25 a 45 anos, renda de R$ 4 a 12 mil, sem formação em finanças, que querem investir melhor mas se sentem perdidos com o jargão. Consomem conteúdo no Instagram e YouTube." />
+            <small className="muted">É o <b>mesmo ICP</b> usado em <Link href="/admin/personas"><b>Personas</b></Link> e em Territórios: o que você escrever aqui aparece lá, e o contrário também. Também orienta todos os textos gerados.</small>
+          </label>
           <label className="field">Tom de voz<textarea name="aiVoice" defaultValue={s.aiVoice} disabled={ro} rows={2} placeholder="Ex.: direto, didático, sem jargão, um pouco irônico" /></label>
           <label className="field">Regras (o que sempre ou nunca fazer)<textarea name="aiRules" defaultValue={s.aiRules} disabled={ro} rows={3} placeholder={'Ex.: nunca prometer ganho garantido; sempre explicar siglas; não usar emojis'} /></label>
           <label className="field">Chamada para ação (CTA) padrão<input name="aiCta" defaultValue={s.aiCta} disabled={ro} placeholder="Ex.: Siga @suamarca e salve este post" /></label>

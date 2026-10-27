@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     db.select().from(personaGroups).where(eq(personaGroups.brandId, c.brandId)),
   ]);
   const gname = new Map(groups.map((g) => [g.id, g.name]));
-  await db.update(brandSettings).set({ personaIcp: icp }).where(eq(brandSettings.brandId, c.brandId)); // lembra o ICP para a próxima vez
+  await db.update(brandSettings).set({ personaIcp: icp, aiAudience: icp.slice(0, 1200) }).where(eq(brandSettings.brandId, c.brandId)); // lembra o ICP para a próxima vez
   try {
     const r = await suggestPersonas({
       icp, count, instructions: String(b?.instructions ?? '').slice(0, 1200), brand: await loadBrandProfile(c.brandId),

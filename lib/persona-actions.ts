@@ -130,5 +130,5 @@ export async function addSuggested(groups: SuggestedGroup[]): Promise<{ added?: 
 
 export async function savePersonaIcp(text: string): Promise<void> {
   const c = await ctx();
-  await db.update(brandSettings).set({ personaIcp: str(text, 4000) }).where(eq(brandSettings.brandId, c.brandId));
+  await db.update(brandSettings).set({ personaIcp: str(text, 4000), aiAudience: str(text, 1200) }).where(eq(brandSettings.brandId, c.brandId));
 }

@@ -327,7 +327,7 @@ export async function saveAiProfile(formData: FormData) {
   if (!c.isBrandAdmin) throw new Error('Apenas admins da marca');
   const f = (k: string, max: number) => String(formData.get(k) ?? '').trim().slice(0, max);
   await db.update(brandSettings).set({
-    aiAbout: f('aiAbout', 3000), aiNiche: f('aiNiche', 500), aiAudience: f('aiAudience', 500), aiVoice: f('aiVoice', 800),
+    aiAbout: f('aiAbout', 3000), aiNiche: f('aiNiche', 500), personaIcp: f('personaIcp', 4000), aiAudience: f('personaIcp', 1200), aiVoice: f('aiVoice', 800),
     aiRules: f('aiRules', 1500), aiCta: f('aiCta', 300), aiExamples: f('aiExamples', 4000), aiImageStyle: f('aiImageStyle', 1500), aiCaptionRules: f('aiCaptionRules', 800), updatedAt: new Date(),
   }).where(eq(brandSettings.brandId, c.brandId));
   revalidatePath('/admin/configuracoes');
