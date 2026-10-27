@@ -3,10 +3,11 @@
 Regras para manter as telas consistentes. Antes de criar uma tela nova, siga isto.
 
 ## Estrutura do menu
-Três grupos, sempre nesta ordem:
+Quatro grupos, sempre nesta ordem:
 - **Posts de imagem:** Posts, Gerar posts, Galeria, Templates.
-- **Roteiros de vídeo:** Roteiros, Quadro de produção.
-- **Marca:** Configurações, Personas, Usuários.
+- **Roteiros de vídeo:** Roteiros, Esteira de produção.
+- **Estratégia:** Personas, Territórios.
+- **Marca:** Configurações, Usuários.
 
 Cada item do menu tem um nome curto (a barra do celular não mostra os títulos dos grupos). Subtelas (gerar, formatos, detalhe) ficam dentro da página do módulo, não no menu.
 

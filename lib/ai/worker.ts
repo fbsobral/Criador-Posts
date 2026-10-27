@@ -130,6 +130,7 @@ async function processItem(itemId: string) {
 
 const RATIO_BY_FORMAT: Record<string, AspectRatio> = { cover: '16:9', 'text-image': '4:3', image: '4:5' };
 const HAS_IMAGE_SLOT = new Set(['cover', 'text-image', 'image']);
+const NOTICIA_PHOTO = new Set(['capa', 'foto-texto', 'imagem']);
 
 type ImageCtx = { brandId: string; userId: string | null; title: string; topic: string; brandName: string; niche: string; audience: string; imageStyle: string };
 
@@ -137,10 +138,10 @@ type ImageCtx = { brandId: string; userId: string | null; title: string; topic: 
  * Gera as imagens dos slides que têm espaço de imagem (carrossel: capa, texto+imagem, imagem; Tweet Card: slides com imagem ligada).
  * A direção de arte cria/melhora a descrição de cada imagem a partir do slide e do post antes de ir para o Nano Banana.
  */
-async function addImages(editor: 'carrossel' | 'tweet', slides: Record<string, unknown>[], ctx: ImageCtx, heartbeat: () => Promise<unknown>) {
+async function addImages(editor: 'carrossel' | 'tweet' | 'noticia', slides: Record<string, unknown>[], ctx: ImageCtx, heartbeat: () => Promise<unknown>) {
   const targets = slides
     .map((s, i) => ({ s, i }))
-    .filter(({ s }) => (editor === 'carrossel' ? HAS_IMAGE_SLOT.has(String(s.format)) : !!s.showImage))
+    .filter(({ s }) => (editor === 'carrossel' ? HAS_IMAGE_SLOT.has(String(s.format)) : editor === 'noticia' ? NOTICIA_PHOTO.has(String(s.format)) : !!s.showImage))
     .slice(0, MAX_IMAGES_PER_POST);
 
   const limit = Number(process.env.AI_IMAGE_DAILY_LIMIT) || 60;
@@ -148,7 +149,8 @@ async function addImages(editor: 'carrossel' | 'tweet', slides: Record<string, u
   const [{ n: usedToday }] = await db.select({ n: count() }).from(imageGenerations).where(and(eq(imageGenerations.brandId, ctx.brandId), gte(imageGenerations.createdAt, startOfDay)));
   let used = usedToday;
 
-  const text = (s: Record<string, unknown>) => plainText(String(s.html ?? s.text ?? '')).slice(0, 900);
+  const text = (s: Record<string, unknown>) => plainText(String(s.html ?? (editor === 'noticia' ? [s.title, s.text].filter(Boolean).join('. ') : s.text) ?? '')).slice(0, 900);
+  const fmt = (s: Record<string, unknown>) => (editor === 'tweet' ? 'tweet-card' : editor === 'noticia' ? `noticia-${String(s.format)}` : String(s.format));
   const outline = slides.map((s, i) => `${i + 1}. ${text(s).slice(0, 140)}`);
   const notes: string[] = [];
   let count_ = 0;
@@ -157,7 +159,7 @@ async function addImages(editor: 'carrossel' | 'tweet', slides: Record<string, u
   const brandArt = { brandName: ctx.brandName, niche: ctx.niche, audience: ctx.audience, imageStyle: ctx.imageStyle };
   const planned = await deriveImagePromptsForPost(
     { title: ctx.title, topic: ctx.topic, outline, total: slides.length },
-    targets.map(({ s, i }) => ({ slide: i + 1, text: text(s), format: editor === 'tweet' ? 'tweet-card' : String(s.format), hint: String(s.imagePrompt ?? '').trim() || undefined })),
+    targets.map(({ s, i }) => ({ slide: i + 1, text: text(s), format: fmt(s), hint: String(s.imagePrompt ?? '').trim() || undefined })),
     brandArt,
   );
 
@@ -169,17 +171,17 @@ async function addImages(editor: 'carrossel' | 'tweet', slides: Record<string, u
       const hint = String(s.imagePrompt ?? '').trim();
       const plan = planned.get(i + 1)
         ?? await deriveImagePrompt(
-          { slideText: text(s), slideIndex: i + 1, total: slides.length, outline, title: ctx.title, topic: ctx.topic, format: editor === 'tweet' ? 'tweet-card' : String(s.format), hint: hint || undefined },
+          { slideText: text(s), slideIndex: i + 1, total: slides.length, outline, title: ctx.title, topic: ctx.topic, format: fmt(s), hint: hint || undefined },
           brandArt,
         );
       const art = { prompt: plan.prompt, tags: plan.tags };
-      const ratio = (editor === 'carrossel' ? RATIO_BY_FORMAT[String(s.format)] : '16:9') ?? '4:3';
+      const ratio = (editor === 'carrossel' ? RATIO_BY_FORMAT[String(s.format)] : editor === 'noticia' ? (s.format === 'foto-texto' ? '4:3' : '4:5') : '16:9') ?? '4:3';
       const img = await generateImage(buildPrompt(art.prompt, ctx.imageStyle), ratio);
       const saved = await saveAsset({ brandId: ctx.brandId, userId: ctx.userId, kind: 'ai', data: Buffer.from(img.data, 'base64'), description: art.prompt, tags: art.tags });
       s.image = ASSET_URL(saved.id);
       s.imagePrompt = art.prompt;
       s.aiRatio = ratio;
-      if (editor === 'tweet') s.showImage = true;
+      if (editor === 'tweet' || editor === 'noticia') s.showImage = true;
       await db.insert(imageGenerations).values({ brandId: ctx.brandId, userId: ctx.userId, model: IMAGE_MODEL, prompt: art.prompt.slice(0, 1500), aspectRatio: ratio });
       used++; count_++;
     } catch (e) {

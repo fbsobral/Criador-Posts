@@ -16,7 +16,7 @@ export async function VideosPageContent({ mode }: { mode: VideosMode }) {
   return (
     <div className="page">
       <PageHead
-        title={mode === 'kanban' ? 'Quadro de produção' : 'Roteiros de vídeo'}
+        title={mode === 'kanban' ? 'Esteira de produção' : 'Roteiros de vídeo'}
         description={mode === 'kanban' ? 'Acompanhe cada vídeo do rascunho até a publicação. Arraste os roteiros entre as etapas.' : 'Roteiros para Reels, TikTok e Shorts, escritos parte por parte. Acompanhe cada vídeo do rascunho até a publicação.'}
         actions={<>
           {rows.length > 0 && <ModeToggle mode={mode} />}

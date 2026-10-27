@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { deleteScript, duplicateScript, setScriptStatus } from '@/lib/video-actions';
 import { PLATFORMS, STAGES, fmtSecs, stageOf, type Stage } from '@/lib/video';
 import { IconBoard, IconCopy, IconList, IconTrash } from '../../icons';
+import { usePan } from '../use-pan';
 import { PartsBar } from './parts-bar';
 
 export type VideoRow = { id: string; title: string; hook: string; formatName: string; seconds: number; platform: string; status: Stage; ago: string; parts: { name: string; seconds: number }[] };
@@ -13,14 +14,14 @@ export type VideosMode = 'lista' | 'kanban';
 
 const platformLabel = (p: string) => PLATFORMS.find((x) => x.id === p)?.label ?? 'Reels';
 
-/** Alterna entre a lista e o quadro de produção (cada um tem a sua rota). */
+/** Alterna entre a lista e o esteira de produção (cada um tem a sua rota). */
 export function ModeToggle({ mode }: { mode: VideosMode }) {
   const router = useRouter();
-  const go = (m: VideosMode) => { if (m !== mode) router.push(m === 'kanban' ? '/admin/videos/quadro' : '/admin/videos'); };
+  const go = (m: VideosMode) => { if (m !== mode) router.push(m === 'kanban' ? '/admin/videos/esteira' : '/admin/videos'); };
   return (
     <div className="view-toggle" role="group" aria-label="Modo de exibição">
       <button type="button" className={mode === 'lista' ? 'on' : ''} onClick={() => go('lista')} aria-pressed={mode === 'lista'}><IconList /> <span>Lista</span></button>
-      <button type="button" className={mode === 'kanban' ? 'on' : ''} onClick={() => go('kanban')} aria-pressed={mode === 'kanban'}><IconBoard /> <span>Quadro de produção</span></button>
+      <button type="button" className={mode === 'kanban' ? 'on' : ''} onClick={() => go('kanban')} aria-pressed={mode === 'kanban'}><IconBoard /> <span>Esteira de produção</span></button>
     </div>
   );
 }
@@ -68,6 +69,8 @@ export function VideosView({ rows, mode }: { rows: VideoRow[]; mode: VideosMode 
     const prev = items; setErr(''); setItems((a) => a.filter((x) => x.id !== id));
     start(async () => { const r = await deleteScript(id); if (r.error) { setErr(r.error); setItems(prev); } else router.refresh(); });
   };
+  const boardRef = useRef<HTMLDivElement>(null);
+  usePan(boardRef, mode === 'kanban');
   const counts = useMemo(() => Object.fromEntries(STAGES.map((s) => [s.id, items.filter((x) => x.status === s.id).length])) as Record<Stage, number>, [items]);
   const shown = items.filter((x) => (filter === 'all' || x.status === filter) && (!q.trim() || `${x.title} ${x.hook}`.toLowerCase().includes(q.trim().toLowerCase())));
 
@@ -109,7 +112,7 @@ export function VideosView({ rows, mode }: { rows: VideoRow[]; mode: VideosMode 
       ) : (
         <>
           <div className="vd-hint muted">Arraste os cartões entre as colunas para mudar a etapa. No celular, use o seletor de cada cartão.</div>
-          <div className="vd-board">
+          <div className="vd-board" ref={boardRef}>
             {STAGES.map((s) => {
               const col = items.filter((x) => x.status === s.id);
               return (

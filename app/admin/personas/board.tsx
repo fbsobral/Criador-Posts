@@ -1,11 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { createGroup, deleteGroup, deletePersona, movePersona, updateGroup } from '@/lib/persona-actions';
 import { GROUP_COLORS } from '@/lib/persona';
 import { IconEdit, IconPlus, IconSpark, IconTrash } from '../../icons';
 import { EmptyState, PageHead } from '../ui';
+import { usePan } from '../use-pan';
 import { PersonaDrawer, type GroupRow, type PersonaRow } from './persona-drawer';
 import { SuggestModal } from './suggest-modal';
 
@@ -64,6 +65,8 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
   };
 
   const empty = groups.length === 0 && people.length === 0;
+  const boardRef = useRef<HTMLDivElement>(null);
+  usePan(boardRef, !empty || adding);
   return (
     <div className="page">
       <PageHead
@@ -89,7 +92,7 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
           Conte quem é o seu cliente ideal e a IA cria personas realistas, já organizadas em grupos. Você revisa antes de entrarem no quadro.
         </EmptyState>
       ) : (
-        <div className="pe-board">
+        <div className="pe-board" ref={boardRef}>
           {cols.map((c) => {
             const col = people.filter((p) => (p.groupId ?? NONE) === c.id);
             return (

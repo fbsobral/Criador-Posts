@@ -26,7 +26,7 @@ export type BrandProfile = {
 };
 
 export type GenerateInput = {
-  editor: 'carrossel' | 'tweet';
+  editor: 'carrossel' | 'tweet' | 'noticia';
   mode: 'tema' | 'roteiro';
   brief: string;
   slidesTarget: number;
@@ -130,6 +130,23 @@ Cada slide é um card branco, estilo post de rede social, com o texto do post (c
 - "image_note": se uma imagem, gráfico ou print ajudar neste slide, descreva; senão "".
 Não crie métricas de engajamento (curtidas, comentários).`;
 
+const NOTICIA_FORMAT = `FORMATO: CAPA DE NOTÍCIA (posts de notícia em imagens 1080×1350)
+Cada slide tem um "format":
+- "capa": foto em tela cheia com degradê; etiqueta + título + texto de destaque. Sempre o 1º slide.
+- "texto": fundo liso; etiqueta, título e um parágrafo de corpo de notícia (até ~55 palavras).
+- "foto-texto": foto na metade de cima e texto embaixo; título curto + legenda (até ~30 palavras).
+- "citacao": frase em destaque. "text" é a frase entre aspas (até ~28 palavras) e "title" é quem disse (nome · cargo). Use SOMENTE se o briefing trouxer a declaração literal.
+- "numero": um dado em destaque. "title" é só o número (ex.: "81,9%") e "text" explica em uma frase. Use apenas números que estejam no briefing ou nos FATOS PERMITIDOS.
+- "imagem": só foto, com legenda opcional em "text" (até ~15 palavras).
+- "cta": chamada final (último slide). "title" é a chamada e "text" a frase de apoio; use o CTA da marca, se houver.
+
+Campos de cada slide: "tag" (etiqueta curta em caixa alta, ex.: "ECONOMIA"; use a mesma editoria no post inteiro, ou "" se não fizer sentido), "title", "text" e "image_note".
+Tom jornalístico: claro, objetivo e sem sensacionalismo; títulos informativos; sem opinião. A capa abre com o fato mais importante; os slides do meio desenvolvem (o que aconteceu, quem, por quê, impacto); "numero" e "citacao" só quando o briefing tiver o dado ou a declaração.
+"image_note": nos slides "capa", "foto-texto" e "imagem" descreva em poucas palavras a foto ideal (obrigatório nesses três); nos demais, "".`;
+
+const IMAGES_NOTICIA = `IMAGENS ATIVADAS
+O usuário vai gerar as fotos dos slides com IA. "capa", "foto-texto" e "imagem" têm espaço de foto: em "image_note" descreva uma cena fotojornalística que reforce a notícia (sem texto, sem números, sem logotipos e sem pessoas reais identificáveis). Se o roteiro trouxe uma instrução de imagem, copie-a fielmente.`;
+
 const IMAGES_CARROSSEL = `IMAGENS ATIVADAS
 O usuário vai gerar as imagens dos slides com IA. A capa já tem espaço de imagem. Use "text-image" (ou "image") em até 3 slides do meio em que uma imagem de apoio realmente reforça a mensagem.
 Em "image_note": se o roteiro trouxe uma instrução de imagem para o slide, copie-a fielmente (uma direção de arte vai melhorá-la depois); se não trouxe, escreva uma intenção curta baseada no conteúdo do slide. Nunca peça texto, números ou gráficos com dados dentro da imagem.`;
@@ -142,9 +159,9 @@ function systemPrompt(i: GenerateInput): string {
   return [
     'Você é um redator sênior de conteúdo para redes sociais. Você produz posts prontos para um editor de slides, em JSON estrito.',
     brandBlock(i.brand),
-    i.editor === 'carrossel' ? CARROSSEL_FORMAT : TWEET_FORMAT,
+    i.editor === 'carrossel' ? CARROSSEL_FORMAT : i.editor === 'noticia' ? NOTICIA_FORMAT : TWEET_FORMAT,
     modeBlock(i.mode, i.slidesTarget),
-    i.withImages ? (i.editor === 'carrossel' ? IMAGES_CARROSSEL : IMAGES_TWEET) : '',
+    i.withImages ? (i.editor === 'carrossel' ? IMAGES_CARROSSEL : i.editor === 'noticia' ? IMAGES_NOTICIA : IMAGES_TWEET) : '',
     CAPTION_RULES,
     COMMON_RULES,
   ].filter(Boolean).join('\n\n');
@@ -179,6 +196,21 @@ const TWEET_SCHEMA = {
     slides: {
       type: 'array',
       items: { type: 'object', additionalProperties: false, required: ['text', 'button', 'image_note'], properties: { text: STR, button: STR, image_note: STR } },
+    },
+  },
+};
+
+const NOTICIA_FORMATS = ['capa', 'texto', 'foto-texto', 'citacao', 'numero', 'imagem', 'cta'] as const;
+const NOTICIA_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['title', 'slides', 'to_verify', 'caption'],
+  properties: {
+    title: STR, caption: STR, to_verify: { type: 'array', items: STR },
+    slides: {
+      type: 'array',
+      items: {
+        type: 'object', additionalProperties: false, required: ['format', 'tag', 'title', 'text', 'image_note'],
+        properties: { format: { type: 'string', enum: [...NOTICIA_FORMATS] }, tag: STR, title: STR, text: STR, image_note: STR },
+      },
     },
   },
 };
@@ -222,8 +254,28 @@ function mapTweet(data: any): Mapped {
   return { title: clean(data?.title, 80), topic: '', caption: clean(data?.caption, 2200), slides, notes: notesFor(list, data?.to_verify, () => '') };
 }
 
+const NOTICIA_FADE: Record<string, number> = { capa: 60, texto: 0, 'foto-texto': 0, citacao: 80, numero: 80, imagem: 35, cta: 85 };
+const NOTICIA_PHOTO = new Set(['capa', 'foto-texto', 'imagem']);
+
+function mapNoticia(data: any): Mapped {
+  const list = (Array.isArray(data?.slides) ? data.slides : []).slice(0, MAX_SLIDES);
+  const slides = list.map((s: any, i: number) => {
+    const format = (NOTICIA_FORMATS as readonly string[]).includes(s?.format) ? String(s.format) : i === 0 ? 'capa' : 'texto';
+    const tag = clean(s?.tag, 40).toUpperCase();
+    return {
+      format, tag, showTag: !!tag, title: clean(s?.title, 160), text: clean(s?.text, format === 'texto' ? 700 : 450),
+      size: '62', fade: NOTICIA_FADE[format] ?? 60, showBadge: true, badgeSize: 160, showImage: true, image: null, fit: 'cover', ratio: '4/5', imagePrompt: clean(s?.image_note),
+    };
+  });
+  return {
+    title: clean(data?.title, 80), topic: '', caption: clean(data?.caption, 2200), slides,
+    notes: notesFor(list, data?.to_verify, (_s, i) => (NOTICIA_PHOTO.has(String(slides[i].format)) ? 'insira a foto deste slide' : '')),
+  };
+}
+
 const EDITORS = {
   carrossel: { schema: CARROSSEL_SCHEMA, map: mapCarrossel },
+  noticia: { schema: NOTICIA_SCHEMA, map: mapNoticia },
   tweet: { schema: TWEET_SCHEMA, map: mapTweet },
 } as const;
 
@@ -283,7 +335,9 @@ async function mockPost(i: GenerateInput): Promise<GenerateResult> {
   const raw = {
     title: i.brief.slice(0, 50), topic, caption: `Legenda de exemplo sobre ${topic}.\n\nSiga para mais. #exemplo`, to_verify: ['Confira os dados citados antes de publicar.'],
     slides: Array.from({ length: n }, (_, k) =>
-      i.editor === 'carrossel'
+      i.editor === 'noticia'
+        ? { format: k === 0 ? 'capa' : k === n - 1 ? 'cta' : k === 2 ? 'foto-texto' : 'texto', tag: 'ECONOMIA', title: k === 0 ? topic.toUpperCase() : `Ponto ${k}`, text: `Texto de exemplo do slide ${k + 1}.`, image_note: k === 0 || k === 2 ? 'foto de apoio' : '' }
+        : i.editor === 'carrossel'
         ? { format: k === 0 ? 'cover' : k === 2 ? 'text-image' : 'text', html: `<h2>${k === 0 ? topic : `Ponto ${k}`}</h2><p>Texto de exemplo do slide ${k + 1}.</p><script>x</script>`, show_more: k < n - 1, image_note: k === 2 ? 'gráfico comparando os dois cenários' : '' }
         : { text: `Slide ${k + 1} sobre ${topic}.`, button: k === n - 1 ? 'Quero saber mais' : '', image_note: '' }),
   };

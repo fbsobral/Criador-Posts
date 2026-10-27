@@ -1,7 +1,6 @@
-import { VideosPageContent } from '../videos-page';
+import { redirect } from 'next/navigation';
 
-export const metadata = { title: 'Quadro de produção' };
-
-export default function BoardPage() {
-  return <VideosPageContent mode="kanban" />;
+/** Endereço antigo: a "Esteira de produção" agora fica em /admin/videos/esteira. */
+export default function OldBoardPage() {
+  redirect('/admin/videos/esteira');
 }

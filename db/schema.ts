@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import type { ScriptData, VideoPart } from '../lib/video';
 import type { PersonaData } from '../lib/persona';
-import { boolean, customType, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { type AnyPgColumn, boolean, customType, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
 const tsvector = customType<{ data: string }>({ dataType: () => 'tsvector' });
@@ -293,4 +293,23 @@ export const personas = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (t) => [index('personas_brand_idx').on(t.brandId, t.groupId, t.position)],
+);
+
+/** Território: nó do mapa mental de conteúdo de uma persona (árvore com vários níveis). Excluir o pai exclui os filhos. */
+export const territories = pgTable(
+  'territories',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+    personaId: uuid('persona_id').notNull().references(() => personas.id, { onDelete: 'cascade' }),
+    parentId: uuid('parent_id').references((): AnyPgColumn => territories.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description').notNull().default(''),
+    position: integer('position').notNull().default(0),
+    source: text('source').notNull().default('manual'), // 'ai' | 'manual'
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [index('territories_persona_idx').on(t.brandId, t.personaId, t.parentId, t.position)],
 );

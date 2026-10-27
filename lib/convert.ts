@@ -10,13 +10,14 @@ export class ConvertError extends Error {}
 
 type Slide = Record<string, unknown>;
 type Editor = 'carrossel' | 'tweet';
+type ScriptEditor = Editor | 'noticia';
 
 /** Slides do post de origem em texto, como se fosse um roteiro (a IA reescreve para o novo formato). */
-export function toScript(editor: Editor, slides: Slide[]): string {
+export function toScript(editor: ScriptEditor, slides: Slide[]): string {
   return slides
     .map((s, i) => {
       const head = `Slide ${i + 1}${editor === 'carrossel' && s.format === 'cover' ? ' (capa)' : ''}:`;
-      const body = editor === 'carrossel' ? scriptText(String(s.html ?? '')) : String(s.text ?? '').trim();
+      const body = editor === 'carrossel' ? scriptText(String(s.html ?? '')) : editor === 'noticia' ? [s.tag, s.title, s.text].filter(Boolean).join('\n') : String(s.text ?? '').trim();
       const extras = [
         editor === 'tweet' && s.showButton ? `[Botão: ${String(s.button ?? '')}]` : '',
         s.image ? '[Este slide tem imagem]' : '',
@@ -50,7 +51,7 @@ export async function convertPostFormat(a: { brandId: string; userId: string; so
     .where(and(eq(posts.id, a.sourceId), eq(posts.brandId, a.brandId)));
   if (!src) throw new ConvertError('Post não encontrado.');
   const from = (src.editor ?? 'carrossel') as string;
-  if (!supportsAi(from)) throw new ConvertError('Este formato ainda não pode ser convertido.');
+  if (from !== 'carrossel' && from !== 'tweet') throw new ConvertError('Este formato ainda não pode ser convertido.');
   const to: Editor = from === 'carrossel' ? 'tweet' : 'carrossel';
 
   const srcSlides = (Array.isArray(src.post.data.slides) ? src.post.data.slides : []) as Slide[];

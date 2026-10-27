@@ -113,6 +113,13 @@
       "when": 1793092738759,
       "tag": "0015_noticia_template",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793093806642,
+      "tag": "0016_territories",
+      "breakpoints": true
     }
   ]
 }

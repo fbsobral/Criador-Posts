@@ -120,7 +120,7 @@ export function GenerateForm({ formats, hasKey, hasImageKey }: { formats: Format
         <span>
           <b>Gerar também as imagens dos slides (Nano Banana)</b>
           <small>
-            As imagens entram nos espaços de imagem do carrossel e do Tweet Card. Se o texto descrever a imagem, a IA melhora a descrição antes de gerar; se não descrever, ela cria a partir do texto do slide. Cerca de {fmtUsd(IMAGE_COST_USD)} por imagem, até 4 por post.
+            As imagens entram nos espaços de imagem do carrossel, do Tweet Card e da Capa de Notícia (capa, foto + texto e só foto). Se o texto descrever a imagem, a IA melhora a descrição antes de gerar; se não descrever, ela cria a partir do texto do slide. Cerca de {fmtUsd(IMAGE_COST_USD)} por imagem, até 4 por post.
             {!hasImageKey && <> <b style={{ color: 'var(--danger)' }}>Indisponível: configure GEMINI_API_KEY no servidor.</b></>}
           </small>
         </span>

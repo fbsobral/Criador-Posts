@@ -380,7 +380,7 @@ export async function generateCaption(postId: string, network: string, instructi
     db.select().from(brandSettings).where(eq(brandSettings.brandId, c.brandId)),
     db.select({ name: brands.name }).from(brands).where(eq(brands.id, c.brandId)),
   ]);
-  const editor = row.editor === 'tweet' ? 'tweet' : 'carrossel';
+  const editor = row.editor === 'tweet' ? 'tweet' : row.editor === 'noticia' ? 'noticia' : 'carrossel';
   const slides = (Array.isArray(row.post.data.slides) ? row.post.data.slides : []) as Record<string, unknown>[];
   try {
     const caption = await generateCaptionText({
