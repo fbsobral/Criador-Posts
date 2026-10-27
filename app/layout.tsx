@@ -1,11 +1,12 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
+import localFont from 'next/font/local';
 import { ClerkProvider } from '@clerk/nextjs';
 import { ptBR } from '@clerk/localizations';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
-const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-jakarta', weight: ['600', '700', '800'], display: 'swap' });
+// Fontes hospedadas no projeto (variáveis, subconjunto latin): o build não depende de buscar o Google Fonts.
+const inter = localFont({ src: './fonts/inter-latin.woff2', weight: '100 900', variable: '--font-inter', display: 'swap' });
+const jakarta = localFont({ src: './fonts/jakarta-latin.woff2', weight: '200 800', variable: '--font-jakarta', display: 'swap' });
 
 export const metadata: Metadata = {
   title: { default: 'Criador de Posts', template: '%s · Criador de Posts' },
