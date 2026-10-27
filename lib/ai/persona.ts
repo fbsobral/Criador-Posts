@@ -40,6 +40,7 @@ COMO CRIAR
 - Cada persona é um arquétipo, não uma pessoa real. Dê um nome brasileiro realista (nome e uma característica marcante, ex.: "Marina, a gestora sobrecarregada").
 - Organize em AGRUPAMENTOS (segmentos): pessoas que compartilham contexto, momento de vida/negócio, motivação ou comportamento de compra. Não agrupe só por idade ou gênero. Cada grupo tem um nome curto e uma descrição de uma frase.
 - Cada persona deve ser claramente DIFERENTE das outras: situação, dores, objetivos e gatilhos distintos. Evite variações triviais (mesma pessoa com outro nome).
+- LIGAÇÃO COM A ORGANIZAÇÃO: as personas são as pessoas que a organização quer alcançar. Veja "O que a organização faz" na identidade da marca e crie personas cujas dores, objetivos, objeções e gatilhos tenham relação com o que a organização oferece e sabe resolver (clientes atuais, potenciais e quem influencia a decisão). Evite perfis que não teriam motivo nenhum para se interessar por ela.
 - Seja específico e acionável para quem produz conteúdo e campanhas: dores concretas, objeções reais ("já tentei e não funcionou", "não tenho tempo"), gatilhos de decisão e onde essa pessoa está (canais, comunidades, formatos).
 - Não invente estatísticas, pesquisas ou dados de mercado. Tudo é hipótese plausível derivada do ICP.
 - Evite estereótipos ofensivos e clichês genéricos. Escreva de forma simples e direta.
