@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { fmtUsd } from '@/lib/ai/constants';
-import { IDEA_INSTRUCTIONS, ideaBrief, ideaPoints, ideaTitle, type Idea } from '@/lib/idea';
+import { IDEA_INSTRUCTIONS, ideaAngle, ideaBrief, ideaPoints, ideaTitle, type Idea } from '@/lib/idea';
 import { createPostFromIdea, setIdeaStatus } from '@/lib/idea-actions';
 import { DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, PLATFORMS, fmtSecs, type Platform, type VideoPart } from '@/lib/video';
 import { IconSpark } from '../../icons';
@@ -34,7 +34,7 @@ export function IdeaConvertModal({ idea, mode, formats, templates, hasKey, onClo
       const content = ideaBrief(idea, idea.personaName, idea.territory);
       const r = await fetch('/api/videos/generate', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content, formatId, seconds, platform, instructions: [IDEA_INSTRUCTIONS, extra].filter(Boolean).join('\n'), idea: { title: ideaTitle(idea.pain), angle: idea.guide || idea.cause, points: ideaPoints(idea) } }),
+        body: JSON.stringify({ content, personaId: idea.personaId, formatId, seconds, platform, instructions: [IDEA_INSTRUCTIONS, extra].filter(Boolean).join('\n'), idea: { title: ideaTitle(idea.pain), angle: ideaAngle(idea), points: ideaPoints(idea) } }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Não foi possível gerar o roteiro.');

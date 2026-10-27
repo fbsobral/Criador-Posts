@@ -4,13 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { deleteScript, duplicateScript, saveScript } from '@/lib/video-actions';
 import { PART_COLORS, PLATFORMS, STAGES, countWords, fmtSecs, scriptToText, speakSeconds, stageOf, wordsFor, type ScriptData, type Stage } from '@/lib/video';
-import { IconCopy, IconPlay, IconTrash } from '../../../icons';
+import { IconCopy, IconPlay, IconSpark, IconTrash } from '../../../icons';
 import { PartsBar } from '../parts-bar';
 
 type Meta = { formatName: string; seconds: number; platform: string; angle: string };
 type SaveState = 'saved' | 'saving' | 'dirty' | 'error';
 
-export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, meta }: { id: string; initialTitle: string; initialStatus: Stage; data: ScriptData; meta: Meta }) {
+export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, meta, hasKey = true }: { id: string; initialTitle: string; initialStatus: Stage; data: ScriptData; meta: Meta; hasKey?: boolean }) {
   const router = useRouter();
   const [title, setTitle] = useState(initialTitle);
   const [status, setStatus] = useState(initialStatus);
@@ -18,6 +18,16 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   const [save, setSave] = useState<SaveState>('saved');
   const [copied, setCopied] = useState(false);
   const [prompter, setPrompter] = useState(false);
+  // refinar com IA: pedir → comparar → aplicar (com opção de desfazer, porque o editor salva sozinho)
+  const [refine, setRefine] = useState(false);
+  const [scope, setScope] = useState<number | null>(null);
+  const [fb, setFb] = useState('');
+  const [firstFb, setFirstFb] = useState('');
+  const [fb2, setFb2] = useState('');
+  const [rbusy, setRbusy] = useState(false);
+  const [rerr, setRerr] = useState('');
+  const [sugg, setSugg] = useState<{ title: string; data: ScriptData; note: string } | null>(null);
+  const [undo, setUndo] = useState<{ title: string; data: ScriptData } | null>(null);
   const first = useRef(true);
   const latest = useRef({ title, status, data });
   latest.current = { title, status, data };
@@ -45,6 +55,37 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   const timing = ratio > 1.12 ? 'over' : ratio < 0.7 ? 'under' : 'ok';
   const platform = PLATFORMS.find((p) => p.id === meta.platform)?.label ?? 'Reels';
 
+  const CHIPS = ['Mais curto', 'Gancho mais forte', 'Fala mais natural', 'Visual mais simples de gravar', 'CTA mais suave'];
+  async function askRefine(feedback: string, previous?: { title: string; data: ScriptData }) {
+    setRbusy(true); setRerr('');
+    try {
+      const r = await fetch('/api/videos/refine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, title, current: data, feedback, scope, previous }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'Não foi possível refinar o roteiro.');
+      setSugg(j); setFb2('');
+    } catch (e) { setRerr(e instanceof Error ? e.message : 'Erro inesperado.'); } finally { setRbusy(false); }
+  }
+  const changes = (() => {
+    if (!sugg) return [] as { label: string; before: string; after: string }[];
+    const out: { label: string; before: string; after: string }[] = [];
+    if (sugg.title.trim() !== title.trim()) out.push({ label: 'Título', before: title, after: sugg.title });
+    sugg.data.parts.forEach((p, k) => {
+      const c = data.parts[k];
+      if (p.speech.trim() !== c.speech.trim()) out.push({ label: `${k + 1}. ${p.name} · Fala`, before: c.speech, after: p.speech });
+      if (p.onScreen.trim() !== c.onScreen.trim()) out.push({ label: `${k + 1}. ${p.name} · Texto na tela`, before: c.onScreen, after: p.onScreen });
+      if (p.visual.trim() !== c.visual.trim()) out.push({ label: `${k + 1}. ${p.name} · Visual`, before: c.visual, after: p.visual });
+    });
+    if (sugg.data.caption.trim() !== data.caption.trim()) out.push({ label: 'Legenda', before: data.caption, after: sugg.data.caption });
+    if (sugg.data.hashtags.join(' ') !== data.hashtags.join(' ')) out.push({ label: 'Hashtags', before: data.hashtags.map((h) => `#${h}`).join(' '), after: sugg.data.hashtags.map((h) => `#${h}`).join(' ') });
+    return out;
+  })();
+  const applyRefined = () => {
+    if (!sugg) return;
+    setUndo({ title, data }); setTitle(sugg.title); setData(sugg.data);
+    setSugg(null); setRefine(false); setFb(''); setFirstFb(''); setScope(null);
+  };
+  const undoRefine = () => { if (!undo) return; setTitle(undo.title); setData(undo.data); setUndo(null); };
+
   const copy = async () => { try { await navigator.clipboard.writeText(scriptToText(title, data)); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* sem permissão de área de transferência */ } };
   const dup = async () => { const r = await duplicateScript(id); if (r.id) router.push(`/admin/videos/${r.id}`); };
   const del = async () => { if (!confirm('Excluir este roteiro?')) return; await deleteScript(id); router.push('/admin/videos'); router.refresh(); };
@@ -59,11 +100,52 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
             {STAGES.map((st) => <option key={st.id} value={st.id}>{st.label}</option>)}
           </select>
           <button type="button" className="btn small" onClick={copy}><IconCopy /> {copied ? 'Copiado!' : 'Copiar'}</button>
+          <button type="button" className="btn small" onClick={() => setRefine((o) => !o)} disabled={!hasKey} aria-expanded={refine}><IconSpark /> Refinar com IA</button>
           <button type="button" className="btn small" onClick={() => setPrompter(true)}><IconPlay /> Teleprompter</button>
           <button type="button" className="btn small" onClick={dup}>Duplicar</button>
           <button type="button" className="btn small ghost danger" onClick={del} aria-label="Excluir roteiro"><IconTrash /></button>
         </div>
       </div>
+
+      {undo && <div className="notice info vd-undo">Refinamento aplicado e salvo. <button type="button" className="btn small" onClick={undoRefine}>↶ Desfazer</button></div>}
+      {refine && (
+        <div className="pe-refine vd-refine">
+          <div className="pe-refine-head"><b>Refinar roteiro com IA</b><button type="button" className="btn small ghost" onClick={() => { setRefine(false); setSugg(null); setRerr(''); }}>Fechar</button></div>
+          {!sugg ? (
+            <>
+              <p className="muted">Diga o que mudar. A IA propõe a versão ajustada, você compara e só aplica se gostar (e pode desfazer depois).</p>
+              <div className="vd-chips" role="group" aria-label="O que refinar">
+                <button type="button" className={`vd-chip${scope === null ? ' on' : ''}`} onClick={() => setScope(null)}>Roteiro inteiro</button>
+                {data.parts.map((p, k) => <button key={k} type="button" className={`vd-chip${scope === k ? ' on' : ''}`} onClick={() => setScope(k)}>{k + 1}. {p.name}</button>)}
+              </div>
+              <textarea rows={3} value={fb} onChange={(e) => setFb(e.target.value)} maxLength={800} placeholder="Ex.: o gancho está fraco, comece com a dor; corte as frases longas; deixe a CTA mais natural…" />
+              <div className="aim-chips pe-chips-row">{CHIPS.map((c) => <button type="button" key={c} onClick={() => setFb((t) => (t.trim() ? `${t.trim()}; ` : '') + c.toLowerCase())}>{c}</button>)}</div>
+              {rerr && <div className="notice err">{rerr}</div>}
+              {rbusy && <div className="notice info" role="status">Refinando o roteiro… leva cerca de 15 a 40 segundos.</div>}
+              <button type="button" className="btn primary" onClick={() => { setFirstFb(fb.trim()); askRefine(fb); }} disabled={rbusy || fb.trim().length < 3}>{rbusy ? 'Refinando…' : <><IconSpark /> Sugerir refinamento</>}</button>
+            </>
+          ) : (
+            <>
+              {sugg.note && <p className="pe-note">{sugg.note}</p>}
+              {changes.length === 0 ? <p className="muted">A IA não mudou nada. Tente pedir de outro jeito.</p> : (
+                <div className="pe-diff">
+                  {changes.map((c, i) => <div key={i} className="pe-diff-row"><b>{c.label}</b>{c.before && <s>{c.before}</s>}<span>{c.after || '(vazio)'}</span></div>)}
+                </div>
+              )}
+              {rerr && <div className="notice err">{rerr}</div>}
+              <div className="pe-refine-actions">
+                <button type="button" className="btn primary" onClick={applyRefined} disabled={changes.length === 0}>✓ Aplicar no roteiro</button>
+                <button type="button" className="btn ghost" onClick={() => { setSugg(null); setRerr(''); }}>Descartar</button>
+              </div>
+              <div className="aim-fb">
+                <b style={{ fontSize: 13 }}>Não é bem isso? Peça outro ajuste</b>
+                <textarea rows={2} value={fb2} onChange={(e) => setFb2(e.target.value)} maxLength={800} placeholder="Ex.: ainda está longo; mantenha o gancho como estava…" />
+                <button type="button" className="btn" onClick={() => askRefine(`${firstFb}\n(Novo pedido sobre a sugestão anterior): ${fb2.trim()}`, { title: sugg.title, data: sugg.data })} disabled={rbusy || fb2.trim().length < 3}>{rbusy ? 'Refinando…' : '↻ Ajustar de novo'}</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="vd-meta big"><span>{meta.formatName || 'Formato'}</span><i>·</i><span>{fmtSecs(meta.seconds)}</span><i>·</i><span>{platform}</span></div>
       {meta.angle && <p className="vd-angle"><b>Ideia:</b> {meta.angle}</p>}

@@ -58,8 +58,17 @@ const lines = (t: string) => t.split('\n').map((l) => l.replace(/^\s*(?:[-•*]|
 export function ideaBrief(f: IdeaFields, persona: string, territory: string): string {
   return [`IDEIA DE CONTEÚDO para a persona: ${persona || 'público geral'}${territory ? ` (território: ${territory})` : ''}`, ...LABELS.filter(([k]) => f[k]).map(([k, l]) => `${l.toUpperCase()}: ${k === 'plan' ? lines(f[k]).join(' → ') : f[k]}`)].join('\n');
 }
-/** Orientação extra para a IA respeitar a estrutura da ideia. */
-export const IDEA_INSTRUCTIONS = 'Siga a narrativa da ideia (dor → impacto → causa → plano → ganho → desejo → CTA). Abra pela dor na linguagem de rua da persona, conduza pelo GUIA como enquadramento (sem repetir nem negar o discurso do outro lado) e termine com a CTA. Não invente dados, números nem fontes que não estejam na ideia.';
+/** Orientação extra para a IA (roteiro ou post) respeitar a ideia: arco didático, linguagem da persona, guia como bússola, sem números inventados. */
+export const IDEA_INSTRUCTIONS = `ESTE CONTEÚDO PARTE DE UMA IDEIA ESTRUTURADA. Siga estas regras:
+1) COMEÇO, MEIO E FIM, DIDÁTICO. Começo: a cena/dor que a pessoa reconhece. Meio: EXPLIQUE, em ordem de causa e efeito e com palavras simples, por que isso acontece, e depois o que fazer, em passos curtos e concretos. Fim: o que ela ganha e o convite (CTA). Cada frase deve levar à seguinte ("porque", "por isso", "aí", "então"). Fale como para um amigo que não entende do assunto.
+2) CONCRETO, NÃO ABSTRATO. Troque palavras abstratas (transparência, repasse, equidade, sistema) por ações e situações visíveis do dia a dia da pessoa. Se usar um termo difícil, explique logo em seguida com uma frase simples.
+3) FALE COM A PERSONA: use o jeito de falar, os exemplos, o trabalho e as contas dela; se couber, responda à objeção dela.
+4) O GUIA é bússola: use o valor para escolher o ponto de vista e as palavras, mas NÃO narre a metáfora do guia nem diga "valor" ou "enquadramento". Só use imagem se vier do universo da própria persona.
+5) NÃO invente números, valores, datas nem fontes. Sem dado real na ideia, fale em termos qualitativos.
+6) Não ataque pessoas nem grupos.
+Se houver poucas partes ou slides, comprima, mas mantenha começo, meio e fim.`;
+/** Resumo da ideia para o campo "Ideia" do roteiro: a causa e o caminho, em linguagem simples. */
+export const ideaAngle = (f: IdeaFields) => [f.cause, f.plan ? `O que fazer: ${lines(f.plan).join('; ')}.` : ''].filter(Boolean).join(' ').slice(0, 500);
 /** Título curto a partir da dor. */
 export const ideaTitle = (pain: string) => { const t = pain.replace(/^["“”'\s]+|["“”'\s]+$/g, '').replace(/\s+/g, ' '); return t.length > 120 ? `${t.slice(0, 117)}…` : t; };
 /** Pontos principais (os passos do plano, ou ganho e desejo) para o planejamento do roteiro. */

@@ -105,7 +105,7 @@ TAREFA: PLANEJAR ${n} IDEIA(S)
 }
 
 /** Passo 2: escreve o roteiro de UMA ideia, parte por parte, seguindo as instruções de cada parte do formato. */
-export async function generateVideoScript(i: VideoCommon & { idea: VideoIdea }): Promise<{ title: string; data: ScriptData; inputTokens: number; outputTokens: number }> {
+export async function generateVideoScript(i: VideoCommon & { idea: VideoIdea; /** Perfil da persona (texto) quando o roteiro nasce de uma ideia de conteúdo. */ personaBrief?: string }): Promise<{ title: string; data: ScriptData; inputTokens: number; outputTokens: number }> {
   const secs = allocate(i.format.parts, i.seconds);
   const toData = (parts: { speech: string; on_screen: string; visual: string }[], caption: string, hashtags: string[], notes: string[]): ScriptData => ({
     parts: i.format.parts.map((fp, k) => ({ name: fp.name, seconds: secs[k], speech: clean(parts[k]?.speech, 1200), onScreen: clean(parts[k]?.on_screen, 160), visual: clean(parts[k]?.visual, 400) })),
@@ -127,7 +127,17 @@ TAREFA: ESCREVER O ROTEIRO
 - "speech": a fala daquela parte, dentro do limite de palavras indicado (não ultrapasse: o vídeo tem de caber em ${i.seconds} s). Se a parte for o gancho, a primeira frase precisa prender em até 3 segundos.
 - "on_screen": texto curto na tela (até 6 palavras, em caixa normal), ou "" se não houver.
 - "visual": o que aparece/acontece na tela naquele trecho (enquadramento, b-roll, gráfico, ação), concreto e fácil de gravar, em uma frase.
-- "title": título interno do vídeo (até 70 caracteres). "caption": legenda para publicar. "hashtags": sem o "#".`;
+- "title": título interno do vídeo (até 70 caracteres). "caption": legenda para publicar. "hashtags": sem o "#".${i.personaBrief ? `
+
+PERSONA QUE VAI ASSISTIR (fale com ela, no jeito dela):
+${i.personaBrief}
+
+COMO USAR A IDEIA DE CONTEÚDO (o conteúdo-fonte é uma ideia estruturada: dor, impacto, causa, guia, plano, ganho, desejo, CTA)
+- Distribua a história pelas partes do formato, com começo, meio e fim claros. Ex.: abertura = a dor em cena; partes do meio = o impacto, a causa explicada passo a passo e o plano em passos concretos; parte final = ganho, desejo e CTA. Se o formato tem poucas partes, comprima, mas preserve esse arco.
+- DIDÁTICO: explique como para um amigo que não entende do assunto. Cada frase leva à próxima (porque, por isso, aí, então). Termo difícil: explique na hora ou troque.
+- CONCRETO: nada de abstrações soltas (transparência, repasse, sistema, equidade). Mostre ações e situações do dia a dia desta persona, com as palavras que ela usa.
+- O GUIA é só bússola: não narre a metáfora do guia nem diga "valor" ou "enquadramento". Só use imagem que seja do universo da persona.
+- NÃO invente números, valores nem datas: use só os que estão na ideia; sem dado, fale em termos qualitativos.` : ''}`;
   const ideaText = `IDEIA DESTE VÍDEO\nTítulo: ${i.idea.title}\nÂngulo: ${i.idea.angle}${i.idea.points.length ? `\nPontos a usar:\n${i.idea.points.map((p) => `- ${p}`).join('\n')}` : ''}`;
   try {
     const res = await new Anthropic().beta.messages.create({
@@ -142,6 +152,69 @@ TAREFA: ESCREVER O ROTEIRO
     if (!Array.isArray(raw.parts) || raw.parts.length < 1) throw new AiError('A IA devolveu um roteiro vazio.', true);
     const notes = [...(raw.parts.length !== i.format.parts.length ? [`A IA devolveu ${raw.parts.length} partes e o formato tem ${i.format.parts.length}. Confira.`] : []), ...(raw.to_verify ?? []).map((t) => `Conferir: ${t}`)];
     return { title: clean(raw.title, 80) || i.idea.title.slice(0, 80), data: toData(raw.parts, raw.caption ?? '', raw.hashtags ?? [], notes), ...usageOf(res.usage) };
+  } catch (e) {
+    if (e instanceof SyntaxError) throw new AiError('A IA devolveu uma resposta inválida.', true);
+    return fail(e);
+  }
+}
+
+const REFINE_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['title', 'parts', 'caption', 'hashtags', 'note'],
+  properties: {
+    title: STR, caption: STR, hashtags: { type: 'array', items: STR }, note: STR,
+    parts: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['speech', 'on_screen', 'visual'], properties: { speech: STR, on_screen: STR, visual: STR } } },
+  },
+};
+
+export type RefineScriptInput = {
+  title: string; data: ScriptData; previous?: { title: string; data: ScriptData };
+  /** Instruções de cada parte do formato (na ordem; vazio se o formato não existe mais). */
+  instructions: string[]; formatName: string; seconds: number; platform: Platform; angle: string;
+  feedback: string;
+  /** Índice da parte a refinar (as outras ficam como estão); nulo = o roteiro inteiro. */
+  scope: number | null; brand: BrandProfile;
+};
+
+/** Refina um roteiro já gerado (a versão que está na tela) a partir de um feedback. Não grava: o usuário aprova antes. */
+export async function refineVideoScript(i: RefineScriptInput): Promise<{ title: string; data: ScriptData; note: string }> {
+  const n = i.data.parts.length;
+  const build = (parts: { speech: string; on_screen: string; visual: string }[], title: string, caption: string, hashtags: string[]): ScriptData => ({
+    parts: i.data.parts.map((p, k) => (i.scope !== null && i.scope !== k ? p : { ...p, speech: clean(parts[k]?.speech, 1200), onScreen: clean(parts[k]?.on_screen, 160), visual: clean(parts[k]?.visual, 400) })),
+    caption: clean(caption, 1200) || i.data.caption, hashtags: hashtags.map((h) => clean(h, 40).replace(/^#/, '').replace(/\s+/g, '')).filter(Boolean).slice(0, 8), notes: i.data.notes,
+  });
+  if (process.env.AI_MOCK === '1') {
+    await new Promise((r) => setTimeout(r, 600));
+    return { title: i.title, data: { ...i.data, parts: i.data.parts.map((p, k) => (i.scope !== null && i.scope !== k ? p : { ...p, speech: `${p.speech} (refinado: ${i.feedback.slice(0, 30)})` })) }, note: 'Versão simulada (AI_MOCK=1).' };
+  }
+  if (!process.env.ANTHROPIC_API_KEY) throw new AiError('ANTHROPIC_API_KEY não configurada no servidor.');
+  const show = (t: string, d: ScriptData) => `Título: ${t}\n${d.parts.map((p, k) => `PARTE ${k + 1} — ${p.name} (${p.seconds} s, no máximo ~${wordsFor(p.seconds)} palavras de fala)${i.instructions[k]?.trim() ? `\nInstruções da parte: ${i.instructions[k].trim()}` : ''}\nFala: ${p.speech}\nTexto na tela: ${p.onScreen || '(nenhum)'}\nVisual: ${p.visual}`).join('\n\n')}\nLegenda: ${d.caption}\nHashtags: ${d.hashtags.join(' ')}`;
+  const plat = PLATFORMS.find((p) => p.id === i.platform)?.label ?? 'Reels';
+  const system = [
+    'Você é um roteirista sênior de vídeos curtos (Reels, TikTok e Shorts). O usuário pediu um AJUSTE num roteiro que já existe. Devolva o roteiro revisado, em JSON estrito.',
+    brandBlock(i.brand),
+    `FORMATO: ${i.formatName || 'Vídeo curto'}\nDuração total: ${i.seconds} segundos. Plataforma: ${plat}. ${PLATFORM_GUIDE[i.platform]}${i.angle ? `\nIdeia do vídeo: ${i.angle}` : ''}`,
+    `REGRAS
+- Aplique o pedido do usuário. Mude só o que o pedido exige e o que for necessário para manter a coerência; preserve o resto (ideia, fatos, estrutura, o que já estava bom).
+- "parts" deve ter EXATAMENTE ${n} itens, na mesma ordem. ${i.scope !== null ? `Só a PARTE ${i.scope + 1} deve mudar: devolva as outras partes exatamente como estão.` : 'Você pode ajustar qualquer parte que o pedido atingir, mantendo a sequência fluida.'}
+- Respeite o limite de palavras de fala de cada parte (o vídeo tem de caber em ${i.seconds} s) e as instruções da parte, quando houver.
+- Português do Brasil, linguagem FALADA: frases curtas, ritmo de conversa. NÃO invente fatos, números, datas, nomes ou fontes: use só o que já está no roteiro ou no pedido. Respeite o tom e as regras da marca; evite clichês de IA e de vídeo.
+- Fala e tela se complementam: não peça para a pessoa "ler" o que a tela já diz. "on_screen": até 6 palavras, ou "" se não houver.
+- Se houver "SUGESTÃO ANTERIOR (não aprovada)", parta dela e aplique o novo pedido, sem desfazer o que já estava bom.
+- "title" (até 70 caracteres), "caption" e "hashtags" (sem "#"): mantenha como estão, a menos que o pedido os atinja.
+- "note": uma frase curta dizendo o que você mudou.`,
+  ].filter(Boolean).join('\n\n');
+  const user = [`ROTEIRO ATUAL:\n${show(i.title, i.data)}`, i.previous ? `SUGESTÃO ANTERIOR (não aprovada):\n${show(i.previous.title, i.previous.data)}` : '', `PEDIDO DO USUÁRIO${i.scope !== null ? ` (só sobre a parte ${i.scope + 1})` : ''}:\n${i.feedback}`].filter(Boolean).join('\n\n');
+  try {
+    const res = await new Anthropic().beta.messages.create({
+      model: AI_MODEL, max_tokens: 8000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+      system, output_config: { effort: 'medium', format: { type: 'json_schema', schema: REFINE_SCHEMA } },
+      messages: [{ role: 'user', content: user }],
+    });
+    if (res.stop_reason === 'refusal') throw new AiError('A IA recusou refinar este roteiro.');
+    if (res.stop_reason === 'max_tokens') throw new AiError('A resposta ficou grande demais. Tente de novo.', true);
+    const raw = JSON.parse(textOf(res)) as { title?: string; parts?: { speech: string; on_screen: string; visual: string }[]; caption?: string; hashtags?: string[]; note?: string };
+    if (!Array.isArray(raw.parts) || raw.parts.length !== n) throw new AiError('A IA devolveu o roteiro com um número diferente de partes. Tente de novo.', true);
+    return { title: clean(raw.title, 80) || i.title, data: build(raw.parts, clean(raw.title, 80), raw.caption ?? '', raw.hashtags ?? i.data.hashtags), note: clean(raw.note, 300) };
   } catch (e) {
     if (e instanceof SyntaxError) throw new AiError('A IA devolveu uma resposta inválida.', true);
     return fail(e);

@@ -19,6 +19,7 @@ export default async function ScriptPage({ params }: { params: Promise<{ id: str
       <Link href="/admin/videos" className="back"><IconBack /> Roteiros de vídeo</Link>
       <ScriptEditor
         id={s.id} initialTitle={s.title} initialStatus={normStage(s.status)} data={s.data}
+        hasKey={!!process.env.ANTHROPIC_API_KEY || process.env.AI_MOCK === '1'}
         meta={{ formatName: s.formatName, seconds: s.seconds, platform: s.platform, angle: s.angle }}
       />
     </div>

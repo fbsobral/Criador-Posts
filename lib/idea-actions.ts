@@ -8,6 +8,7 @@ import { getCtx } from '@/lib/ctx';
 import { pathOf, PUBLICO_ID, type TNode } from '@/lib/territory';
 import { IDEA_INSTRUCTIONS, ideaBrief, type Idea, type IdeaFields, type IdeaInput, type IdeaStatus } from '@/lib/idea';
 import { createBatch } from '@/lib/actions';
+import { personaBlock } from '@/lib/ai/idea';
 
 async function ctx() {
   const c = await getCtx();
@@ -99,9 +100,14 @@ export async function createPostFromIdea(ideaId: string, templateId: string, sli
   const c = await ctx();
   const [row] = await db.select().from(contentIdeas).where(and(eq(contentIdeas.id, ideaId), eq(contentIdeas.brandId, c.brandId)));
   if (!row) return { error: 'Ideia não encontrada.' };
+  let perfil = '';
+  if (row.personaId) {
+    const [p] = await db.select().from(personas).where(and(eq(personas.id, row.personaId), eq(personas.brandId, c.brandId)));
+    if (p) perfil = ` | PERFIL DA PERSONA: ${personaBlock({ name: p.name, tagline: p.tagline, role: p.data.role, data: p.data }).replace(/\s*\n\s*/g, ' | ')}${p.data.quote ? ` | Frase típica: ${p.data.quote}` : ''}`;
+  }
   const fd = new FormData();
   fd.set('mode', 'tema'); // a IA escreve o post; o texto vai numa linha só (no modo tema cada linha seria um post)
-  fd.set('briefs', ideaBrief(row, row.personaName, row.territory).replace(/\s*\n\s*/g, ' | '));
+  fd.set('briefs', `${ideaBrief(row, row.personaName, row.territory).replace(/\s*\n\s*/g, ' | ')}${perfil}`.slice(0, 5800));
   fd.set('templateId', templateId); fd.set('slides', String(slides)); fd.set('instructions', IDEA_INSTRUCTIONS);
   if (withImages) fd.set('withImages', 'on');
   const prev = row.status;

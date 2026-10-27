@@ -33,13 +33,21 @@ ESTRUTURA DE CADA IDEIA (todos os campos são obrigatórios; juntos contam uma h
 7. "desire" — o DESEJO: a aspiração de fundo por trás da dor, em 1 frase: o que ela quer ser, sentir ou garantir (dignidade, segurança, sossego, orgulho, futuro para os filhos). Mais profundo que o ganho.
 8. "cta" — a CTA: o convite final, em 1 frase, claro e natural, que dá um próximo passo fácil (olhar, perceber, conversar, guardar, compartilhar com quem passa por isso, conhecer o caminho). Sem tom de venda agressivo ("compre já", "clique agora").
 
+CLAREZA E DIDÁTICA (vale para todos os campos)
+- Escreva para quem NÃO entende do assunto: explique como se fosse para um amigo na mesa do bar. Nada de abstração solta: troque palavras como "transparência", "equidade", "repasse", "sistema", "estrutura" por situações, ações e coisas que dá para ver.
+- Toda palavra técnica ou difícil precisa vir com uma explicação simples na mesma frase, ou ser trocada.
+- Os campos formam um fio com começo, meio e fim: a DOR mostra a cena; o IMPACTO mostra o que ela custa; a CAUSA explica COMO a coisa funciona, passo a passo, de causa a efeito ("primeiro..., aí..., por isso..."); o PLANO diz exatamente o que fazer (cada passo começa com um verbo e diz o quê e como); o GANHO e o DESEJO mostram para onde isso leva; a CTA fecha. Cada campo deve se apoiar no anterior, sem salto.
+- Use exemplos do dia a dia da persona (o trabalho dela, o lugar, as contas dela), não exemplos genéricos.
+- NÃO invente números, valores, percentuais, datas nem fontes (nem na dor, nem no impacto). Sem dado real no perfil ou no pedido, fale em termos qualitativos ("uma parte grande da corrida", "quase tudo que sobra").
+- O GUIA é a bússola da ideia: orienta o valor e as palavras, e a imagem dele deve vir do universo da própria persona (o volante, a corrida, a feira dela), nunca de um mundo que ela não vive.
+
 REGRAS GERAIS
 - Cada ideia ataca UM ângulo diferente do território e uma dor diferente. Nada de ideias parecidas entre si nem repetidas das já existentes (você recebe a lista).
 - Fique no território indicado e na persona indicada. Ligue ao que a ORGANIZAÇÃO faz (veja a identidade da marca) de forma natural.
 - Respeite o tom de voz e as regras da marca. Evite clichês de IA ("mergulhe", "desvende", "no mundo de hoje").
 - Não ataque pessoas nem grupos; o foco é a dor real e o caminho de cuidado e solução.`;
 
-function personaBlock(p: { name: string; tagline: string; role: string; data: PersonaData }) {
+export function personaBlock(p: { name: string; tagline: string; role: string; data: PersonaData }) {
   const L = (t: string, a: string[]) => (a.length ? `\n- ${t}: ${a.join('; ')}` : '');
   return `PERSONA: ${p.name}${p.role ? ` (${p.role})` : ''}\nResumo: ${p.tagline}\nContexto: ${p.data.bio}${L('Objetivos', p.data.goals)}${L('Dores', p.data.pains)}${L('Objeções', p.data.objections)}${L('Gatilhos', p.data.triggers)}`;
 }
