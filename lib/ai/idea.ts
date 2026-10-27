@@ -106,3 +106,57 @@ export async function suggestIdeas(a: SuggestIdeasArgs): Promise<{ ideas: Sugges
     throw new AiError('Não foi possível falar com a IA.', true);
   }
 }
+
+const REFINE_RULES = `
+
+TAREFA: REFINAR UMA IDEIA EXISTENTE
+- Você recebe a ideia ATUAL (a versão que está na tela, mesmo que ainda não salva) e um PEDIDO do usuário. Devolva a ideia inteira, com os mesmos 8 campos, aplicando o pedido.
+- Mude só o que o pedido exige e o que for necessário para manter a coerência da história (dor → impacto → causa → guia → plano → ganho → desejo → CTA). Preserve o resto, as palavras que já estavam boas e a persona.
+- Respeite todas as regras de cada campo acima (linguagem de rua na dor, causa coletiva, guia sem repetir o discurso do outro lado, sem inventar dados).
+- Se houver "SUGESTÃO ANTERIOR (não aprovada)", parta dela e aplique o novo pedido, sem desfazer o que já estava bom.
+- "note": uma frase curta dizendo o que você mudou.`;
+
+const REFINE_SCHEMA = {
+  type: 'object', additionalProperties: false, required: [...KEYS, 'note'],
+  properties: { ...Object.fromEntries(KEYS.map((k) => [k, STR])), note: STR },
+};
+
+/** Refina uma ideia (a versão da tela) a partir de um feedback. Não grava: o usuário aprova antes. */
+export async function refineIdea(a: {
+  current: IdeaFields; previous?: IdeaFields; feedback: string; persona: { name: string; tagline: string; role: string; data: PersonaData } | null;
+  territory: string; icp: string; brand: BrandProfile;
+}): Promise<{ fields: IdeaFields; note: string }> {
+  const show = (f: IdeaFields) => KEYS.map((k) => `${k}: ${f[k] || '(vazio)'}`).join('\n');
+  if (process.env.AI_MOCK === '1') {
+    await new Promise((r) => setTimeout(r, 500));
+    return { fields: { ...a.current, pain: `${a.current.pain} (refinada: ${a.feedback.slice(0, 40)})` }, note: 'Versão simulada (AI_MOCK=1).' };
+  }
+  if (!process.env.ANTHROPIC_API_KEY) throw new AiError('ANTHROPIC_API_KEY não configurada no servidor.');
+  const user = [
+    a.persona ? personaBlock(a.persona) : `PÚBLICO GERAL (sem persona específica).${a.icp.trim() ? `\nICP:\n${a.icp.trim()}` : ''}`,
+    a.territory ? `TERRITÓRIO: ${a.territory}` : '',
+    `IDEIA ATUAL:\n${show(a.current)}`,
+    a.previous ? `SUGESTÃO ANTERIOR (não aprovada):\n${show(a.previous)}` : '',
+    `PEDIDO DO USUÁRIO:\n${a.feedback}`,
+  ].filter(Boolean).join('\n\n');
+  try {
+    const res = await new Anthropic().beta.messages.create({
+      model: AI_MODEL, max_tokens: 6000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+      system: [SYSTEM + REFINE_RULES, brandBlock(a.brand)].filter(Boolean).join('\n\n'),
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: REFINE_SCHEMA } },
+      messages: [{ role: 'user', content: user }],
+    });
+    if (res.stop_reason === 'refusal') throw new AiError('A IA recusou refinar esta ideia.');
+    if (res.stop_reason === 'max_tokens') throw new AiError('A resposta ficou grande demais. Tente de novo.', true);
+    const raw = JSON.parse(res.content.find((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')?.text ?? '') as Partial<Record<(typeof KEYS)[number] | 'note', string>>;
+    const fields = Object.fromEntries(KEYS.map((k) => [k, clean(raw[k], k === 'plan' ? 700 : k === 'guide' ? 600 : k === 'cta' ? 300 : 400)])) as IdeaFields;
+    if (!fields.pain) throw new AiError('A IA devolveu uma ideia vazia. Tente de novo.', true);
+    return { fields, note: clean(raw.note, 300) };
+  } catch (e) {
+    if (e instanceof AiError) throw e;
+    if (e instanceof SyntaxError) throw new AiError('A IA devolveu uma resposta inválida. Tente de novo.', true);
+    if (e instanceof Anthropic.RateLimitError) throw new AiError('Limite de uso da IA atingido. Tente em instantes.', true);
+    if (e instanceof Anthropic.APIError) throw new AiError(`Erro da IA (${e.status}).`, (e.status ?? 500) >= 500);
+    throw new AiError('Não foi possível falar com a IA.', true);
+  }
+}

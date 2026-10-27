@@ -27,6 +27,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
   const [q, setQ] = useState('');
   const [ai, setAi] = useState<{ persona: string; territory: string } | null>(initial.generate ? { persona: initialTerritory?.personaId ?? initial.persona ?? '', territory: initialTerritory?.id ?? '' } : null);
   const [edit, setEdit] = useState<Idea | 'new' | null>(null);
+  const [refining, setRefining] = useState(false);
   const [copied, setCopied] = useState('');
   const [convert, setConvert] = useState<{ idea: Idea; mode: 'script' | 'post' } | null>(null);
   const [local, setLocal] = useState<Record<string, IdeaStatus>>({});
@@ -64,7 +65,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar nas ideias…" aria-label="Buscar" />
         </div>
         <div className="row-actions">
-          <button type="button" className="btn" onClick={() => setEdit('new')}><IconPlus /> Nova ideia</button>
+          <button type="button" className="btn" onClick={() => { setRefining(false); setEdit('new'); }}><IconPlus /> Nova ideia</button>
           <button type="button" className="btn primary" onClick={() => setAi({ persona, territory })}><IconSpark /> Gerar com IA</button>
         </div>
       </div>
@@ -75,7 +76,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
 
       {ideas.length === 0 ? (
         <EmptyState icon={<IconSpark />} title="Nenhuma ideia ainda"
-          action={<div className="row-actions"><button type="button" className="btn primary" onClick={() => setAi({ persona, territory })}><IconSpark /> Gerar com IA</button><button type="button" className="btn" onClick={() => setEdit('new')}><IconPlus /> Nova ideia</button></div>}>
+          action={<div className="row-actions"><button type="button" className="btn primary" onClick={() => setAi({ persona, territory })}><IconSpark /> Gerar com IA</button><button type="button" className="btn" onClick={() => { setRefining(false); setEdit('new'); }}><IconPlus /> Nova ideia</button></div>}>
           Escolha uma persona e um território e a IA cria ideias com dor, guia, argumentos e CTA indireta. Você revisa antes de salvar.
         </EmptyState>
       ) : shown.length === 0 ? (
@@ -103,7 +104,8 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
                 </div>
                 <footer>
                   <button type="button" className="btn small ghost" onClick={() => copy(i)}>{copied === i.id ? 'Copiado ✓' : 'Copiar'}</button>
-                  <button type="button" className="btn small" onClick={() => setEdit(i)}><IconEdit /> Editar</button>
+                  <button type="button" className="btn small ghost" onClick={() => { setRefining(true); setEdit(i); }} title="Refinar com IA" aria-label="Refinar ideia com IA"><IconSpark /> Refinar</button>
+                  <button type="button" className="btn small" onClick={() => { setRefining(false); setEdit(i); }}><IconEdit /> Editar</button>
                   <button type="button" className="btn small ghost danger" onClick={() => remove(i)} aria-label="Excluir ideia"><IconTrash /></button>
                 </footer>
               </article>
@@ -114,7 +116,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
 
       {ai && <IdeaModal personas={personas} options={opts} initialPersona={ai.persona} initialTerritory={ai.territory} hasKey={hasKey} hasAbout={hasAbout} onClose={() => setAi(null)} />}
       {convert && <IdeaConvertModal idea={convert.idea} mode={convert.mode} formats={formats} templates={templates} hasKey={hasKey} onClose={() => setConvert(null)} />}
-      {edit && <IdeaDrawer idea={edit === 'new' ? null : edit} personas={personas} options={opts} defaults={{ persona, territory }} onClose={() => setEdit(null)} />}
+      {edit && <IdeaDrawer key={`${edit === 'new' ? 'new' : edit.id}${refining ? '-r' : ''}`} startRefine={refining} hasKey={hasKey} idea={edit === 'new' ? null : edit} personas={personas} options={opts} defaults={{ persona, territory }} onClose={() => setEdit(null)} />}
     </>
   );
 }
