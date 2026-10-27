@@ -106,7 +106,7 @@ export function TerritoryModal({ persona, parent, existingCount, hasKey, hasAbou
                 <summary>Instruções extras <span className="muted">(opcional)</span></summary>
                 <textarea rows={3} value={instructions} onChange={(e) => setInstructions(e.target.value)} maxLength={1200} placeholder="Ex.: Foque em quem ainda não tem reserva de emergência. Evite temas políticos." />
               </details>
-              <div className="notice info">A IA considera o perfil da persona e <b>tudo que ela já tem no mapa</b>{existingCount > 0 ? <> ({existingCount} {existingCount === 1 ? 'território' : 'territórios'})</> : ''} para <b>não repetir</b> nada.</div>
+              <div className="notice info">{persona.id === 'publico' ? <>A IA considera o <b>ICP</b> e <b>todas as personas</b> para criar territórios do público como um todo, e</> : <>A IA <b>foca só nesta persona</b> (sem misturar o público em geral ou outras personas) e</>} considera <b>tudo que já existe neste mapa</b>{existingCount > 0 ? <> ({existingCount} {existingCount === 1 ? 'território' : 'territórios'})</> : ''} para <b>não repetir</b> nada.</div>
               {!hasAbout && <div className="notice warn">Você ainda não descreveu <b>o que a organização faz</b> (card no topo da página). Sem isso, os territórios ficam genéricos: eles partem só do que a persona busca.</div>}
               {!hasKey && <div className="notice warn">A IA não está configurada neste servidor (falta a <code>ANTHROPIC_API_KEY</code>).</div>}
               {busy && <div className="notice info" role="status">A IA está montando os territórios. {cur.mode === 'full' ? 'O mapa completo leva cerca de 30 a 60 segundos' : 'Leva cerca de 10 a 30 segundos'}; mantenha esta janela aberta.</div>}

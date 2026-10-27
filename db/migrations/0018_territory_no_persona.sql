@@ -1,0 +1,1 @@
+ALTER TABLE "territories" ALTER COLUMN "persona_id" DROP NOT NULL;

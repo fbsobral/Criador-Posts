@@ -31,7 +31,7 @@ O QUE É UM TERRITÓRIO
 LIGAÇÃO COM A ORGANIZAÇÃO: os territórios ficam na interseção entre o que a persona quer, teme e precisa decidir e o que a ORGANIZAÇÃO faz e pode falar com autoridade (veja "O que a organização faz" na identidade da marca). Prefira territórios que levem, de forma natural, ao que a organização oferece ou sabe. Evite áreas sem nenhuma ligação com a organização; se um interesse da persona está fora do que ela faz, só inclua se houver uma ponte clara com a oferta ou com os temas da organização.
 
 REGRA DE OURO: NÃO REPITA o que já existe no mapa dessa persona (você recebe a árvore atual). Não crie o mesmo tema com outro nome nem variações triviais; complemente lacunas. Se um território já existe, não o inclua de novo.
-Se o mesmo tema já é usado em outras personas (você recebe a lista), reutilize EXATAMENTE o mesmo nome para ele, sem inventar sinônimos: isso permite ver os pontos em comum depois.
+FOCO: se a tarefa é para uma PERSONA, foque só nela: não considere o público em geral nem outras personas. Se é para o PÚBLICO GERAL (sem persona específica), considere o ICP e todas as personas informadas e priorize temas que atendam a várias delas ou ao público como um todo.
 
 FORMATO DA RESPOSTA
 - Lista plana "nodes". Cada item: "ref" (um identificador curto e único, ex.: "a1", "a1b"), "parent_ref" (o "ref" do pai dentro desta lista, ou "" para o que entra direto no ponto de partida indicado), "name", "description".
@@ -43,7 +43,10 @@ function personaBlock(p: { name: string; tagline: string; role: string; data: Pe
 }
 
 export type SuggestArgs = {
-  persona: { name: string; tagline: string; role: string; data: PersonaData };
+  /** Persona do mapa. Nulo = mapa do "Público geral" (sem persona). */
+  persona: { name: string; tagline: string; role: string; data: PersonaData } | null;
+  /** Só no "Público geral": as personas existentes, como contexto. */
+  publicoPersonas?: { name: string; tagline: string; pains: string[] }[];
   brand: BrandProfile;
   icp: string;
   mode: TerritoryMode;
@@ -80,11 +83,12 @@ export async function suggestTerritories(a: SuggestArgs): Promise<{ nodes: Sugge
       ? `TAREFA: crie ${n} território(s) FILHOS de "${a.parentPath.join(' › ')}" (parent_ref "" = filho direto dele)${a.depth > 1 ? `, e aprofunde cada um com mais ${a.depth - 1} nível(is)` : ''}. Total máximo ~${MAX_TERRITORY_NODES_PER_RUN} itens.`
       : `TAREFA: crie um mapa COMPLETO com ${n} território(s) de nível 1 (parent_ref "") e aprofunde cada um até ${a.depth} níveis no total (nível 2 com 2 a 4 filhos por pai, nível 3 com 2 a 3, e assim por diante). Máximo de ${MAX_TERRITORY_NODES_PER_RUN} itens no total; priorize qualidade e especificidade.`;
   const user = [
-    personaBlock(a.persona),
-    a.icp.trim() ? `ICP DA MARCA:\n${a.icp.trim()}` : '',
+    a.persona
+      ? personaBlock(a.persona)
+      : `PÚBLICO GERAL (sem persona específica): crie territórios para o público como um todo.\nICP DA MARCA:\n${a.icp.trim() || '(não informado)'}${a.publicoPersonas?.length ? `\n\nPERSONAS EXISTENTES (considere todas):\n${a.publicoPersonas.map((p) => `- ${p.name}: ${p.tagline}${p.pains.length ? ` | dores: ${p.pains.slice(0, 2).join('; ')}` : ''}`).join('\n')}` : ''}`,
+    a.persona && a.icp.trim() ? `ICP DA MARCA:\n${a.icp.trim()}` : '',
     `MAPA ATUAL DESTA PERSONA (não repita nada daqui):\n${a.existingOutline || '(vazio)'}`,
     a.siblingNames.length ? `JÁ EXISTEM NESTE PONTO (não repita): ${a.siblingNames.join('; ')}` : '',
-    a.otherPersonas.length ? `TERRITÓRIOS USADOS EM OUTRAS PERSONAS (reutilize o mesmo nome quando for o mesmo tema): ${a.otherPersonas.slice(0, 60).join('; ')}` : '',
     task,
     a.instructions.trim() ? `INSTRUÇÕES EXTRAS DO USUÁRIO:\n${a.instructions.trim()}` : '',
   ].filter(Boolean).join('\n\n');

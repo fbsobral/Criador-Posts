@@ -303,7 +303,8 @@ export const territories = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
-    personaId: uuid('persona_id').notNull().references(() => personas.id, { onDelete: 'cascade' }),
+    /** Nulo = mapa do "Público geral" (sem persona). */
+    personaId: uuid('persona_id').references(() => personas.id, { onDelete: 'cascade' }),
     parentId: uuid('parent_id').references((): AnyPgColumn => territories.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description').notNull().default(''),

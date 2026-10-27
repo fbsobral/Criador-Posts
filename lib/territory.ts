@@ -2,6 +2,8 @@
 
 export type TNode = { id: string; personaId: string; parentId: string | null; name: string; description: string; position: number; source: string };
 
+/** Identificador do mapa sem persona ("Público geral") no navegador; no banco é persona_id nulo. */
+export const PUBLICO_ID = 'publico';
 export const MAX_TERRITORY_NODES_PER_RUN = 60;
 export const ESTIMATED_COST_TERRITORY_BASE = 0.01;
 export const ESTIMATED_COST_PER_TERRITORY = 0.0015;

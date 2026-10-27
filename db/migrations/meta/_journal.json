@@ -127,6 +127,13 @@
       "when": 1793094697296,
       "tag": "0017_org_about",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793094867002,
+      "tag": "0018_territory_no_persona",
+      "breakpoints": true
     }
   ]
 }
