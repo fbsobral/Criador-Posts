@@ -8,7 +8,7 @@ import { ESTIMATED_COST_PER_PERSONA, ESTIMATED_COST_PERSONA_BASE, MAX_PERSONAS_P
 import { addSuggested } from '@/lib/persona-actions';
 import { IconSpark } from '../../icons';
 
-const COUNTS = [3, 5, 8, 12];
+const COUNTS = [1, 2, 3, 5, 8, 12];
 
 /** Gera personas com IA em 2 passos: 1) ICP e quantidade; 2) revisar o que entra no quadro. */
 export function SuggestModal({ initialIcp, existingCount, groupNames, hasKey, onClose }: { initialIcp: string; existingCount: number; groupNames: string[]; hasKey: boolean; onClose: () => void }) {

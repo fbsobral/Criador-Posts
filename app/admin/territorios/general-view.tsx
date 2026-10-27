@@ -22,7 +22,7 @@ export function GeneralView({ personas, nodes }: { personas: PersonaLite[]; node
   const wrapRef = useRef<HTMLDivElement>(null);
   usePan(wrapRef, mode === 'mapa');
 
-  const colorOf = (id: string) => GROUP_COLORS[Math.max(0, personas.findIndex((p) => p.id === id)) % GROUP_COLORS.length];
+  const colorOf = (id: string) => personas.find((p) => p.id === id)?.color ?? GROUP_COLORS[Math.max(0, personas.findIndex((p) => p.id === id)) % GROUP_COLORS.length];
   const personaOf = (id: string) => personas.find((p) => p.id === id);
   const merged = useMemo(() => mergeTrees(filter ? nodes.filter((n) => n.personaId === filter) : nodes), [nodes, filter]);
   const tree = useMemo(() => merged.map(toItem), [merged]);

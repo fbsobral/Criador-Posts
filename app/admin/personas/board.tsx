@@ -20,7 +20,7 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
   const [people, setPeople] = useState(p0);
   useEffect(() => setGroups(g0), [g0]);
   useEffect(() => setPeople(p0), [p0]);
-  const [drawer, setDrawer] = useState<{ persona: PersonaRow | null; groupId: string | null } | null>(null);
+  const [drawer, setDrawer] = useState<{ persona: PersonaRow | null; groupId: string | null; refine?: boolean } | null>(null);
   const [suggest, setSuggest] = useState(false);
   const [drag, setDrag] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
@@ -128,6 +128,7 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
                         <span className="pe-av" style={{ background: colorOf(p.groupId) }}>{initialsOf(p.name)}</span>
                         <div><b>{p.name}</b><small>{[p.data.role, p.data.age].filter(Boolean).join(' · ') || '—'}</small></div>
                         <span className="pe-card-tools">
+                          <button type="button" className="btn small ghost" onClick={(e) => { e.stopPropagation(); setDrawer({ persona: p, groupId: p.groupId, refine: true }); }} aria-label="Refinar persona com IA" title="Refinar com IA"><IconSpark /></button>
                           <button type="button" className="btn small ghost" onClick={(e) => { e.stopPropagation(); setDrawer({ persona: p, groupId: p.groupId }); }} aria-label="Editar persona" title="Editar"><IconEdit /></button>
                           <button type="button" className="btn small ghost danger" onClick={(e) => { e.stopPropagation(); remove(p); }} aria-label="Excluir persona" title="Excluir"><IconTrash /></button>
                         </span>
@@ -161,7 +162,7 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
         </div>
       )}
 
-      {drawer && <PersonaDrawer key={drawer.persona?.id ?? `new-${drawer.groupId}`} persona={drawer.persona} defaultGroupId={drawer.groupId} groups={groups} onClose={() => setDrawer(null)} />}
+      {drawer && <PersonaDrawer key={`${drawer.persona?.id ?? `new-${drawer.groupId}`}${drawer.refine ? '-r' : ''}`} persona={drawer.persona} defaultGroupId={drawer.groupId} groups={groups} startRefine={!!drawer.refine} onClose={() => setDrawer(null)} />}
       {suggest && <SuggestModal initialIcp={icp} existingCount={people.length} groupNames={groups.map((g) => g.name)} hasKey={hasKey} onClose={() => setSuggest(false)} />}
     </div>
   );

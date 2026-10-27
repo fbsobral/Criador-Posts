@@ -9,7 +9,7 @@ import { IconEdit, IconPlus, IconSpark, IconTrash } from '../../icons';
 import { usePan } from '../use-pan';
 import { TerritoryModal } from './territory-modal';
 
-export type PersonaLite = { id: string; name: string; tagline: string; role: string };
+export type PersonaLite = { id: string; name: string; tagline: string; role: string; /** cor do grupo da persona */ color?: string; group?: string };
 
 const DEPTH_COLORS = ['#F97335', '#1D9BF0', '#8B5CF6', '#1F9D63', '#E5484D', '#F59E0B'];
 const initialsOf = (n: string) => n.replace(/,.*/, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');

@@ -110,3 +110,71 @@ export async function suggestPersonas(i: { icp: string; count: number; instructi
     throw new AiError('Não foi possível falar com a IA.', true);
   }
 }
+
+export type RefinedPersona = { name: string; tagline: string; data: PersonaData; note: string };
+
+const REFINE_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['name', 'tagline', 'age', 'role', 'location', 'bio', 'goals', 'pains', 'objections', 'triggers', 'channels', 'quote', 'note'],
+  properties: { name: STR, tagline: STR, age: STR, role: STR, location: STR, bio: STR, goals: LIST, pains: LIST, objections: LIST, triggers: LIST, channels: LIST, quote: STR, note: STR },
+};
+
+const REFINE_SYSTEM = `Você é um estrategista de marketing e pesquisador de audiência sênior. O usuário quer REFINAR uma persona que já existe. Devolva a persona completa já ajustada, em JSON estrito, em português do Brasil.
+
+REGRAS
+- Aplique o feedback do usuário. Mude só o que o feedback pede (e o que for necessário para manter a persona coerente); preserve o resto como está, inclusive o tom e o nível de detalhe.
+- Mantenha a persona realista, específica e acionável. Não invente estatísticas ou pesquisas.
+- LIGAÇÃO COM A ORGANIZAÇÃO: a persona continua sendo alguém que a organização quer alcançar (veja "O que a organização faz" na identidade da marca); dores, objetivos, objeções e gatilhos devem ter relação com o que a organização oferece e resolve.
+- Ela deve continuar claramente DIFERENTE das outras personas listadas (não vire uma variação delas).
+- Se houver "SUGESTÃO ANTERIOR (não aprovada)", parta dela e aplique o novo pedido, sem desfazer o que já estava bom.
+- Listas: de 2 a 4 itens curtos e concretos cada.
+- "note": uma frase curta dizendo o que você mudou (ex.: "Tornei as dores mais ligadas a falta de tempo e troquei a profissão por uma mais realista").`;
+
+/** Refina uma persona a partir de um feedback. Não grava nada: o usuário aprova na tela. */
+export async function refinePersona(i: {
+  current: { name: string; tagline: string; data: PersonaData };
+  feedback: string;
+  previous?: { name: string; tagline: string; data: PersonaData };
+  others: { name: string; tagline: string }[];
+  icp: string;
+  brand: BrandProfile;
+}): Promise<RefinedPersona & { inputTokens: number; outputTokens: number }> {
+  const fmt = (p: { name: string; tagline: string; data: PersonaData }) =>
+    `Nome: ${p.name}\nResumo: ${p.tagline}\nIdade: ${p.data.age}\nProfissão: ${p.data.role}\nLocal: ${p.data.location}\nContexto: ${p.data.bio}\nObjetivos: ${p.data.goals.join('; ')}\nDores: ${p.data.pains.join('; ')}\nObjeções: ${p.data.objections.join('; ')}\nGatilhos: ${p.data.triggers.join('; ')}\nOnde está: ${p.data.channels.join('; ')}\nFrase típica: ${p.data.quote}`;
+  if (process.env.AI_MOCK === '1') {
+    await new Promise((r) => setTimeout(r, 700));
+    return { name: i.current.name, tagline: `${i.current.tagline} (refinada: ${i.feedback.slice(0, 40)})`, data: { ...i.current.data, bio: `${i.current.data.bio} Ajustada.` }, note: 'Versão simulada (AI_MOCK=1).', inputTokens: 0, outputTokens: 0 };
+  }
+  if (!process.env.ANTHROPIC_API_KEY) throw new AiError('ANTHROPIC_API_KEY não configurada no servidor.');
+  const user = [
+    i.icp.trim() ? `ICP:\n${i.icp.trim()}` : '',
+    i.others.length ? `OUTRAS PERSONAS (a refinada deve continuar diferente delas):\n${i.others.slice(0, 40).map((p) => `- ${p.name}: ${p.tagline}`).join('\n')}` : '',
+    `PERSONA ATUAL:\n${fmt(i.current)}`,
+    i.previous ? `SUGESTÃO ANTERIOR (não aprovada):\n${fmt(i.previous)}` : '',
+    `FEEDBACK DO USUÁRIO:\n${i.feedback.trim()}`,
+  ].filter(Boolean).join('\n\n');
+  try {
+    const res = await new Anthropic().beta.messages.create({
+      model: AI_MODEL, max_tokens: 4000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+      system: [REFINE_SYSTEM, brandBlock(i.brand)].filter(Boolean).join('\n\n'),
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: REFINE_SCHEMA } },
+      messages: [{ role: 'user', content: user }],
+    });
+    if (res.stop_reason === 'refusal') throw new AiError('A IA recusou refinar esta persona.');
+    const p = JSON.parse(res.content.find((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')?.text ?? '') as Record<string, unknown>;
+    const name = clean(p.name, 80);
+    if (!name) throw new AiError('A IA não devolveu a persona. Tente de novo.', true);
+    const u = res.usage as { input_tokens?: number; output_tokens?: number } | undefined;
+    return {
+      name, tagline: clean(p.tagline, 200), note: clean(p.note, 300),
+      data: { age: clean(p.age, 30), role: clean(p.role, 100), location: clean(p.location, 100), bio: clean(p.bio, 700), goals: list(p.goals), pains: list(p.pains), objections: list(p.objections), triggers: list(p.triggers), channels: list(p.channels), quote: clean(p.quote, 240) },
+      inputTokens: u?.input_tokens ?? 0, outputTokens: u?.output_tokens ?? 0,
+    };
+  } catch (e) {
+    if (e instanceof AiError) throw e;
+    if (e instanceof SyntaxError) throw new AiError('A IA devolveu uma resposta inválida. Tente de novo.', true);
+    if (e instanceof Anthropic.RateLimitError) throw new AiError('Limite de uso da IA atingido. Tente em instantes.', true);
+    if (e instanceof Anthropic.APIError) throw new AiError(`Erro da IA (${e.status}).`, (e.status ?? 500) >= 500);
+    throw new AiError('Não foi possível falar com a IA.', true);
+  }
+}
