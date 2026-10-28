@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { personas, videoScripts } from '@/db/schema';
+import { contentIdeas, personas, videoScripts } from '@/db/schema';
 import { personaBlock } from '@/lib/ai/idea';
 import { getCtx } from '@/lib/ctx';
 import { AiError } from '@/lib/ai/generate';
@@ -40,6 +40,9 @@ export async function POST(req: Request) {
       brandId: c.brandId, formatId: format.id, formatName: format.name, batchId, title: r.title, platform, seconds, angle: ideaClean.angle,
       data: r.data, inputTokens: r.inputTokens, outputTokens: r.outputTokens, createdBy: c.userId,
     }).returning({ id: videoScripts.id });
+    // roteiro nascido de uma ideia de conteúdo: a ideia passa a "usada" (feito aqui, sem depender de outra chamada do navegador)
+    const ideaId = typeof b?.ideaId === 'string' ? b.ideaId : '';
+    if (/^[0-9a-f-]{36}$/i.test(ideaId)) await db.update(contentIdeas).set({ status: 'used', updatedAt: new Date() }).where(and(eq(contentIdeas.id, ideaId), eq(contentIdeas.brandId, c.brandId)));
     return Response.json({ id: row.id, title: r.title });
   } catch (e) {
     return Response.json({ error: e instanceof AiError ? e.message : 'Não foi possível gerar o roteiro.', retryable: e instanceof AiError && e.retryable }, { status: e instanceof AiError && e.retryable ? 503 : 502 });

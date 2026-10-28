@@ -6,6 +6,7 @@ import { getCtx } from '@/lib/ctx';
 import { GROUP_COLORS, splitPersonaName } from '@/lib/persona';
 import { priorityOf } from '@/lib/priority';
 import { PUBLICO_ID, type TNode } from '@/lib/territory';
+import { OrgPill } from '../org-pill';
 import { PageHead } from '../ui';
 import { AboutCard } from './about-card';
 import { GeneralView } from './general-view';
@@ -55,7 +56,7 @@ export default async function TerritoriosPage({ searchParams }: { searchParams: 
       <PageHead
         title="Territórios"
         description="Os temas de conteúdo de cada persona, em mapa, com a prioridade de cada pauta."
-        actions={<PriorityBar config={priority} scores={nodes.map((n) => n.score ?? null)} total={nodes.length} canEdit={c.isBrandAdmin} hasKey={hasKey} />}
+        actions={<><OrgPill name={c.brandName} /><PriorityBar config={priority} scores={nodes.map((n) => n.score ?? null)} total={nodes.length} canEdit={c.isBrandAdmin} hasKey={hasKey} /></>}
       />
       <AboutCard about={about} canEdit={c.isBrandAdmin} />
       <nav className="tr-tabs" aria-label="Personas e visões">

@@ -4,12 +4,18 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { fmtUsd } from '@/lib/ai/constants';
 import { IDEA_INSTRUCTIONS, ideaAngle, ideaBrief, ideaPoints, ideaTitle, type Idea } from '@/lib/idea';
-import { createPostFromIdea, setIdeaStatus } from '@/lib/idea-actions';
+import { createPostFromIdea } from '@/lib/idea-actions';
 import { DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, PLATFORMS, fmtSecs, type Platform, type VideoPart } from '@/lib/video';
 import { IconSpark } from '../../icons';
 
 export type VideoFormatLite = { id: string; name: string; description: string; defaultSeconds: number; parts: VideoPart[] };
 export type PostTemplateLite = { id: string; name: string; description: string; editor: string };
+
+/** Depois de um deploy, uma página aberta fica com a versão antiga: pede para recarregar em vez de mostrar o erro técnico. */
+const STALE_MSG = (e: unknown) => {
+  const m = e instanceof Error ? e.message : 'Erro inesperado.';
+  return /Server Action|was not found on the server/i.test(m) ? 'O app foi atualizado enquanto esta página estava aberta. Recarregue a página (Cmd/Ctrl + Shift + R) e tente de novo.' : m;
+};
 
 /** Transforma uma ideia em roteiro de vídeo ou em post de imagem, já com a história da ideia como base. */
 export function IdeaConvertModal({ idea, mode, formats, templates, hasKey, onClose }: {
@@ -34,18 +40,22 @@ export function IdeaConvertModal({ idea, mode, formats, templates, hasKey, onClo
       const content = ideaBrief(idea, idea.personaName, idea.territory);
       const r = await fetch('/api/videos/generate', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content, personaId: idea.personaId, formatId, seconds, platform, instructions: [IDEA_INSTRUCTIONS, extra].filter(Boolean).join('\n'), idea: { title: ideaTitle(idea.pain), angle: ideaAngle(idea), points: ideaPoints(idea) } }),
+        body: JSON.stringify({ content, ideaId: idea.id, personaId: idea.personaId, formatId, seconds, platform, instructions: [IDEA_INSTRUCTIONS, extra].filter(Boolean).join('\n'), idea: { title: ideaTitle(idea.pain), angle: ideaAngle(idea), points: ideaPoints(idea) } }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Não foi possível gerar o roteiro.');
-      await setIdeaStatus(idea.id, 'used');
       router.push(`/admin/videos/${j.id}`);
-    } catch (e) { setErr(e instanceof Error ? e.message : 'Erro inesperado.'); setBusy(false); }
+    } catch (e) { setErr(STALE_MSG(e)); setBusy(false); }
   }
   const makePost = () => start(async () => {
     setErr('');
-    const r = await createPostFromIdea(idea.id, templateId, slides, false); // sucesso redireciona para o lote
-    if (r?.error) setErr(r.error);
+    try {
+      const r = await createPostFromIdea(idea.id, templateId, slides, false); // sucesso redireciona para o lote
+      if (r?.error) setErr(r.error);
+    } catch (e) {
+      if (e instanceof Error && 'digest' in e && String((e as { digest?: string }).digest).startsWith('NEXT_REDIRECT')) throw e; // é o redirecionamento de sucesso
+      setErr(STALE_MSG(e));
+    }
   });
   const go = isScript ? makeScript : makePost;
   const working = busy || pending;

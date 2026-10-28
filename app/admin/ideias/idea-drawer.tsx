@@ -3,13 +3,14 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { IconSpark } from '../../icons';
+import { PersonaOptions, type PersonaOpt } from './persona-options';
 import { EMPTY_FIELDS, IDEA_FIELDS, type Idea, type IdeaFields, type TerritoryOption } from '@/lib/idea';
 import { createIdea, updateIdea } from '@/lib/idea-actions';
 import { PUBLICO_ID } from '@/lib/territory';
 
 /** Criar ou editar uma ideia à mão. */
 export function IdeaDrawer({ idea, personas, options, defaults, startRefine = false, hasKey = true, onClose }: {
-  idea: Idea | null; personas: { id: string; name: string }[]; options: TerritoryOption[]; defaults: { persona: string; territory: string }; startRefine?: boolean; hasKey?: boolean; onClose: () => void;
+  idea: Idea | null; personas: PersonaOpt[]; options: TerritoryOption[]; defaults: { persona: string; territory: string }; startRefine?: boolean; hasKey?: boolean; onClose: () => void;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -95,7 +96,7 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
           )}
           <div className="field">
             <label htmlFor="dp">Persona relacionada</label>
-            <select id="dp" value={persona} onChange={(e) => { setPersona(e.target.value); setTerritory(''); }}>{[...personas, { id: PUBLICO_ID, name: 'Público geral' }].map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+            <select id="dp" value={persona} onChange={(e) => { setPersona(e.target.value); setTerritory(''); }}><PersonaOptions personas={personas} /></select>
             <small className="muted">Quem vai se reconhecer nesta ideia.</small>
           </div>
           <div className="field">

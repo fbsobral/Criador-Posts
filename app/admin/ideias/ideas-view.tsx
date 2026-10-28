@@ -12,7 +12,8 @@ import { IdeaConvertModal, type PostTemplateLite, type VideoFormatLite } from '.
 import { IdeaDrawer } from './idea-drawer';
 import { IdeaModal } from './idea-modal';
 
-type P = { id: string; name: string };
+import { PersonaOptions, type PersonaOpt } from './persona-options';
+type P = PersonaOpt;
 
 export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, formats, templates }: {
   ideas: Idea[]; personas: P[]; nodes: TNode[]; hasKey: boolean; hasAbout: boolean; formats: VideoFormatLite[]; templates: PostTemplateLite[]; initial: { persona: string; territory: string; generate: boolean };
@@ -56,7 +57,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
         <div className="id-filters">
           <select value={persona} onChange={(e) => { setPersona(e.target.value); setTerritory(''); }} aria-label="Filtrar por persona">
             <option value="">Todas as personas</option>
-            {personaOpts.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            <PersonaOptions personas={personas} />
           </select>
           <select value={territory} onChange={(e) => setTerritory(e.target.value)} aria-label="Filtrar por território">
             <option value="">Todos os territórios</option>

@@ -198,6 +198,7 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority,
                         <button type="button" onClick={() => addChild(n.id)} title="Adicionar filho (Tab)" aria-label="Adicionar filho">↳ filho</button>
                         <button type="button" onClick={() => addSibling(n)} title="Adicionar irmão (Enter)" aria-label="Adicionar irmão">↓ irmão</button>
                         <button type="button" onClick={() => setAi({ parent: n })} title="Gerar filhos com IA" aria-label="Gerar com IA"><IconSpark /></button>
+                        <Link href={`/admin/ideias?t=${n.id}`} title="Gerar ideias de conteúdo para este tema" aria-label="Gerar ideias de conteúdo">💡 ideias</Link>
                       </div>
                     )}
                   </div>
@@ -228,14 +229,19 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority,
               </div>
               {sel.scoreReason && <p className="tr-score-why">{sel.scoreReason}</p>}
             </div>
-            {approved[sel.id] ? <Link href={`/admin/ideias?t=${sel.id}&ver=1`} className="tr-approved">✓ {approved[sel.id]} {approved[sel.id] === 1 ? 'ideia aprovada' : 'ideias aprovadas'} · ver</Link> : null}
+            <div className="tr-ideas-box">
+              <div><b>Ideias de conteúdo</b><small>{approved[sel.id] ? `✓ ${approved[sel.id]} ${approved[sel.id] === 1 ? 'aprovada' : 'aprovadas'} neste tema` : 'Nenhuma aprovada neste tema ainda'}</small></div>
+              <div className="row-actions">
+                <Link href={`/admin/ideias?t=${sel.id}`} className="btn small primary">💡 Gerar ideias</Link>
+                <Link href={`/admin/ideias?t=${sel.id}&ver=1`} className="btn small">Ver</Link>
+              </div>
+            </div>
             <div className="tr-meta">{kidsCount(sel.id)} {kidsCount(sel.id) === 1 ? 'território dentro' : 'territórios dentro'} · {sel.source === 'ai' ? 'criado pela IA' : 'criado à mão'}</div>
             <div className="tr-actions">
               <button type="button" className="btn small primary" onClick={() => setAi({ parent: sel })}><IconSpark /> Gerar com IA</button>
               <button type="button" className="btn small" onClick={() => addChild(sel.id)}><IconPlus /> Filho</button>
               <button type="button" className="btn small" onClick={() => addSibling(sel)}><IconPlus /> Irmão</button>
               <Menu label="Mais" align="right">
-                <Link href={`/admin/ideias?t=${sel.id}`} className="tr-menu-item">💡 Criar ideias de conteúdo</Link>
                 <ReclassifyButton className="tr-menu-item" target={{ scope: 'node', nodeId: sel.id }} count={kidsCount(sel.id) + 1} label={kidsCount(sel.id) ? 'Reclassificar este e filhos' : 'Reclassificar'} disabled={!hasKey || !priority.criteria.length} onError={setErr} />
                 <button type="button" className="tr-menu-item" data-close onClick={() => startEdit(sel.id, sel.name)}><IconEdit /> Renomear</button>
                 <button type="button" className="tr-menu-item danger" data-close onClick={() => remove(sel)}><IconTrash /> Excluir</button>

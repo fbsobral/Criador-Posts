@@ -111,14 +111,14 @@ export async function createPostFromIdea(ideaId: string, templateId: string, sli
   fd.set('templateId', templateId); fd.set('slides', String(slides)); fd.set('instructions', IDEA_INSTRUCTIONS);
   if (withImages) fd.set('withImages', 'on');
   const prev = row.status;
-  await db.update(contentIdeas).set({ status: 'used', updatedAt: new Date() }).where(eq(contentIdeas.id, ideaId));
+  await db.update(contentIdeas).set({ status: 'used', updatedAt: new Date() }).where(and(eq(contentIdeas.id, ideaId), eq(contentIdeas.brandId, c.brandId)));
   try {
     const r = await createBatch(null, fd); // em caso de sucesso redireciona (lança NEXT_REDIRECT)
-    if (r?.error) { await db.update(contentIdeas).set({ status: prev }).where(eq(contentIdeas.id, ideaId)); return { error: r.error }; }
+    if (r?.error) { await db.update(contentIdeas).set({ status: prev }).where(and(eq(contentIdeas.id, ideaId), eq(contentIdeas.brandId, c.brandId))); return { error: r.error }; }
     return {};
   } catch (e) {
     if (e instanceof Error && 'digest' in e && String((e as { digest?: string }).digest).startsWith('NEXT_REDIRECT')) { done(); throw e; }
-    await db.update(contentIdeas).set({ status: prev }).where(eq(contentIdeas.id, ideaId));
+    await db.update(contentIdeas).set({ status: prev }).where(and(eq(contentIdeas.id, ideaId), eq(contentIdeas.brandId, c.brandId)));
     return { error: 'Não foi possível criar o post.' };
   }
 }

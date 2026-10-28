@@ -9,10 +9,11 @@ import { addSuggestedIdeas } from '@/lib/idea-actions';
 import { PUBLICO_ID } from '@/lib/territory';
 import { IdeaBody } from './idea-body';
 import { IconSpark } from '../../icons';
+import { PersonaOptions, type PersonaOpt } from './persona-options';
 
 /** Gera ideias com IA em 2 passos: 1) persona, território e quantidade; 2) revisar o que entra. */
 export function IdeaModal({ personas, options, initialPersona, initialTerritory, hasKey, hasAbout, onClose }: {
-  personas: { id: string; name: string }[]; options: TerritoryOption[]; initialPersona: string; initialTerritory: string; hasKey: boolean; hasAbout: boolean; onClose: () => void;
+  personas: PersonaOpt[]; options: TerritoryOption[]; initialPersona: string; initialTerritory: string; hasKey: boolean; hasAbout: boolean; onClose: () => void;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -56,7 +57,7 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
             <div className="pe-modal-body">
               <div className="field">
                 <label htmlFor="ip">Persona relacionada</label>
-                <select id="ip" value={persona} onChange={(e) => { setPersona(e.target.value); setTerritory(''); }}>{all.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+                <select id="ip" value={persona} onChange={(e) => { setPersona(e.target.value); setTerritory(''); }}><PersonaOptions personas={personas} /></select>
               </div>
               <div className="field">
                 <label htmlFor="it">Território de origem <span className="muted">(opcional)</span></label>
