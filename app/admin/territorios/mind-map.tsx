@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { actionErrorMessage } from '@/lib/action-error';
 import { createNode, deleteNode, moveNode, setScore, updateNode } from '@/lib/territory-actions';
 import { GROUP_COLORS, splitPersonaName } from '@/lib/persona';
 import { NODE_H, NODE_W, buildTree, descendantIds, edgePath, layoutTree, pathOf, type TNode } from '@/lib/territory';
@@ -77,7 +78,7 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority,
     if (!confirm(`Excluir “${n.name}”${k ? ` e os ${k} territórios dentro dele` : ''}?`)) return;
     const ids = descendantIds(nodes, n.id); const prev = nodes;
     setNodes((a) => a.filter((x) => !ids.has(x.id))); setSelected(null);
-    start(async () => { const r = await deleteNode(n.id); if (r.error) { setErr(r.error); setNodes(prev); } });
+    start(async () => { try { const r = await deleteNode(n.id); if (r.error) { setErr(r.error); setNodes(prev); } else router.refresh(); } catch (e) { setErr(actionErrorMessage(e)); setNodes(prev); } });
   };
 
   const move = (id: string, parentId: string | null) => {

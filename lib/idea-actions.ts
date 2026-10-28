@@ -78,9 +78,9 @@ export async function setIdeaStatus(id: string, status: IdeaStatus): Promise<{ e
 
 export async function deleteIdea(id: string): Promise<{ error?: string }> {
   const c = await ctx();
-  await db.delete(contentIdeas).where(and(eq(contentIdeas.id, id), eq(contentIdeas.brandId, c.brandId)));
+  const gone = await db.delete(contentIdeas).where(and(eq(contentIdeas.id, id), eq(contentIdeas.brandId, c.brandId))).returning({ id: contentIdeas.id });
   done();
-  return {};
+  return gone.length ? {} : { error: 'Ideia não encontrada (talvez já tenha sido excluída).' };
 }
 
 /** Grava as ideias que o usuário aprovou na revisão da IA. */

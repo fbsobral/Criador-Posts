@@ -91,9 +91,9 @@ export async function moveNode(id: string, newParentId: string | null): Promise<
 /** Exclui o território e tudo que está dentro dele. */
 export async function deleteNode(id: string): Promise<{ error?: string }> {
   const c = await ctx();
-  await db.delete(territories).where(and(eq(territories.id, id), eq(territories.brandId, c.brandId)));
+  const gone = await db.delete(territories).where(and(eq(territories.id, id), eq(territories.brandId, c.brandId))).returning({ id: territories.id });
   done();
-  return {};
+  return gone.length ? {} : { error: 'Território não encontrado (talvez já tenha sido excluído).' };
 }
 
 /** Grava os territórios sugeridos que o usuário aprovou, sob `parentId` (ou na raiz da persona). */

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
+import { actionErrorMessage } from '@/lib/action-error';
 import { IDEA_STATUS, territoryOptions, type Idea, type IdeaStatus } from '@/lib/idea';
 import { deleteIdea, setIdeaStatus } from '@/lib/idea-actions';
 import { PUBLICO_ID, type TNode } from '@/lib/territory';
@@ -43,7 +44,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
   const count = (s: IdeaStatus) => ideas.filter((i) => (local[i.id] ?? i.status) === s).length;
 
   const changeStatus = (i: Idea, s: IdeaStatus) => { setLocal((l) => ({ ...l, [i.id]: s })); start(async () => { await setIdeaStatus(i.id, s); router.refresh(); }); };
-  const remove = (i: Idea) => { if (!confirm('Excluir esta ideia?')) return; start(async () => { await deleteIdea(i.id); router.refresh(); }); };
+  const remove = (i: Idea) => { if (!confirm('Excluir esta ideia?')) return; start(async () => { try { const r = await deleteIdea(i.id); if (r.error) alert(r.error); router.refresh(); } catch (e) { alert(actionErrorMessage(e)); } }); };
   const copy = async (i: Idea) => {
     const t = ideaText(i, i.personaName, i.territory);
     try { await navigator.clipboard.writeText(t); setCopied(i.id); setTimeout(() => setCopied(''), 1600); } catch { /* sem clipboard */ }

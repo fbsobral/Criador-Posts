@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { createGroup, deleteGroup, deletePersona, deletePersonas, movePersona, movePersonas, updateGroup } from '@/lib/persona-actions';
+import { actionErrorMessage } from '@/lib/action-error';
 import { GROUP_COLORS } from '@/lib/persona';
 import { IconEdit, IconPlus, IconSpark, IconTrash } from '../../icons';
 import { EmptyState, PageHead } from '../ui';
@@ -41,12 +42,12 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
     const cur = people.find((p) => p.id === id); if (!cur || cur.groupId === target) return;
     const prev = people; setErr('');
     setPeople((a) => a.map((p) => (p.id === id ? { ...p, groupId: target } : p)));
-    start(async () => { const r = await movePersona(id, target); if (r.error) { setErr(r.error); setPeople(prev); } else router.refresh(); });
+    start(async () => { try { const r = await movePersona(id, target); if (r.error) { setErr(r.error); setPeople(prev); } else router.refresh(); } catch (e) { setErr(actionErrorMessage(e)); setPeople(prev); } });
   };
   const remove = (p: PersonaRow) => {
     if (!confirm(`Excluir a persona “${p.name}”?`)) return;
     const prev = people; setPeople((a) => a.filter((x) => x.id !== p.id));
-    start(async () => { const r = await deletePersona(p.id); if (r.error) { setErr(r.error); setPeople(prev); } else router.refresh(); });
+    start(async () => { try { const r = await deletePersona(p.id); if (r.error) { setErr(r.error); setPeople(prev); } else router.refresh(); } catch (e) { setErr(actionErrorMessage(e)); setPeople(prev); } });
   };
   const toggleSel = (id: string) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const setMany = (ids: string[], on: boolean) => setSel((s) => { const n = new Set(s); ids.forEach((id) => (on ? n.add(id) : n.delete(id))); return n; });
@@ -54,13 +55,13 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
     const ids = [...sel], target = to === NONE ? null : to; if (!ids.length) return;
     const prev = people; setErr('');
     setPeople((a) => a.map((p) => (sel.has(p.id) ? { ...p, groupId: target } : p)));
-    start(async () => { const r = await movePersonas(ids, target); if (r.error) { setErr(r.error); setPeople(prev); } else { setSel(new Set()); router.refresh(); } });
+    start(async () => { try { const r = await movePersonas(ids, target); if (r.error) { setErr(r.error); setPeople(prev); } else { setSel(new Set()); router.refresh(); } } catch (e) { setErr(actionErrorMessage(e)); setPeople(prev); } });
   };
   const bulkRemove = () => {
     const ids = [...sel]; if (!ids.length) return;
     if (!confirm(`Excluir ${ids.length} ${ids.length === 1 ? 'persona' : 'personas'}? Os territórios delas também serão excluídos. Isso não pode ser desfeito.`)) return;
     const prev = people; setPeople((a) => a.filter((p) => !sel.has(p.id)));
-    start(async () => { const r = await deletePersonas(ids); if (r.error) { setErr(r.error); setPeople(prev); } else { setSel(new Set()); router.refresh(); } });
+    start(async () => { try { const r = await deletePersonas(ids); if (r.error) { setErr(r.error); setPeople(prev); } else { setSel(new Set()); router.refresh(); } } catch (e) { setErr(actionErrorMessage(e)); setPeople(prev); } });
   };
   const startRename = (g: { id: string; name: string; description: string }) => { setEditing(g.id); setGName(g.name); setGDesc(g.description); };
   const saveRename = (id: string) => {
@@ -72,7 +73,7 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
     const n = people.filter((p) => p.groupId === id).length;
     if (!confirm(`Excluir o grupo “${name}”?${n ? ` As ${n} personas dele não serão apagadas: vão para “Sem grupo”.` : ''}`)) return;
     setGroups((a) => a.filter((g) => g.id !== id)); setPeople((a) => a.map((p) => (p.groupId === id ? { ...p, groupId: null } : p)));
-    start(async () => { await deleteGroup(id); router.refresh(); });
+    start(async () => { try { await deleteGroup(id); router.refresh(); } catch (e) { setErr(actionErrorMessage(e)); setGroups(g0); setPeople(p0); } });
   };
   const addGroup = () => {
     if (!newName.trim()) { setAdding(false); return; }

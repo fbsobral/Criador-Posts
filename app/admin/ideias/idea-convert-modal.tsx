@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { actionErrorMessage } from '@/lib/action-error';
 import { fmtUsd } from '@/lib/ai/constants';
 import { IDEA_INSTRUCTIONS, ideaAngle, ideaBrief, ideaPoints, ideaTitle, type Idea } from '@/lib/idea';
 import { createPostFromIdea } from '@/lib/idea-actions';
@@ -10,12 +11,6 @@ import { IconSpark } from '../../icons';
 
 export type VideoFormatLite = { id: string; name: string; description: string; defaultSeconds: number; parts: VideoPart[] };
 export type PostTemplateLite = { id: string; name: string; description: string; editor: string };
-
-/** Depois de um deploy, uma página aberta fica com a versão antiga: pede para recarregar em vez de mostrar o erro técnico. */
-const STALE_MSG = (e: unknown) => {
-  const m = e instanceof Error ? e.message : 'Erro inesperado.';
-  return /Server Action|was not found on the server/i.test(m) ? 'O app foi atualizado enquanto esta página estava aberta. Recarregue a página (Cmd/Ctrl + Shift + R) e tente de novo.' : m;
-};
 
 /** Transforma uma ideia em roteiro de vídeo ou em post de imagem, já com a história da ideia como base. */
 export function IdeaConvertModal({ idea, mode, formats, templates, hasKey, onClose }: {
@@ -45,7 +40,7 @@ export function IdeaConvertModal({ idea, mode, formats, templates, hasKey, onClo
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Não foi possível gerar o roteiro.');
       router.push(`/admin/videos/${j.id}`);
-    } catch (e) { setErr(STALE_MSG(e)); setBusy(false); }
+    } catch (e) { setErr(actionErrorMessage(e)); setBusy(false); }
   }
   const makePost = () => start(async () => {
     setErr('');
@@ -54,7 +49,7 @@ export function IdeaConvertModal({ idea, mode, formats, templates, hasKey, onClo
       if (r?.error) setErr(r.error);
     } catch (e) {
       if (e instanceof Error && 'digest' in e && String((e as { digest?: string }).digest).startsWith('NEXT_REDIRECT')) throw e; // é o redirecionamento de sucesso
-      setErr(STALE_MSG(e));
+      setErr(actionErrorMessage(e));
     }
   });
   const go = isScript ? makeScript : makePost;

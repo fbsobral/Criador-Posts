@@ -1,5 +1,6 @@
 'use client';
 
+import { actionErrorMessage } from '@/lib/action-error';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 import { createPersona, deletePersona, updatePersona } from '@/lib/persona-actions';
@@ -91,7 +92,7 @@ export function PersonaDrawer({ persona, defaultGroupId, groups, startRefine = f
   };
   const del = () => {
     if (!persona || !confirm(`Excluir a persona “${persona.name}”?`)) return;
-    start(async () => { await deletePersona(persona.id); router.refresh(); onClose(); });
+    start(async () => { try { const r = await deletePersona(persona.id); if (r.error) { setErr(r.error); return; } router.refresh(); onClose(); } catch (e) { setErr(actionErrorMessage(e)); } });
   };
 
   return (

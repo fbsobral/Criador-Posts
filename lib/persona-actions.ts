@@ -97,9 +97,9 @@ export async function movePersona(id: string, groupId: string | null): Promise<{
 
 export async function deletePersona(id: string): Promise<{ error?: string }> {
   const c = await ctx();
-  await db.delete(personas).where(and(eq(personas.id, id), eq(personas.brandId, c.brandId)));
+  const gone = await db.delete(personas).where(and(eq(personas.id, id), eq(personas.brandId, c.brandId))).returning({ id: personas.id });
   done();
-  return {};
+  return gone.length ? {} : { error: 'Persona não encontrada (talvez já tenha sido excluída).' };
 }
 
 /** Ações em massa: mover várias personas para um grupo (nulo = sem grupo). */
@@ -118,9 +118,9 @@ export async function movePersonas(ids: string[], groupId: string | null): Promi
 export async function deletePersonas(ids: string[]): Promise<{ error?: string }> {
   const c = await ctx();
   if (!ids.length) return {};
-  await db.delete(personas).where(and(inArray(personas.id, ids.slice(0, 200)), eq(personas.brandId, c.brandId)));
+  const gone = await db.delete(personas).where(and(inArray(personas.id, ids.slice(0, 200)), eq(personas.brandId, c.brandId))).returning({ id: personas.id });
   done();
-  return {};
+  return gone.length ? {} : { error: 'Nenhuma persona foi excluída. Recarregue a página e tente de novo.' };
 }
 
 /** Grava as personas sugeridas que o usuário aprovou. Grupos com o mesmo nome de um existente reaproveitam o existente. */
