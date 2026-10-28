@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { getCtx } from '@/lib/ctx';
 import { IconImage, IconPosts, IconSettings, IconSpark, IconTemplates, IconUsers, IconVideo, IconBoard, IconTarget, IconMap, IconBulb } from '../icons';
 import { NavLink } from './nav-link';
+import { OrgSync } from './org-sync';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { orgId } = await auth();
@@ -22,6 +23,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="admin">
+      <OrgSync serverOrgId={orgId} />
       <aside className="side">
         <div className="side-top">
           <div className="logo-row"><span className="mark"><IconSpark /></span><span>Criador de Posts</span></div>
