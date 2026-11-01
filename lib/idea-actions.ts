@@ -3,9 +3,10 @@
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
-import { contentIdeas, personas, territories } from '@/db/schema';
+import { contentIdeas, personas } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
-import { pathOf, PUBLICO_ID, type TNode } from '@/lib/territory';
+import { pathOf, PUBLICO_ID } from '@/lib/territory';
+import { ensureLink, loadTerritoryNodes } from '@/lib/territory-server';
 import { IDEA_INSTRUCTIONS, ideaBrief, type Idea, type IdeaFields, type IdeaInput, type IdeaStatus } from '@/lib/idea';
 import { createBatch } from '@/lib/actions';
 import { personaBlock } from '@/lib/ai/idea';
@@ -19,7 +20,7 @@ const str = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n);
 const done = () => revalidatePath('/admin/ideias');
 const STATUSES = ['idea', 'approved', 'used'];
 
-/** Valida a persona/território do usuário e devolve os nomes (guardados como texto na ideia). */
+/** Valida a persona/território do usuário (qualquer combinação) e devolve os nomes (guardados como texto na ideia). */
 async function resolve(brandId: string, i: { personaId: string | null; territoryId: string | null; territory: string }) {
   let personaId: string | null = null, personaName = '';
   if (i.personaId && i.personaId !== PUBLICO_ID) {
@@ -29,12 +30,12 @@ async function resolve(brandId: string, i: { personaId: string | null; territory
   } else personaName = 'Público geral';
   let territoryId: string | null = null, territory = str(i.territory, 200);
   if (i.territoryId) {
-    const all = await db.select({ id: territories.id, personaId: territories.personaId, parentId: territories.parentId, name: territories.name, description: territories.description, position: territories.position, source: territories.source })
-      .from(territories).where(eq(territories.brandId, brandId));
+    const all = await loadTerritoryNodes(brandId);
     const me = all.find((n) => n.id === i.territoryId);
     if (!me) return { error: 'Território não encontrado.' as const };
-    const mine = all.filter((n) => n.personaId === me.personaId).map((n) => ({ ...n, personaId: n.personaId ?? PUBLICO_ID })) as TNode[];
-    territoryId = me.id; territory = pathOf(mine, me.id).join(' › ');
+    territoryId = me.id; territory = pathOf(all, me.id).join(' › ');
+    // a dupla persona × território passou a existir: garante a ligação (aparece na matriz do mapa)
+    if (personaId) { await ensureLink(brandId, all, me.id, personaId); revalidatePath('/admin/territorios'); }
   }
   return { personaId, personaName, territoryId, territory };
 }

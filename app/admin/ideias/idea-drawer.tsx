@@ -7,6 +7,7 @@ import { PersonaOptions, type PersonaOpt } from './persona-options';
 import { EMPTY_FIELDS, IDEA_FIELDS, type Idea, type IdeaFields, type TerritoryOption } from '@/lib/idea';
 import { createIdea, updateIdea } from '@/lib/idea-actions';
 import { PUBLICO_ID } from '@/lib/territory';
+import { TerritorySelect } from './territory-select';
 
 /** Criar ou editar uma ideia à mão. */
 export function IdeaDrawer({ idea, personas, options, defaults, startRefine = false, hasKey = true, onClose }: {
@@ -19,7 +20,6 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
   const [territoryText, setTerritoryText] = useState(idea?.territoryId ? '' : idea?.territory ?? '');
   const [f, setF] = useState<IdeaFields>(() => (idea ? { pain: idea.pain, impact: idea.impact, cause: idea.cause, guide: idea.guide, plan: idea.plan, gain: idea.gain, desire: idea.desire, cta: idea.cta } : EMPTY_FIELDS));
   const [err, setErr] = useState('');
-  const terrOpts = options.filter((o) => o.personaId === persona);
 
   // refinar com IA: pedir → comparar → aplicar no formulário (só salva quando você clicar em Salvar)
   const [refine, setRefine] = useState(startRefine);
@@ -96,15 +96,12 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
           )}
           <div className="field">
             <label htmlFor="dp">Persona relacionada</label>
-            <select id="dp" value={persona} onChange={(e) => { setPersona(e.target.value); setTerritory(''); }}><PersonaOptions personas={personas} /></select>
+            <select id="dp" value={persona} onChange={(e) => setPersona(e.target.value)}><PersonaOptions personas={personas} /></select>
             <small className="muted">Quem vai se reconhecer nesta ideia.</small>
           </div>
           <div className="field">
             <label htmlFor="dt">Território</label>
-            <select id="dt" value={territory} onChange={(e) => setTerritory(e.target.value)}>
-              <option value="">Sem território do mapa</option>
-              {terrOpts.map((o) => <option key={o.id} value={o.id}>{'  '.repeat(o.depth)}{o.label}</option>)}
-            </select>
+            <TerritorySelect id="dt" options={options} persona={persona} value={territory} onChange={setTerritory} empty="Sem território do mapa" />
             {!territory && <input type="text" value={territoryText} onChange={(e) => setTerritoryText(e.target.value)} maxLength={200} placeholder="Ou escreva o tema à mão" style={{ marginTop: 6 }} />}
             <small className="muted">De onde a ideia nasce (opcional).</small>
           </div>

@@ -1,16 +1,17 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { brandSettings, personas, territories } from '@/db/schema';
+import { brandSettings, personas } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { AiError } from '@/lib/ai/generate';
 import { suggestTerritories, type TerritoryMode } from '@/lib/ai/territory';
-import { MAX_TERRITORY_NODES_PER_RUN, PUBLICO_ID, outline, pathOf, type TNode } from '@/lib/territory';
+import { MAX_TERRITORY_NODES_PER_RUN, PUBLICO_ID, outline, pathOf } from '@/lib/territory';
+import { loadTerritoryNodes } from '@/lib/territory-server';
 import { priorityOf } from '@/lib/priority';
 import { loadBrandProfile } from '@/lib/video-server';
 
 export const maxDuration = 120;
 
-/** Sugere territórios para uma persona considerando TUDO que ela já tem no mapa. Não grava: o usuário aprova antes. */
+/** Sugere territórios (de uma persona, ou temas macro sem persona) considerando TUDO que já existe no mapa da marca. Não grava: o usuário aprova antes. */
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
@@ -20,10 +21,7 @@ export async function POST(req: Request) {
   const [persona] = publico ? [null] : await db.select().from(personas).where(and(eq(personas.id, String(b?.personaId ?? '')), eq(personas.brandId, c.brandId)));
   if (!publico && !persona) return Response.json({ error: 'Persona não encontrada.' }, { status: 404 });
 
-  const all = await db.select({ id: territories.id, personaId: territories.personaId, parentId: territories.parentId, name: territories.name, description: territories.description, position: territories.position, source: territories.source })
-    .from(territories).where(eq(territories.brandId, c.brandId));
-  const mapId = persona ? persona.id : PUBLICO_ID;
-  const mine = all.filter((n) => (n.personaId ?? PUBLICO_ID) === mapId).map((n) => ({ ...n, personaId: mapId })) as TNode[];
+  const mine = await loadTerritoryNodes(c.brandId); // o mapa é um só, da marca inteira
   const parentId = typeof b?.parentId === 'string' && b.parentId ? b.parentId : null;
   if (parentId && !mine.some((n) => n.id === parentId)) return Response.json({ error: 'Território não encontrado.' }, { status: 404 });
   if (mode === 'expand' && !parentId) return Response.json({ error: 'Escolha o território que será expandido.' }, { status: 400 });
@@ -36,7 +34,7 @@ export async function POST(req: Request) {
   const people = publico ? await db.select({ name: personas.name, tagline: personas.tagline, data: personas.data }).from(personas).where(eq(personas.brandId, c.brandId)).limit(30) : [];
   try {
     const r = await suggestTerritories({
-      // dentro de uma persona o foco é só nela: sem ICP e sem o "Público" da marca; o público e as personas entram só no mapa sem persona
+      // com persona o foco é só nela (sem ICP nem "Público" da marca); o tema macro considera o ICP e todas as personas
       persona: persona ? { name: persona.name, tagline: persona.tagline, role: persona.data.role, data: persona.data } : null,
       publicoPersonas: people.map((p) => ({ name: p.name, tagline: p.tagline, pains: p.data.pains })),
       brand: persona ? { ...brand, audience: '' } : brand, icp: persona ? '' : icp, mode, count, depth,

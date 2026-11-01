@@ -1,16 +1,17 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '@/db';
-import { brandSettings, contentIdeas, personas, territories } from '@/db/schema';
+import { brandSettings, contentIdeas, personas } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { AiError } from '@/lib/ai/generate';
 import { suggestIdeas } from '@/lib/ai/idea';
 import { MAX_IDEAS_PER_RUN } from '@/lib/idea';
-import { PUBLICO_ID, pathOf, type TNode } from '@/lib/territory';
+import { PUBLICO_ID, pathOf, translationFor } from '@/lib/territory';
+import { loadTerritoryNodes } from '@/lib/territory-server';
 import { loadBrandProfile } from '@/lib/video-server';
 
 export const maxDuration = 120;
 
-/** Sugere ideias de conteúdo para uma persona e (opcionalmente) um território. Não grava: o usuário aprova antes. */
+/** Sugere ideias de conteúdo para um par persona × território (qualquer combinação; a tradução do tema para a persona, se existir, entra como ponte). Não grava: o usuário aprova antes. */
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
@@ -19,15 +20,13 @@ export async function POST(req: Request) {
   const [persona] = personaId ? await db.select().from(personas).where(and(eq(personas.id, personaId), eq(personas.brandId, c.brandId))) : [null];
   if (personaId && !persona) return Response.json({ error: 'Persona não encontrada.' }, { status: 404 });
 
-  let territory: { path: string[]; description: string; children: string[] } | null = null;
+  let territory: { path: string[]; description: string; children: string[]; translation: string } | null = null;
   const territoryId = typeof b?.territoryId === 'string' && b.territoryId ? b.territoryId : null;
   if (territoryId) {
-    const all = await db.select({ id: territories.id, personaId: territories.personaId, parentId: territories.parentId, name: territories.name, description: territories.description, position: territories.position, source: territories.source })
-      .from(territories).where(eq(territories.brandId, c.brandId));
+    const all = await loadTerritoryNodes(c.brandId);
     const me = all.find((n) => n.id === territoryId);
     if (!me) return Response.json({ error: 'Território não encontrado.' }, { status: 404 });
-    const mine = all.filter((n) => n.personaId === me.personaId).map((n) => ({ ...n, personaId: n.personaId ?? PUBLICO_ID })) as TNode[];
-    territory = { path: pathOf(mine, territoryId), description: me.description, children: mine.filter((n) => n.parentId === territoryId).map((n) => n.name) };
+    territory = { path: pathOf(all, territoryId), description: me.description, children: all.filter((n) => n.parentId === territoryId).map((n) => n.name), translation: personaId ? translationFor(all, territoryId, personaId).text : '' };
   }
 
   const existing = await db.select({ pain: contentIdeas.pain }).from(contentIdeas)

@@ -17,7 +17,7 @@ const SCHEMA = {
 const clean = (s: unknown, max: number) => (typeof s === 'string' ? s.trim().slice(0, max) : '');
 const norm = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
 
-const SYSTEM = `Você é um estrategista de comunicação sênior, formado em enquadramento (framing) cognitivo à maneira de George Lakoff. Você cria IDEIAS DE CONTEÚDO em português do Brasil, a partir de um TERRITÓRIO (um tema do mapa de conteúdo) e de uma PERSONA.
+const SYSTEM = `Você é um estrategista de comunicação sênior, formado em enquadramento (framing) cognitivo à maneira de George Lakoff. Você cria IDEIAS DE CONTEÚDO em português do Brasil, a partir de um TERRITÓRIO (um tema do mapa de conteúdo, às vezes um debate coletivo e macro) e de uma PERSONA. Quando houver a TRADUÇÃO do tema para a persona, ela é a ponte: parta dela para que a dor seja a forma como ESSA persona vive o tema, sem perder a causa coletiva.
 
 ESTRUTURA DE CADA IDEIA (todos os campos são obrigatórios; juntos contam uma história: da dor ao convite)
 1. "pain" — a DOR, em LINGUAGEM DE RUA: como a própria pessoa diria, em 1 ou 2 frases, de boca, no ônibus, no zap, na fila. Concreta, cotidiana, sem jargão, sem "marketês" e sem termo técnico. Pode ter gíria leve e o jeito de falar da persona, sem caricatura nem deboche. Nada de "a persona sente que…": é a fala dela.
@@ -58,7 +58,7 @@ export type SuggestIdeasArgs = {
   icp: string;
   brand: BrandProfile;
   /** Território de origem: caminho até ele e o que há dentro dele. */
-  territory: { path: string[]; description: string; children: string[] } | null;
+  territory: { path: string[]; description: string; children: string[]; /** Como o tema aparece na vida desta persona (se já foi traduzido). */ translation?: string } | null;
   /** Dores das ideias que já existem para este território/persona. */
   existingPains: string[];
   count: number;
@@ -77,7 +77,7 @@ export async function suggestIdeas(a: SuggestIdeasArgs): Promise<{ ideas: Sugges
   const user = [
     a.persona ? personaBlock(a.persona) : `PÚBLICO GERAL (sem persona específica).\nICP DA MARCA:\n${a.icp.trim() || '(não informado)'}`,
     a.territory
-      ? `TERRITÓRIO: ${a.territory.path.join(' › ')}${a.territory.description ? `\nO que entra aqui: ${a.territory.description}` : ''}${a.territory.children.length ? `\nSubtemas (use como ângulos, sem esgotar): ${a.territory.children.join('; ')}` : ''}`
+      ? `TERRITÓRIO: ${a.territory.path.join(' › ')}${a.territory.description ? `\nO que entra aqui: ${a.territory.description}` : ''}${a.territory.children.length ? `\nSubtemas (use como ângulos, sem esgotar): ${a.territory.children.join('; ')}` : ''}${a.territory.translation ? `\nTRADUÇÃO DO TEMA PARA ESTA PERSONA (como ele aparece no dia a dia dela; use como ponte entre o debate coletivo e a dor em linguagem de rua):\n${a.territory.translation}` : ''}`
       : 'TERRITÓRIO: nenhum específico. Escolha ângulos relevantes para esta persona e para o que a organização faz.',
     a.existingPains.length ? `IDEIAS QUE JÁ EXISTEM (não repita as dores nem os ângulos):\n${a.existingPains.map((p) => `- ${p}`).join('\n')}` : '',
     `TAREFA: crie ${n} ideia(s) de conteúdo com os 8 campos (pain, impact, cause, guide, plan, gain, desire, cta).`,

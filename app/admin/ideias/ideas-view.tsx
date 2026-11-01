@@ -6,6 +6,7 @@ import { actionErrorMessage } from '@/lib/action-error';
 import { IDEA_STATUS, territoryOptions, type Idea, type IdeaStatus } from '@/lib/idea';
 import { deleteIdea, setIdeaStatus } from '@/lib/idea-actions';
 import { PUBLICO_ID, type TNode } from '@/lib/territory';
+import { TerritorySelect } from './territory-select';
 import { IconEdit, IconPlus, IconPosts, IconSpark, IconTrash, IconVideo } from '../../icons';
 import { EmptyState } from '../ui';
 import { IdeaBody, ideaText } from './idea-body';
@@ -23,11 +24,11 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
   const [, start] = useTransition();
   const opts = useMemo(() => territoryOptions(nodes), [nodes]);
   const initialTerritory = opts.find((o) => o.id === initial.territory);
-  const [persona, setPersona] = useState(initialTerritory?.personaId ?? initial.persona);
+  const [persona, setPersona] = useState(initial.persona);
   const [territory, setTerritory] = useState(initialTerritory?.id ?? '');
   const [status, setStatus] = useState<IdeaStatus | ''>('');
   const [q, setQ] = useState('');
-  const [ai, setAi] = useState<{ persona: string; territory: string } | null>(initial.generate ? { persona: initialTerritory?.personaId ?? initial.persona ?? '', territory: initialTerritory?.id ?? '' } : null);
+  const [ai, setAi] = useState<{ persona: string; territory: string } | null>(initial.generate ? { persona: initial.persona ?? '', territory: initialTerritory?.id ?? '' } : null);
   const [edit, setEdit] = useState<Idea | 'new' | null>(null);
   const [refining, setRefining] = useState(false);
   const [copied, setCopied] = useState('');
@@ -50,20 +51,16 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
     try { await navigator.clipboard.writeText(t); setCopied(i.id); setTimeout(() => setCopied(''), 1600); } catch { /* sem clipboard */ }
   };
   const personaOpts = [...personas, { id: PUBLICO_ID, name: 'Público geral' }];
-  const terrOpts = opts.filter((o) => !persona || o.personaId === persona);
 
   return (
     <>
       <div className="id-bar">
         <div className="id-filters">
-          <select value={persona} onChange={(e) => { setPersona(e.target.value); setTerritory(''); }} aria-label="Filtrar por persona">
+          <select value={persona} onChange={(e) => setPersona(e.target.value)} aria-label="Filtrar por persona">
             <option value="">Todas as personas</option>
             <PersonaOptions personas={personas} />
           </select>
-          <select value={territory} onChange={(e) => setTerritory(e.target.value)} aria-label="Filtrar por território">
-            <option value="">Todos os territórios</option>
-            {terrOpts.map((o) => <option key={o.id} value={o.id}>{'  '.repeat(o.depth)}{o.label}</option>)}
-          </select>
+          <TerritorySelect options={opts} persona="" value={territory} onChange={setTerritory} empty="Todos os territórios" />
           <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar nas ideias…" aria-label="Buscar" />
         </div>
         <div className="row-actions">

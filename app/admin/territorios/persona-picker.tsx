@@ -9,7 +9,7 @@ export type PickerGroup = { key: string; label: string; color: string; items: Pi
 const initialsOf = (n: string) => n.replace(/,.*/, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
 
 /** Seletor de persona: um botão com a persona atual que abre a lista agrupada (sem rolagem lateral). */
-export function PersonaPicker({ groups, currentId }: { groups: PickerGroup[]; currentId: string | null }) {
+export function PersonaPicker({ groups, currentId, label = 'Escolher persona' }: { groups: PickerGroup[]; currentId: string | null; label?: string }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const ref = useRef<HTMLDivElement>(null);
@@ -29,7 +29,7 @@ export function PersonaPicker({ groups, currentId }: { groups: PickerGroup[]; cu
   return (
     <div className="tr-picker" ref={ref}>
       <button type="button" className={`tr-tab tr-picker-btn${cur ? ' on' : ''}`} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        {cur ? <><span className="pe-av sm" style={{ background: cur.color }}>{initialsOf(cur.name)}</span><span className="tr-tab-name" title={cur.name}><b>{split!.first}</b>{split!.label && <small>{split!.label}</small>}</span></> : <span className="tr-tab-name"><b>Escolher persona</b><small>{all.length} {all.length === 1 ? 'persona' : 'personas'}</small></span>}
+        {cur ? <><span className="pe-av sm" style={{ background: cur.color }}>{initialsOf(cur.name)}</span><span className="tr-tab-name" title={cur.name}><b>{split!.first}</b>{split!.label && <small>{split!.label}</small>}</span></> : <span className="tr-tab-name"><b>{label}</b><small>{all.length} {all.length === 1 ? 'persona' : 'personas'}</small></span>}
         <span aria-hidden className="tr-picker-caret">▾</span>
       </button>
       {open && (

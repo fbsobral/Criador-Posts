@@ -299,14 +299,14 @@ export const personas = pgTable(
   (t) => [index('personas_brand_idx').on(t.brandId, t.groupId, t.position)],
 );
 
-/** Território: nó do mapa mental de conteúdo de uma persona (árvore com vários níveis). Excluir o pai exclui os filhos. */
+/** Território: nó do mapa mental de conteúdo da marca (árvore com vários níveis). Excluir o pai exclui os filhos. As personas se ligam ao território em `territory_personas`; `persona_id` aqui é só a ORIGEM (quem inspirou o tema), não o dono. */
 export const territories = pgTable(
   'territories',
   {
     id: uuid('id').primaryKey().defaultRandom(),
     brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
-    /** Nulo = mapa do "Público geral" (sem persona). */
-    personaId: uuid('persona_id').references(() => personas.id, { onDelete: 'cascade' }),
+    /** Origem: persona cujas dores geraram o tema. Nulo = tema macro (nasceu sem persona). Não restringe quem pode usar o território. */
+    personaId: uuid('persona_id').references(() => personas.id, { onDelete: 'set null' }),
     parentId: uuid('parent_id').references((): AnyPgColumn => territories.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description').notNull().default(''),
@@ -320,6 +320,23 @@ export const territories = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (t) => [index('territories_persona_idx').on(t.brandId, t.personaId, t.parentId, t.position)],
+);
+
+/** Ligação território × persona: a persona "enxerga" o tema, e a tradução diz como ele aparece no dia a dia dela. Vale também para os filhos do território (herança). */
+export const territoryPersonas = pgTable(
+  'territory_personas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+    territoryId: uuid('territory_id').notNull().references(() => territories.id, { onDelete: 'cascade' }),
+    personaId: uuid('persona_id').notNull().references(() => personas.id, { onDelete: 'cascade' }),
+    /** Como o tema aparece na vida da persona (cena, linguagem, o que ela já sente). Vazio = ligada, ainda sem tradução. */
+    translation: text('translation').notNull().default(''),
+    source: text('source').notNull().default('manual'), // 'ai' | 'manual'
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex('territory_personas_pair_idx').on(t.territoryId, t.personaId), index('territory_personas_brand_idx').on(t.brandId, t.personaId)],
 );
 
 /** Ideia de conteúdo: pode nascer de um território (ou não). Guarda o nome da persona e o caminho do território como texto, para sobreviver se forem excluídos. */

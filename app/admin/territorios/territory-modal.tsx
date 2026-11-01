@@ -4,16 +4,19 @@ import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
 import { fmtUsd } from '@/lib/ai/constants';
 import type { SuggestedNode, TerritoryMode } from '@/lib/ai/territory';
-import { ESTIMATED_COST_PER_TERRITORY, ESTIMATED_COST_TERRITORY_BASE, MAX_TERRITORY_NODES_PER_RUN } from '@/lib/territory';
+import { ESTIMATED_COST_PER_TERRITORY, ESTIMATED_COST_TERRITORY_BASE, MAX_TERRITORY_NODES_PER_RUN, PUBLICO_ID } from '@/lib/territory';
 import { addSuggestedNodes } from '@/lib/territory-actions';
 import { IconSpark } from '../../icons';
 
 type Choice = { id: string; mode: TerritoryMode; label: string; hint: string; count: number; depth: number };
 
 /** Gera territórios com IA em 2 passos: 1) o que gerar; 2) revisar o que entra no mapa. */
-export function TerritoryModal({ persona, parent, existingCount, hasKey, hasAbout, onClose }: {
-  persona: { id: string; name: string }; parent: { id: string; name: string } | null; existingCount: number; hasKey: boolean; hasAbout: boolean; onClose: () => void;
+export function TerritoryModal({ personas, initialPersona, parent, existingCount, hasKey, hasAbout, onClose }: {
+  personas: { id: string; name: string }[]; /** persona em foco; 'publico' = tema macro (sem persona) */ initialPersona: string; parent: { id: string; name: string } | null; existingCount: number; hasKey: boolean; hasAbout: boolean; onClose: () => void;
 }) {
+  const [personaId, setPersonaId] = useState(initialPersona || PUBLICO_ID);
+  const persona = personas.find((p) => p.id === personaId) ?? { id: PUBLICO_ID, name: 'Tema macro (sem persona)' };
+  const macro = persona.id === PUBLICO_ID;
   const router = useRouter();
   const [pending, start] = useTransition();
   const choices: Choice[] = parent
@@ -22,7 +25,7 @@ export function TerritoryModal({ persona, parent, existingCount, hasKey, hasAbou
       { id: 'sub', mode: 'expand', label: 'Subárvore deste território', hint: 'Filhos e netos, de uma vez', count: 4, depth: 2 },
     ]
     : [
-      { id: 'first', mode: 'first', label: 'Só o 1º nível', hint: 'As grandes áreas de interesse da persona', count: 6, depth: 1 },
+      { id: 'first', mode: 'first', label: 'Só o 1º nível', hint: 'As grandes áreas de interesse (ou de debate, no tema macro)', count: 6, depth: 1 },
       { id: 'full', mode: 'full', label: 'Território completo', hint: 'Áreas, subtemas e tópicos (vários níveis)', count: 4, depth: 3 },
     ];
   const [choice, setChoice] = useState(choices[0].id);
@@ -67,7 +70,7 @@ export function TerritoryModal({ persona, parent, existingCount, hasKey, hasAbou
     } catch (e) { setErr(e instanceof Error ? e.message : 'Erro inesperado.'); } finally { setBusy(false); }
   }
   const add = () => start(async () => {
-    const r = await addSuggestedNodes(persona.id, parent?.id ?? null, nodes.filter((n) => !off.has(n.ref)));
+    const r = await addSuggestedNodes(macro ? null : persona.id, parent?.id ?? null, nodes.filter((n) => !off.has(n.ref)));
     if (r.error) { setErr(r.error); return; }
     router.refresh(); onClose();
   });
@@ -82,7 +85,14 @@ export function TerritoryModal({ persona, parent, existingCount, hasKey, hasAbou
         {step === 'ask' ? (
           <>
             <div className="pe-modal-body">
-              <p className="muted">Para <b>{persona.name}</b>{parent ? <> · dentro de <b>{parent.name}</b></> : ''}</p>
+              <div className="field">
+                <label htmlFor="tmp">Começar por</label>
+                <select id="tmp" value={personaId} onChange={(e) => setPersonaId(e.target.value)}>
+                  <option value={PUBLICO_ID}>Um tema macro, sem persona (depois traduzo para as personas)</option>
+                  <optgroup label="Das dores de uma persona">{personas.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</optgroup>
+                </select>
+                {parent && <small className="muted">Dentro de <b>{parent.name}</b>.</small>}
+              </div>
               <div className="tr-choices">
                 {choices.map((c) => (
                   <button key={c.id} type="button" className={`tr-choice${c.id === choice ? ' on' : ''}`} onClick={() => pick(c)} aria-pressed={c.id === choice}><b>{c.label}</b><small>{c.hint}</small></button>
@@ -106,8 +116,8 @@ export function TerritoryModal({ persona, parent, existingCount, hasKey, hasAbou
                 <summary>Instruções extras <span className="muted">(opcional)</span></summary>
                 <textarea rows={3} value={instructions} onChange={(e) => setInstructions(e.target.value)} maxLength={1200} placeholder="Ex.: Foque em quem ainda não tem reserva de emergência. Evite temas políticos." />
               </details>
-              <div className="notice info">{persona.id === 'publico' ? <>A IA considera o <b>ICP</b> e <b>todas as personas</b> para criar territórios do público como um todo, e</> : <>A IA <b>foca só nesta persona</b> (sem misturar o público em geral ou outras personas) e</>} considera <b>tudo que já existe neste mapa</b>{existingCount > 0 ? <> ({existingCount} {existingCount === 1 ? 'território' : 'territórios'})</> : ''} para <b>não repetir</b> nada.</div>
-              {!hasAbout && <div className="notice warn">Você ainda não descreveu <b>o que a organização faz</b> (card no topo da página). Sem isso, os territórios ficam genéricos: eles partem só do que a persona busca.</div>}
+              <div className="notice info">{macro ? <>A IA pensa em <b>debates coletivos</b> que importam para a organização (considerando o <b>ICP</b> e <b>todas as personas</b>), em linguagem neutra. Depois você escolhe para quais personas <b>traduzir</b> cada tema, e</> : <>A IA <b>foca só nesta persona</b> e os temas já nascem ligados a ela. Ela</>} considera <b>tudo que já existe no mapa da marca</b>{existingCount > 0 ? <> ({existingCount} {existingCount === 1 ? 'território' : 'territórios'})</> : ''} para <b>não repetir</b> nada.</div>
+              {!hasAbout && <div className="notice warn">Você ainda não descreveu <b>o que a organização faz</b> (card no topo da página). Sem isso, os territórios ficam genéricos.</div>}
               {!hasKey && <div className="notice warn">A IA não está configurada neste servidor (falta a <code>ANTHROPIC_API_KEY</code>).</div>}
               {busy && <div className="notice info" role="status">A IA está montando os territórios. {cur.mode === 'full' ? 'O mapa completo leva cerca de 30 a 60 segundos' : 'Leva cerca de 10 a 30 segundos'}; mantenha esta janela aberta.</div>}
               {err && <div className="notice err">{err}</div>}

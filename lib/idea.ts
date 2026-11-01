@@ -32,22 +32,22 @@ export const MAX_IDEAS_PER_RUN = 8;
 export const ESTIMATED_COST_PER_IDEA = 0.022;
 export const ESTIMATED_COST_IDEA_BASE = 0.01;
 
-import { buildTree, type TNode, type TreeItem } from './territory';
+import { buildTree, effectivePersonas, translationFor, type TNode, type TreeItem } from './territory';
 
-export type TerritoryOption = { id: string; personaId: string; label: string; path: string; depth: number };
+/** `personaIds`: quem enxerga o território (ligação própria ou herdada); `translated`: quem já tem a tradução do tema. */
+export type TerritoryOption = { id: string; label: string; path: string; depth: number; personaIds: string[]; translated: string[] };
 
-/** Territórios de todos os mapas em ordem de árvore, com o caminho completo, para os seletores. */
+/** Territórios do mapa da marca em ordem de árvore, com o caminho completo, para os seletores. */
 export function territoryOptions(nodes: TNode[]): TerritoryOption[] {
   const out: TerritoryOption[] = [];
   const walk = (items: TreeItem<TNode>[], depth: number, path: string[]) => {
     for (const it of items) {
       const p = [...path, it.data.name];
-      out.push({ id: it.id, personaId: it.data.personaId, label: it.data.name, path: p.join(' › '), depth });
+      out.push({ id: it.id, label: it.data.name, path: p.join(' › '), depth, personaIds: effectivePersonas(nodes, it.id), translated: effectivePersonas(nodes, it.id).filter((pid) => translationFor(nodes, it.id, pid).text) });
       walk(it.children, depth + 1, p);
     }
   };
-  const ids = [...new Set(nodes.map((n) => n.personaId))];
-  for (const pid of ids) walk(buildTree(nodes.filter((n) => n.personaId === pid)), 0, []);
+  walk(buildTree(nodes), 0, []);
   return out;
 }
 

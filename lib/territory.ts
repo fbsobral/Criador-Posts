@@ -1,8 +1,11 @@
 /** Tipos, árvore e layout do mapa mental de territórios (servidor e navegador). */
 
-export type TNode = { id: string; personaId: string; parentId: string | null; name: string; description: string; position: number; source: string; score?: number | null; scoreReason?: string };
+/** Ligação do território com uma persona: `translation` é como o tema aparece na vida dela (vazio = ligada, sem tradução). */
+export type TLink = { personaId: string; translation: string };
+/** `personaId` é só a ORIGEM do tema (PUBLICO_ID = tema macro, nasceu sem persona); quem usa o tema está em `links`. */
+export type TNode = { id: string; personaId: string; parentId: string | null; name: string; description: string; position: number; source: string; score?: number | null; scoreReason?: string; links: TLink[] };
 
-/** Identificador do mapa sem persona ("Público geral") no navegador; no banco é persona_id nulo. */
+/** "Sem persona" no navegador (tema macro / ideia sem persona); no banco é persona_id nulo. */
 export const PUBLICO_ID = 'publico';
 export const MAX_TERRITORY_NODES_PER_RUN = 60;
 export const ESTIMATED_COST_TERRITORY_BASE = 0.01;
@@ -90,34 +93,34 @@ export function layoutTree<T>(roots: TreeItem<T>[], collapsed: Set<string>) {
 
 export const edgePath = (e: Edge) => { const mx = (e.x1 + e.x2) / 2; return `M ${e.x1} ${e.y1} C ${mx} ${e.y1}, ${mx} ${e.y2}, ${e.x2} ${e.y2}`; };
 
-/* ---------- visão geral (consolidada) ---------- */
-export type Merged = { key: string; name: string; personaIds: string[]; descriptions: { personaId: string; text: string }[]; children: Merged[]; alsoIn: string[]; nodeIds: Record<string, string> };
+/* ---------- personas ligadas (herança pela árvore) ---------- */
 
-const norm = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
+/** Personas que enxergam o território: as ligadas a ele e as ligadas a qualquer ancestral (os filhos herdam). */
+export function effectivePersonas(nodes: TNode[], id: string): string[] {
+  const by = new Map(nodes.map((n) => [n.id, n]));
+  const out = new Set<string>();
+  let cur = by.get(id), g = 0;
+  while (cur && g++ < 50) { for (const l of cur.links) out.add(l.personaId); cur = cur.parentId ? by.get(cur.parentId) : undefined; }
+  return [...out];
+}
 
-/** Junta os mapas de todas as personas: nós com o mesmo nome (sem acento e caixa) sob o mesmo pai viram um só, com as personas que o usam. */
-export function mergeTrees(nodes: TNode[]): Merged[] {
-  type G = TNode[];
-  const kids = new Map<string | null, TNode[]>();
-  for (const n of nodes) (kids.get(n.parentId) ?? kids.set(n.parentId, []).get(n.parentId)!).push(n);
-  const mergeLevel = (group: G, path: string[]): Merged[] => {
-    const byName = new Map<string, G>();
-    for (const n of [...group].sort((a, b) => a.position - b.position)) (byName.get(norm(n.name)) ?? byName.set(norm(n.name), []).get(norm(n.name))!).push(n);
-    return [...byName.entries()].map(([key, g]) => {
-      const children = g.flatMap((n) => kids.get(n.id) ?? []);
-      const name = g[0].name;
-      return {
-        key: [...path, key].join('/'), name, personaIds: [...new Set(g.map((n) => n.personaId))],
-        descriptions: g.filter((n) => n.description).map((n) => ({ personaId: n.personaId, text: n.description })),
-        children: mergeLevel(children, [...path, key]), alsoIn: [], nodeIds: Object.fromEntries(g.map((n) => [n.personaId, n.id])),
-      };
-    });
-  };
-  const tree = mergeLevel(kids.get(null) ?? [], []);
-  // o mesmo nome em lugares diferentes da hierarquia: avisa nos dois
-  const places = new Map<string, Merged[]>();
-  const index = (items: Merged[], pathNames: string[]) => { for (const m of items) { (places.get(norm(m.name)) ?? places.set(norm(m.name), []).get(norm(m.name))!).push(m); (m as Merged & { _p?: string })._p = [...pathNames, m.name].join(' › '); index(m.children, [...pathNames, m.name]); } };
-  index(tree, []);
-  for (const list of places.values()) if (list.length > 1) for (const m of list) m.alsoIn = list.filter((o) => o !== m).map((o) => (o as Merged & { _p?: string })._p ?? o.name);
-  return tree;
+/** Tradução do tema para a persona: a do próprio território; se não houver, a do ancestral mais próximo. */
+export function translationFor(nodes: TNode[], id: string, personaId: string): { text: string; from: string | null } {
+  const by = new Map(nodes.map((n) => [n.id, n]));
+  let cur = by.get(id), g = 0;
+  while (cur && g++ < 50) {
+    const l = cur.links.find((x) => x.personaId === personaId && x.translation.trim());
+    if (l) return { text: l.translation, from: cur.id === id ? null : cur.name };
+    cur = cur.parentId ? by.get(cur.parentId) : undefined;
+  }
+  return { text: '', from: null };
+}
+
+/** Lente de uma persona: os territórios que ela enxerga (ligados ou herdados) e, só como contexto, os ancestrais deles. */
+export function lensNodes(nodes: TNode[], personaId: string): { nodes: TNode[]; context: Set<string> } {
+  const by = new Map(nodes.map((n) => [n.id, n]));
+  const mine = new Set(nodes.filter((n) => effectivePersonas(nodes, n.id).includes(personaId)).map((n) => n.id));
+  const keep = new Set(mine);
+  for (const id of mine) { let cur = by.get(id)?.parentId, g = 0; while (cur && g++ < 50) { keep.add(cur); cur = by.get(cur)?.parentId ?? null; } }
+  return { nodes: nodes.filter((n) => keep.has(n.id)), context: new Set([...keep].filter((id) => !mine.has(id))) };
 }

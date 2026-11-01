@@ -5,34 +5,33 @@ import { getCtx } from '@/lib/ctx';
 import { AiError } from '@/lib/ai/generate';
 import { scoreTerritories, type Scored } from '@/lib/ai/priority';
 import { priorityOf } from '@/lib/priority';
-import { PUBLICO_ID, descendantIds, pathOf, type TNode } from '@/lib/territory';
+import { PUBLICO_ID, descendantIds, effectivePersonas, pathOf, type TNode } from '@/lib/territory';
+import { loadTerritoryNodes } from '@/lib/territory-server';
 import { loadBrandProfile } from '@/lib/video-server';
 
 export const maxDuration = 300;
 const CHUNK = 50;
 
-/** Reclassifica (score 1–100) os territórios: da marca toda, de um mapa (persona/público geral) ou de um território e seus filhos. Grava direto. */
+/** Reclassifica (score 1–100) os territórios: da marca toda, os que uma persona enxerga ou um território e seus filhos. Grava direto. */
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const scope = b?.scope === 'all' ? 'all' : b?.scope === 'node' ? 'node' : 'persona';
 
-  const rows = await db.select({ id: territories.id, personaId: territories.personaId, parentId: territories.parentId, name: territories.name, description: territories.description, position: territories.position, source: territories.source })
-    .from(territories).where(eq(territories.brandId, c.brandId));
-  const all = rows.map((r) => ({ ...r, personaId: r.personaId ?? PUBLICO_ID })) as TNode[];
+  const all = await loadTerritoryNodes(c.brandId);
 
-  // quais territórios entram, agrupados por mapa
+  // quais territórios entram (o mapa é um só; cada território é classificado com o contexto da persona de ORIGEM, ou sem persona)
   let targets: TNode[];
   if (scope === 'all') targets = all;
   else if (scope === 'node') {
     const me = all.find((n) => n.id === b?.nodeId);
     if (!me) return Response.json({ error: 'Território não encontrado.' }, { status: 404 });
-    const ids = descendantIds(all.filter((n) => n.personaId === me.personaId), me.id);
+    const ids = descendantIds(all, me.id);
     targets = all.filter((n) => ids.has(n.id));
   } else {
     const pid = String(b?.personaId ?? '');
-    targets = all.filter((n) => n.personaId === pid);
+    targets = all.filter((n) => effectivePersonas(all, n.id).includes(pid));
   }
   if (!targets.length) return Response.json({ updated: 0, scores: {} });
 
@@ -45,13 +44,12 @@ export async function POST(req: Request) {
 
   try {
     const results = await Promise.all(mapIds.map(async (mid): Promise<Scored[]> => {
-      const mine = all.filter((n) => n.personaId === mid);
       const todo = targets.filter((n) => n.personaId === mid);
       const p = people.find((x) => x.id === mid);
       const out: Scored[] = [];
       for (let i = 0; i < todo.length; i += CHUNK) {
         out.push(...await scoreTerritories({
-          items: todo.slice(i, i + CHUNK).map((n) => ({ id: n.id, path: pathOf(mine, n.id).join(' › '), description: n.description })),
+          items: todo.slice(i, i + CHUNK).map((n) => ({ id: n.id, path: pathOf(all, n.id).join(' › '), description: n.description })),
           persona: p ? { name: p.name, tagline: p.tagline, data: p.data } : null,
           icp: p ? '' : s?.icp || s?.aud || '',
           brand: p ? { ...brand, audience: '' } : brand, config,

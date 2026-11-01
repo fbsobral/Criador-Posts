@@ -22,18 +22,19 @@ const SCHEMA = {
 const clean = (s: unknown, max: number) => (typeof s === 'string' ? s.trim().slice(0, max) : '');
 const norm = (s: string) => s.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ');
 
-const SYSTEM = `Você é um estrategista de conteúdo sênior. Você cria TERRITÓRIOS: o mapa de temas de conteúdo que uma PERSONA quer consumir, organizado em níveis (como um mapa mental), em português do Brasil.
+const SYSTEM = `Você é um estrategista de conteúdo sênior. Você cria TERRITÓRIOS: o mapa de temas de conteúdo da marca, organizado em níveis (como um mapa mental), em português do Brasil. Um território pode nascer de duas vias: (a) das DORES de uma PERSONA; ou (b) de um TEMA MACRO, um debate coletivo ou de conjuntura que importa para a organização e que depois será traduzido para a linguagem de cada persona.
 
 O QUE É UM TERRITÓRIO
 - Nível 1: grandes áreas de interesse da persona (pilares de conteúdo). Nível 2: subtemas. Nível 3: tópicos específicos. Nível 4 em diante: ângulos concretos que viram um post ou vídeo.
-- Cada território nasce das DORES, OBJETIVOS, OBJEÇÕES e GATILHOS da persona e do ICP/marca: pense no que essa pessoa procura, teme ou precisa decidir.
+- Via persona: cada território nasce das DORES, OBJETIVOS, OBJEÇÕES e GATILHOS da persona e do ICP/marca: pense no que essa pessoa procura, teme ou precisa decidir.
+- Via tema macro (sem persona): territórios sobre debates coletivos, estruturais ou de conjuntura (políticas, direitos, economia, cidade, saúde, trabalho etc.) que afetam várias pessoas, ligados ao que a organização defende e faz. Nomeie o TEMA em si, em linguagem clara e neutra; NÃO escreva na voz de uma persona (a tradução para o dia a dia de cada persona será feita depois, em outro passo). Evite jargão técnico no nome.
 - Nomes curtos (2 a 6 palavras), claros e específicos. Nada de rótulos vagos ("Dicas", "Geral", "Outros"). A descrição tem uma frase dizendo o que entra ali e por que importa para a persona.
 - Irmãos (mesmo pai) cobrem assuntos DIFERENTES, sem sobreposição. Filhos aprofundam o pai, não o repetem.
 
 LIGAÇÃO COM A ORGANIZAÇÃO: os territórios ficam na interseção entre o que a persona quer, teme e precisa decidir e o que a ORGANIZAÇÃO faz e pode falar com autoridade (veja "O que a organização faz" na identidade da marca). Prefira territórios que levem, de forma natural, ao que a organização oferece ou sabe. Evite áreas sem nenhuma ligação com a organização; se um interesse da persona está fora do que ela faz, só inclua se houver uma ponte clara com a oferta ou com os temas da organização.
 
-REGRA DE OURO: NÃO REPITA o que já existe no mapa dessa persona (você recebe a árvore atual). Não crie o mesmo tema com outro nome nem variações triviais; complemente lacunas. Se um território já existe, não o inclua de novo.
-FOCO: se a tarefa é para uma PERSONA, foque só nela: não considere o público em geral nem outras personas. Se é para o PÚBLICO GERAL (sem persona específica), considere o ICP e todas as personas informadas e priorize temas que atendam a várias delas ou ao público como um todo.
+REGRA DE OURO: NÃO REPITA o que já existe no mapa da marca (você recebe a árvore atual, com os temas de todas as personas e os macro). Não crie o mesmo tema com outro nome nem variações triviais; complemente lacunas. Se um território já existe, não o inclua de novo.
+FOCO: se a tarefa é para uma PERSONA, foque só nela: não considere o público em geral nem outras personas (mas respeite o mapa atual para não repetir). Se é um TEMA MACRO (sem persona), considere o ICP e todas as personas informadas e priorize temas de debate coletivo que toquem várias delas ou o público como um todo.
 
 FORMATO DA RESPOSTA
 - Lista plana "nodes". Cada item: "ref" (um identificador curto e único, ex.: "a1", "a1b"), "parent_ref" (o "ref" do pai dentro desta lista, ou "" para o que entra direto no ponto de partida indicado), "name", "description".
@@ -46,9 +47,9 @@ function personaBlock(p: { name: string; tagline: string; role: string; data: Pe
 }
 
 export type SuggestArgs = {
-  /** Persona do mapa. Nulo = mapa do "Público geral" (sem persona). */
+  /** Persona em foco. Nulo = tema macro (sem persona). */
   persona: { name: string; tagline: string; role: string; data: PersonaData } | null;
-  /** Só no "Público geral": as personas existentes, como contexto. */
+  /** Só no tema macro: as personas existentes, como contexto. */
   publicoPersonas?: { name: string; tagline: string; pains: string[] }[];
   brand: BrandProfile;
   icp: string;
@@ -57,7 +58,7 @@ export type SuggestArgs = {
   depth: number; // níveis a gerar (modo "full" e "expand")
   /** Nó de partida (para "expand"): caminho até ele. Vazio = raiz da persona. */
   parentPath: string[];
-  /** Árvore atual desta persona, com recuo. */
+  /** Árvore atual da marca inteira, com recuo. */
   existingOutline: string;
   /** Nomes já existentes sob o ponto de partida (para não repetir). */
   siblingNames: string[];
@@ -82,16 +83,16 @@ export async function suggestTerritories(a: SuggestArgs): Promise<{ nodes: Sugge
   if (!process.env.ANTHROPIC_API_KEY) throw new AiError('ANTHROPIC_API_KEY não configurada no servidor.');
 
   const task = a.mode === 'first'
-    ? `TAREFA: crie ${n} território(s) de NÍVEL 1 (grandes áreas) para esta persona. Todos com parent_ref "".`
+    ? `TAREFA: crie ${n} território(s) de NÍVEL 1 (grandes áreas) ${a.persona ? 'para esta persona' : 'de tema macro'}. Todos com parent_ref "".`
     : a.mode === 'expand'
       ? `TAREFA: crie ${n} território(s) FILHOS de "${a.parentPath.join(' › ')}" (parent_ref "" = filho direto dele)${a.depth > 1 ? `, e aprofunde cada um com mais ${a.depth - 1} nível(is)` : ''}. Total máximo ~${MAX_TERRITORY_NODES_PER_RUN} itens.`
       : `TAREFA: crie um mapa COMPLETO com ${n} território(s) de nível 1 (parent_ref "") e aprofunde cada um até ${a.depth} níveis no total (nível 2 com 2 a 4 filhos por pai, nível 3 com 2 a 3, e assim por diante). Máximo de ${MAX_TERRITORY_NODES_PER_RUN} itens no total; priorize qualidade e especificidade.`;
   const user = [
     a.persona
       ? personaBlock(a.persona)
-      : `PÚBLICO GERAL (sem persona específica): crie territórios para o público como um todo.\nICP DA MARCA:\n${a.icp.trim() || '(não informado)'}${a.publicoPersonas?.length ? `\n\nPERSONAS EXISTENTES (considere todas):\n${a.publicoPersonas.map((p) => `- ${p.name}: ${p.tagline}${p.pains.length ? ` | dores: ${p.pains.slice(0, 2).join('; ')}` : ''}`).join('\n')}` : ''}`,
+      : `TEMA MACRO (sem persona específica): crie territórios de debate coletivo para o público como um todo.\nICP DA MARCA:\n${a.icp.trim() || '(não informado)'}${a.publicoPersonas?.length ? `\n\nPERSONAS EXISTENTES (considere todas):\n${a.publicoPersonas.map((p) => `- ${p.name}: ${p.tagline}${p.pains.length ? ` | dores: ${p.pains.slice(0, 2).join('; ')}` : ''}`).join('\n')}` : ''}`,
     a.persona && a.icp.trim() ? `ICP DA MARCA:\n${a.icp.trim()}` : '',
-    `MAPA ATUAL DESTA PERSONA (não repita nada daqui):\n${a.existingOutline || '(vazio)'}`,
+    `MAPA ATUAL DA MARCA (todas as personas e temas macro; não repita nada daqui):\n${a.existingOutline || '(vazio)'}`,
     a.siblingNames.length ? `JÁ EXISTEM NESTE PONTO (não repita): ${a.siblingNames.join('; ')}` : '',
     task,
     a.instructions.trim() ? `INSTRUÇÕES EXTRAS DO USUÁRIO:\n${a.instructions.trim()}` : '',

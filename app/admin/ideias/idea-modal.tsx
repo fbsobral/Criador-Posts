@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { fmtUsd } from '@/lib/ai/constants';
@@ -9,6 +10,7 @@ import { addSuggestedIdeas } from '@/lib/idea-actions';
 import { PUBLICO_ID } from '@/lib/territory';
 import { IdeaBody } from './idea-body';
 import { IconSpark } from '../../icons';
+import { TerritorySelect, pairStatus } from './territory-select';
 import { PersonaOptions, type PersonaOpt } from './persona-options';
 
 /** Gera ideias com IA em 2 passos: 1) persona, território e quantidade; 2) revisar o que entra. */
@@ -27,7 +29,9 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
   const [err, setErr] = useState('');
   const [ideas, setIdeas] = useState<SuggestedIdea[]>([]);
   const [off, setOff] = useState<Set<number>>(new Set());
-  const terrOpts = options.filter((o) => o.personaId === persona);
+  const [from, setFrom] = useState<'persona' | 'territory'>(initialTerritory && !initialPersona ? 'territory' : 'persona');
+  const cur = options.find((o) => o.id === territory);
+  const pair = pairStatus(cur, persona);
   const selected = ideas.filter((_, i) => !off.has(i)).length;
 
   async function suggest() {
@@ -55,18 +59,33 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
         {step === 'ask' ? (
           <>
             <div className="pe-modal-body">
-              <div className="field">
-                <label htmlFor="ip">Persona relacionada</label>
-                <select id="ip" value={persona} onChange={(e) => { setPersona(e.target.value); setTerritory(''); }}><PersonaOptions personas={personas} /></select>
+              <div className="vd-segmented" role="radiogroup" aria-label="Por onde começar" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+                <button type="button" role="radio" aria-checked={from === 'persona'} className={from === 'persona' ? 'on' : ''} onClick={() => setFrom('persona')}>Partir da persona</button>
+                <button type="button" role="radio" aria-checked={from === 'territory'} className={from === 'territory' ? 'on' : ''} onClick={() => setFrom('territory')}>Partir do território</button>
               </div>
-              <div className="field">
-                <label htmlFor="it">Território de origem <span className="muted">(opcional)</span></label>
-                <select id="it" value={territory} onChange={(e) => setTerritory(e.target.value)}>
-                  <option value="">Sem território específico</option>
-                  {terrOpts.map((o) => <option key={o.id} value={o.id}>{'  '.repeat(o.depth)}{o.label}</option>)}
-                </select>
-                {terrOpts.length === 0 && <small className="muted">Esta persona ainda não tem território no mapa.</small>}
-              </div>
+              <p className="muted" style={{ margin: '-4px 0 0' }}>{from === 'persona' ? 'Escolha a pessoa e o tema que ela já enxerga (ou qualquer outro do mapa).' : 'Escolha o tema (por exemplo, um debate macro) e depois a persona para quem vamos traduzi-lo.'}</p>
+              {(from === 'persona' ? ['persona', 'territory'] : ['territory', 'persona']).map((k) => k === 'persona' ? (
+                <div className="field" key="p">
+                  <label htmlFor="ip">Persona</label>
+                  <select id="ip" value={persona} onChange={(e) => setPersona(e.target.value)}>
+                    {from === 'territory' && cur && personas.some((p) => cur.personaIds.includes(p.id)) ? (
+                      <>
+                        <optgroup label="Já ligadas a este tema">{personas.filter((p) => cur.personaIds.includes(p.id)).map((p) => <option key={p.id} value={p.id}>{p.name}{cur.translated.includes(p.id) ? ' · traduzido ✓' : ''}</option>)}</optgroup>
+                        <optgroup label="Outras personas">{personas.filter((p) => !cur.personaIds.includes(p.id)).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}<option value={PUBLICO_ID}>Público geral (sem persona)</option></optgroup>
+                      </>
+                    ) : <PersonaOptions personas={personas} />}
+                  </select>
+                </div>
+              ) : (
+                <div className="field" key="t">
+                  <label htmlFor="it">Território {from === 'persona' && <span className="muted">(opcional)</span>}</label>
+                  <TerritorySelect id="it" options={options} persona={persona} value={territory} onChange={setTerritory} empty="Sem território específico" />
+                  {options.length === 0 && <small className="muted">O mapa ainda não tem territórios.</small>}
+                  {pair === 'translated' && <small className="muted">✓ Já existe a tradução deste tema para esta persona; a IA vai usá-la como ponte.</small>}
+                  {pair === 'linked' && <small className="muted">Esta persona já enxerga o tema, mas ainda não há tradução dele para o dia a dia dela. <Link href={`/admin/territorios?p=${persona}&n=${territory}`} className="vd-link">Traduzir no mapa →</Link></small>}
+                  {pair === 'new' && <small className="muted">Esta persona ainda não está ligada ao tema: ao salvar, a ligação é criada. Para a ponte ficar melhor, <Link href={`/admin/territorios?p=${persona}&n=${territory}`} className="vd-link">traduza o tema para ela →</Link></small>}
+                </div>
+              ))}
               <div className="field">
                 <label>Quantas ideias?</label>
                 <div className="vd-chips">{[1, 2, 3, 5, 8].map((n) => <button key={n} type="button" className={`vd-chip${count === n ? ' on' : ''}`} onClick={() => setCount(n)}>{n}</button>)}</div>

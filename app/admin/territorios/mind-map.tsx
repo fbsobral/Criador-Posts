@@ -4,29 +4,32 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { actionErrorMessage } from '@/lib/action-error';
-import { createNode, deleteNode, moveNode, setScore, updateNode } from '@/lib/territory-actions';
+import { createNode, deleteNode, linkPersona, moveNode, saveTranslations, setScore, unlinkPersona, updateNode } from '@/lib/territory-actions';
 import { GROUP_COLORS, splitPersonaName } from '@/lib/persona';
-import { NODE_H, NODE_W, buildTree, descendantIds, edgePath, layoutTree, pathOf, type TNode } from '@/lib/territory';
+import { NODE_H, NODE_W, PUBLICO_ID, buildTree, descendantIds, edgePath, effectivePersonas, layoutTree, lensNodes, pathOf, translationFor, type TNode } from '@/lib/territory';
 import { IconEdit, IconPlus, IconSpark, IconTrash } from '../../icons';
 import { usePan } from '../use-pan';
 import { levelOf, type PriorityConfig } from '@/lib/priority';
 import { Menu } from './menu';
 import { ReclassifyButton } from './reclassify-button';
 import { TerritoryModal } from './territory-modal';
+import { TranslateModal } from './translate-modal';
 
 export type PersonaLite = { id: string; name: string; tagline: string; role: string; /** cor do grupo da persona */ color?: string; group?: string };
 
 const DEPTH_COLORS = ['#F97335', '#1D9BF0', '#8B5CF6', '#1F9D63', '#E5484D', '#F59E0B'];
 const initialsOf = (n: string) => n.replace(/,.*/, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
 
-/** Mapa mental horizontal dos territórios de UMA persona: criar irmão/filho, arrastar para mudar o pai, recolher e gerar com IA. */
-export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority, approved = {} }: { persona: PersonaLite; color: string; nodes: TNode[]; hasKey: boolean; hasAbout: boolean; priority: PriorityConfig; approved?: Record<string, number> }) {
+/** Mapa mental horizontal dos territórios da MARCA (uma árvore só). Com uma persona na "lente", mostra só o que ela enxerga; sem lente, mostra tudo, com as personas ligadas em cada tema. Criar irmão/filho, arrastar para mudar o pai, recolher, traduzir para as personas e gerar com IA. */
+export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout, priority, approved = {}, initialSelected = null }: {
+  lens: PersonaLite | null; personas: PersonaLite[]; brandName: string; nodes: TNode[]; hasKey: boolean; hasAbout: boolean; priority: PriorityConfig; approved?: Record<string, number>; initialSelected?: string | null;
+}) {
   const router = useRouter();
   const [, start] = useTransition();
   const [nodes, setNodes] = useState(n0);
   useEffect(() => setNodes(n0), [n0]);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(initialSelected && n0.some((x) => x.id === initialSelected) ? initialSelected : null);
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [zoom, setZoom] = useState(1);
@@ -34,10 +37,15 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority,
   const [over, setOver] = useState<string | null>(null);
   const [err, setErr] = useState('');
   const [ai, setAi] = useState<{ parent: TNode | null } | null>(null);
+  const [tr, setTr] = useState<{ node: TNode; preselect?: string[] } | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   usePan(wrapRef);
 
-  const tree = useMemo(() => buildTree(nodes), [nodes]);
+  // lente: só o que a persona enxerga (ligado a ela ou herdado) + os ancestrais, como contexto esmaecido
+  const vis = useMemo(() => (lens ? lensNodes(nodes, lens.id) : { nodes, context: new Set<string>() }), [nodes, lens]);
+  const tree = useMemo(() => buildTree(vis.nodes), [vis]);
+  const colorOf = (id: string) => personas.find((x) => x.id === id)?.color ?? '#8A857A';
+  const personaOf = (id: string) => personas.find((x) => x.id === id);
   const lay = useMemo(() => layoutTree(tree, collapsed), [tree, collapsed]);
   const sel = nodes.find((x) => x.id === selected) ?? null;
   const kidsCount = (id: string) => descendantIds(nodes, id).size - 1;
@@ -64,7 +72,7 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority,
 
   async function add(parentId: string | null, afterId?: string) {
     setErr('');
-    const r = await createNode(persona.id, parentId, 'Novo território', afterId);
+    const r = await createNode(lens?.id ?? null, parentId, 'Novo território', afterId);
     if (r.error || !r.node) { setErr(r.error ?? 'Não foi possível criar.'); return; }
     setNodes((a) => [...a.map((x) => (afterId && x.parentId === r.node!.parentId && x.position >= r.node!.position ? { ...x, position: x.position + 1 } : x)), r.node!]);
     if (parentId) setCollapsed((s) => { const n = new Set(s); n.delete(parentId); return n; });
@@ -107,8 +115,26 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority,
     setNodes((a) => a.map((x) => (x.id === n.id ? { ...x, score: v, scoreReason: v ? 'Definido à mão.' : '' } : x)));
     start(async () => { const r = await setScore(n.id, v); if (r.error) setErr(r.error); });
   };
+  const setLinks = (id: string, fn: (l: TNode['links']) => TNode['links']) => setNodes((a) => a.map((x) => (x.id === id ? { ...x, links: fn(x.links) } : x)));
+  const link = (n: TNode, pid: string) => {
+    if (!pid) return;
+    setLinks(n.id, (l) => (l.some((x) => x.personaId === pid) ? l : [...l, { personaId: pid, translation: '' }]));
+    start(async () => { const r = await linkPersona(n.id, pid); if (r.error) { setErr(r.error); setLinks(n.id, (l) => l.filter((x) => x.personaId !== pid)); } else router.refresh(); });
+  };
+  const unlink = (n: TNode, pid: string) => {
+    const prev = n.links;
+    if (prev.find((x) => x.personaId === pid)?.translation && !confirm('Desligar esta persona também apaga a tradução do tema para ela. Continuar?')) return;
+    setLinks(n.id, (l) => l.filter((x) => x.personaId !== pid));
+    start(async () => { const r = await unlinkPersona(n.id, pid); if (r.error) { setErr(r.error); setLinks(n.id, () => prev); } else router.refresh(); });
+  };
+  const saveTr = (n: TNode, pid: string, text: string) => {
+    const v = text.trim(); const own = n.links.find((x) => x.personaId === pid);
+    if (v === (own?.translation ?? '').trim() || (!own && !v)) return;
+    setLinks(n.id, (l) => (l.some((x) => x.personaId === pid) ? l.map((x) => (x.personaId === pid ? { ...x, translation: v } : x)) : [...l, { personaId: pid, translation: v }]));
+    start(async () => { const r = await saveTranslations(n.id, [{ personaId: pid, translation: v, source: 'manual' }]); if (r.error) setErr(r.error); else router.refresh(); });
+  };
   const toggleCollapse = (id: string) => setCollapsed((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const parents = nodes.filter((x) => nodes.some((c) => c.parentId === x.id)).map((x) => x.id);
+  const parents = vis.nodes.filter((x) => vis.nodes.some((c) => c.parentId === x.id)).map((x) => x.id);
 
   const onKey = (e: React.KeyboardEvent) => {
     if (editing || !sel || (e.target as HTMLElement).closest('input, textarea')) return;
@@ -118,7 +144,7 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority,
     else if (e.key === 'F2') { e.preventDefault(); startEdit(sel.id, sel.name); }
     else if (e.key === ' ') { e.preventDefault(); toggleCollapse(sel.id); }
     else if (e.key === 'ArrowLeft') { e.preventDefault(); if (sel.parentId) setSelected(sel.parentId); }
-    else if (e.key === 'ArrowRight') { e.preventDefault(); const k = tree.length ? nodes.filter((x) => x.parentId === sel.id).sort((a, b) => a.position - b.position)[0] : null; if (k) { setCollapsed((s) => { const n = new Set(s); n.delete(sel.id); return n; }); setSelected(k.id); } }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); const k = tree.length ? vis.nodes.filter((x) => x.parentId === sel.id).sort((a, b) => a.position - b.position)[0] : null; if (k) { setCollapsed((s) => { const n = new Set(s); n.delete(sel.id); return n; }); setSelected(k.id); } }
     else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
       e.preventDefault();
       const me = lay.placed.find((p) => p.id === sel.id); if (!me) return;
@@ -128,18 +154,18 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority,
   };
 
   const rootY = lay.rootY;
-  const personaColor = color;
+  const personaColor = lens ? colorOf(lens.id) : '#16140F';
   return (
     <div className="tr-layout">
       <div className="tr-main">
         <div className="tr-bar">
           <div className="row-actions">
-            <button type="button" className="btn small primary" onClick={() => setAi({ parent: null })}><IconSpark /> Gerar com IA</button>
+            <button type="button" className="btn small primary" onClick={() => setAi({ parent: null })}><IconSpark /> Gerar territórios</button>
             <button type="button" className="btn small" onClick={() => add(null)}><IconPlus /> Área de 1º nível</button>
           </div>
           <div className="row-actions">
             <Menu label="Mais" align="right">
-              <ReclassifyButton className="tr-menu-item" target={{ scope: 'persona', personaId: persona.id }} count={nodes.length} label="Reclassificar este mapa" disabled={!hasKey || !priority.criteria.length} onError={setErr} />
+              <ReclassifyButton className="tr-menu-item" target={lens ? { scope: 'persona', personaId: lens.id } : { scope: 'all' }} count={vis.nodes.length - vis.context.size} label={lens ? 'Reclassificar o que esta persona enxerga' : 'Reclassificar o mapa todo'} disabled={!hasKey || !priority.criteria.length} onError={setErr} />
               <button type="button" className="tr-menu-item" data-close onClick={() => setCollapsed(new Set(parents))} disabled={!parents.length}>Recolher tudo</button>
               <button type="button" className="tr-menu-item" data-close onClick={() => setCollapsed(new Set())} disabled={!collapsed.size}>Expandir tudo</button>
               <p className="tr-menu-note"><kbd>Tab</kbd> filho · <kbd>Enter</kbd> irmão · <kbd>F2</kbd> renomear · <kbd>Espaço</kbd> recolher. Arraste um território sobre outro para mudar o pai.</p>
@@ -163,15 +189,20 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority,
               <div className={`tr-root${over === 'root' ? ' over' : ''}`} style={{ left: 0, top: rootY, width: NODE_W, height: NODE_H, borderColor: personaColor }}
                 onDragOver={(e) => { if (drag) { e.preventDefault(); setOver('root'); } }} onDragLeave={() => setOver(null)}
                 onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData('text/plain') || drag; setDrag(null); setOver(null); if (id) move(id, null); }}>
-                <span className="pe-av" style={{ background: personaColor }}>{initialsOf(persona.name)}</span>
-                <div title={`${persona.name} · ${nodes.length} ${nodes.length === 1 ? 'território' : 'territórios'}`}><b>{splitPersonaName(persona.name).first}</b><small>{splitPersonaName(persona.name).label || persona.role || `${nodes.length} territórios`}</small></div>
+                {lens ? (
+                  <><span className="pe-av" style={{ background: personaColor }}>{initialsOf(lens.name)}</span>
+                  <div title={`${lens.name} · ${vis.nodes.length - vis.context.size} ${vis.nodes.length - vis.context.size === 1 ? 'território' : 'territórios'}`}><b>{splitPersonaName(lens.name).first}</b><small>{splitPersonaName(lens.name).label || lens.role || 'visão desta persona'}</small></div></>
+                ) : (
+                  <><span className="pe-av" style={{ background: personaColor }}>{initialsOf(brandName) || 'M'}</span>
+                  <div title={brandName}><b>{brandName}</b><small>{nodes.length} {nodes.length === 1 ? 'território' : 'territórios'} no mapa</small></div></>
+                )}
               </div>
 
               {lay.placed.map((p) => {
                 const n = p.data, c = DEPTH_COLORS[(p.depth - 1) % DEPTH_COLORS.length];
                 const isSel = selected === n.id;
                 return (
-                  <div key={n.id} className={`tr-node${isSel ? ' sel' : ''}${drag === n.id ? ' dragging' : ''}${over === n.id ? ' over' : ''}`}
+                  <div key={n.id} className={`tr-node tr-gnode${vis.context.has(n.id) ? ' ctx' : ''}${isSel ? ' sel' : ''}${drag === n.id ? ' dragging' : ''}${over === n.id ? ' over' : ''}`}
                     style={{ left: p.x, top: p.y, width: NODE_W, height: NODE_H, borderLeftColor: c }}
                     draggable={editing !== n.id}
                     onDragStart={(e) => { e.dataTransfer.setData('text/plain', n.id); e.dataTransfer.effectAllowed = 'move'; setDrag(n.id); }}
@@ -187,6 +218,12 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority,
                     ) : (
                       <span className="tr-name" title={n.description || n.name}>{n.name}</span>
                     )}
+                    {n.links.length > 0 && (
+                      <span className="tr-avs">
+                        {n.links.slice(0, 3).map((l) => <i key={l.personaId} style={{ background: colorOf(l.personaId), opacity: l.translation ? 1 : .55 }} title={`${personaOf(l.personaId)?.name ?? ''}${l.translation ? ' · traduzido' : ' · ligada, sem tradução'}`}>{initialsOf(personaOf(l.personaId)?.name ?? '?')}</i>)}
+                        {n.links.length > 3 && <i className="more">+{n.links.length - 3}</i>}
+                      </span>
+                    )}
                     {approved[n.id] ? <span className="tr-check" title={`${approved[n.id]} ${approved[n.id] === 1 ? 'ideia aprovada' : 'ideias aprovadas'} neste tema`}>✓</span> : null}
                     {n.score ? <span className="tr-score" style={{ ['--c' as string]: levelOf(n.score, priority.levels)?.color }} title={`${levelOf(n.score, priority.levels)?.name ?? ''} · ${n.scoreReason || 'score'}`}>{n.score}</span> : null}
                     {p.hasKids && (
@@ -199,7 +236,8 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority,
                         <button type="button" onClick={() => addChild(n.id)} title="Adicionar filho (Tab)" aria-label="Adicionar filho">↳ filho</button>
                         <button type="button" onClick={() => addSibling(n)} title="Adicionar irmão (Enter)" aria-label="Adicionar irmão">↓ irmão</button>
                         <button type="button" onClick={() => setAi({ parent: n })} title="Gerar filhos com IA" aria-label="Gerar com IA"><IconSpark /></button>
-                        <Link href={`/admin/ideias?t=${n.id}`} title="Gerar ideias de conteúdo para este tema" aria-label="Gerar ideias de conteúdo">💡 ideias</Link>
+                        <button type="button" onClick={() => setTr({ node: n })} title="Traduzir este tema para as personas" aria-label="Traduzir para as personas">🔁 traduzir</button>
+                        <Link href={`/admin/ideias?t=${n.id}${lens ? `&p=${lens.id}` : ''}`} title="Gerar ideias de conteúdo para este tema" aria-label="Gerar ideias de conteúdo">💡 ideias</Link>
                       </div>
                     )}
                   </div>
@@ -221,7 +259,7 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority,
           <>
             <div className="tr-crumb">{pathOf(nodes, sel.id).map((x, i, a) => <span key={i}>{x}{i < a.length - 1 ? ' › ' : ''}</span>)}</div>
             <div className="field"><label htmlFor="tn">Nome</label><input id="tn" key={sel.id + sel.name} defaultValue={sel.name} maxLength={80} onBlur={(e) => saveName(sel, e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} /></div>
-            <div className="field"><label htmlFor="td">Descrição</label><textarea id="td" key={sel.id} rows={4} defaultValue={sel.description} maxLength={400} placeholder="O que entra neste território e por que importa para a persona" onBlur={(e) => saveDesc(sel, e.target.value)} /></div>
+            <div className="field"><label htmlFor="td">Descrição</label><textarea id="td" key={sel.id} rows={4} defaultValue={sel.description} maxLength={400} placeholder="O que entra neste território e por que importa" onBlur={(e) => saveDesc(sel, e.target.value)} /></div>
             <div className="field">
               <label htmlFor="ts">Prioridade (score 1 a 100)</label>
               <div className="tr-score-box" style={{ ['--c' as string]: levelOf(sel.score, priority.levels)?.color }}>
@@ -230,10 +268,46 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority,
               </div>
               {sel.scoreReason && <p className="tr-score-why">{sel.scoreReason}</p>}
             </div>
+            {(() => {
+              const eff = effectivePersonas(nodes, sel.id);
+              const free = personas.filter((x) => !eff.includes(x.id));
+              return (
+                <div className="tr-bridge">
+                  <div className="tr-bridge-head"><b>Personas deste tema</b><small>{eff.length ? `${eff.length} de ${personas.length} · cada uma com a tradução do tema para o dia a dia dela` : 'Nenhuma persona ligada ainda'}</small></div>
+                  {eff.map((pid) => {
+                    const p = personaOf(pid); const own = sel.links.find((x) => x.personaId === pid); const inh = translationFor(nodes, sel.id, pid);
+                    return (
+                      <div key={pid} className="tr-bridge-row">
+                        <div className="tr-bridge-who">
+                          <span className="pe-av sm" style={{ background: colorOf(pid) }}>{initialsOf(p?.name ?? '?')}</span>
+                          <b title={p?.name}>{p ? splitPersonaName(p.name).first : 'Persona'}</b>
+                          {!own && <em title="Herdada de um território acima">herdada</em>}
+                          <span className="grow" />
+                          <Link href={`/admin/ideias?t=${sel.id}&p=${pid}`} className="tr-mini" title="Gerar ideias para esta persona neste tema">💡</Link>
+                          {own && <button type="button" className="tr-mini" onClick={() => unlink(sel, pid)} title="Desligar esta persona deste tema" aria-label="Desligar persona">×</button>}
+                        </div>
+                        <textarea key={sel.id + pid + (own?.translation ?? '')} rows={3} defaultValue={own?.translation ?? ''} maxLength={1200}
+                          placeholder={inh.text ? `Herdada${inh.from ? ` de “${inh.from}”` : ''}: ${inh.text}` : 'Como este tema aparece no dia a dia dela (cena, linguagem, o que ela já sente)…'}
+                          onBlur={(e) => saveTr(sel, pid, e.target.value)} />
+                      </div>
+                    );
+                  })}
+                  <div className="row-actions">
+                    {free.length > 0 && (
+                      <select className="tr-bridge-add" value="" onChange={(e) => link(sel, e.target.value)} aria-label="Ligar persona a este tema">
+                        <option value="">＋ Ligar persona…</option>
+                        {free.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
+                      </select>
+                    )}
+                    <button type="button" className="btn small" onClick={() => setTr({ node: sel })} disabled={!personas.length}>🔁 Traduzir com IA</button>
+                  </div>
+                </div>
+              );
+            })()}
             <div className="tr-ideas-box">
               <div><b>Ideias de conteúdo</b><small>{approved[sel.id] ? `✓ ${approved[sel.id]} ${approved[sel.id] === 1 ? 'aprovada' : 'aprovadas'} neste tema` : 'Nenhuma aprovada neste tema ainda'}</small></div>
               <div className="row-actions">
-                <Link href={`/admin/ideias?t=${sel.id}`} className="btn small primary">💡 Gerar ideias</Link>
+                <Link href={`/admin/ideias?t=${sel.id}${lens ? `&p=${lens.id}` : ''}`} className="btn small primary">💡 Gerar ideias</Link>
                 <Link href={`/admin/ideias?t=${sel.id}&ver=1`} className="btn small">Ver</Link>
               </div>
             </div>
@@ -251,20 +325,21 @@ export function MindMap({ persona, color, nodes: n0, hasKey, hasAbout, priority,
           </>
         ) : (
           <>
-            <b className="tr-panel-title">{persona.name}</b>
-            {persona.role && <div className="tr-meta">{persona.role}</div>}
-            <p className="muted tr-tagline">{persona.tagline}</p>
-            <div className="tr-meta">{nodes.length} {nodes.length === 1 ? 'território' : 'territórios'} no mapa</div>
-            <p className="muted">Selecione um território para editar, criar filhos ou gerar mais com IA.</p>
+            <b className="tr-panel-title">{lens ? lens.name : brandName}</b>
+            {lens?.role && <div className="tr-meta">{lens.role}</div>}
+            <p className="muted tr-tagline">{lens ? lens.tagline : 'O mapa de temas da marca. Cada tema pode nascer das dores de uma persona ou de um debate macro; depois, ligue as personas e traduza o tema para o dia a dia de cada uma.'}</p>
+            <div className="tr-meta">{lens ? <>{vis.nodes.length - vis.context.size} {vis.nodes.length - vis.context.size === 1 ? 'território' : 'territórios'} que esta persona enxerga, de {nodes.length} no mapa</> : <>{nodes.length} {nodes.length === 1 ? 'território' : 'territórios'} no mapa</>}</div>
+            <p className="muted">Selecione um território para editar, ligar personas, traduzir o tema e gerar ideias.</p>
             <div className="tr-actions">
-              <button type="button" className="btn small primary" onClick={() => setAi({ parent: null })}><IconSpark /> Gerar com IA</button>
+              <button type="button" className="btn small primary" onClick={() => setAi({ parent: null })}><IconSpark /> Gerar territórios</button>
               <button type="button" className="btn small" onClick={() => add(null)}><IconPlus /> Área de 1º nível</button>
             </div>
           </>
         )}
       </aside>
 
-      {ai && <TerritoryModal persona={persona} parent={ai.parent ? { id: ai.parent.id, name: ai.parent.name } : null} existingCount={nodes.length} hasKey={hasKey} hasAbout={hasAbout} onClose={() => setAi(null)} />}
+      {ai && <TerritoryModal personas={personas} initialPersona={lens?.id ?? PUBLICO_ID} parent={ai.parent ? { id: ai.parent.id, name: ai.parent.name } : null} existingCount={nodes.length} hasKey={hasKey} hasAbout={hasAbout} onClose={() => setAi(null)} />}
+      {tr && <TranslateModal node={{ id: tr.node.id, name: tr.node.name, path: pathOf(nodes, tr.node.id).join(' › ') }} personas={personas} linked={effectivePersonas(nodes, tr.node.id)} translated={effectivePersonas(nodes, tr.node.id).filter((pid) => translationFor(nodes, tr.node.id, pid).text)} preselect={tr.preselect} hasKey={hasKey} hasAbout={hasAbout} onClose={() => setTr(null)} />}
     </div>
   );
 }

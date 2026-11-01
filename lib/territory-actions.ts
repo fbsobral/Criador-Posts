@@ -1,11 +1,12 @@
 'use server';
 
-import { and, eq, gt, isNull, sql } from 'drizzle-orm';
+import { and, eq, gt, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
-import { brandSettings, personas, territories } from '@/db/schema';
+import { brandSettings, territories, territoryPersonas } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
-import { MAX_DEPTH, PUBLICO_ID, descendantIds, depthOf, type TNode } from '@/lib/territory';
+import { MAX_DEPTH, PUBLICO_ID, descendantIds, depthOf, effectivePersonas, type TNode } from '@/lib/territory';
+import { ensureLink, loadTerritoryNodes, personaOfBrand } from '@/lib/territory-server';
 import { clampScore, sanitizePriority, type PriorityConfig } from '@/lib/priority';
 import type { SuggestedNode } from '@/lib/ai/territory';
 
@@ -17,34 +18,22 @@ async function ctx() {
 const str = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n);
 const done = () => revalidatePath('/admin/territorios');
 
-/** "publico" (mapa sem persona) vira persona nula no banco. */
-const toPid = (personaId: string | null): string | null => (!personaId || personaId === PUBLICO_ID ? null : personaId);
-const personaCond = (pid: string | null) => (pid ? eq(territories.personaId, pid) : isNull(territories.personaId));
+/** "publico" (tema macro, sem persona) vira persona nula no banco. */
+const toPid = (personaId: string | null | undefined): string | null => (!personaId || personaId === PUBLICO_ID ? null : personaId);
 
-async function ownPersona(brandId: string, personaId: string | null) {
-  const pid = toPid(personaId);
-  if (!pid) return true; // mapa do público geral: pertence à marca
-  const [p] = await db.select({ id: personas.id }).from(personas).where(and(eq(personas.id, pid), eq(personas.brandId, brandId)));
-  return !!p;
-}
-async function loadNodes(brandId: string, personaId: string | null): Promise<TNode[]> {
-  const pid = toPid(personaId);
-  const rows = await db.select({ id: territories.id, parentId: territories.parentId, name: territories.name, description: territories.description, position: territories.position, source: territories.source, score: territories.score, scoreReason: territories.scoreReason })
-    .from(territories).where(and(eq(territories.brandId, brandId), personaCond(pid)));
-  return rows.map((r) => ({ ...r, personaId: pid ?? PUBLICO_ID }));
-}
-const nextPos = async (brandId: string, personaId: string | null, parentId: string | null) => {
+const nextPos = async (brandId: string, parentId: string | null) => {
   const [r] = await db.select({ m: sql<number>`coalesce(max(${territories.position}), -1)::int` }).from(territories)
-    .where(and(eq(territories.brandId, brandId), personaCond(toPid(personaId)), parentId ? eq(territories.parentId, parentId) : sql`${territories.parentId} is null`));
+    .where(and(eq(territories.brandId, brandId), parentId ? eq(territories.parentId, parentId) : sql`${territories.parentId} is null`));
   return (r?.m ?? -1) + 1;
 };
 
-/** Cria um território. Com `afterId`, entra logo depois desse irmão (mesmo pai). */
-export async function createNode(personaId: string, parentId: string | null, name: string, afterId?: string): Promise<{ node?: TNode; error?: string }> {
+/** Cria um território no mapa da marca. `personaId` (opcional) é a persona em foco: vira a origem e fica ligada ao tema. Com `afterId`, entra logo depois desse irmão. */
+export async function createNode(personaId: string | null, parentId: string | null, name: string, afterId?: string): Promise<{ node?: TNode; error?: string }> {
   const c = await ctx();
-  if (!(await ownPersona(c.brandId, personaId))) return { error: 'Persona não encontrada.' };
+  const pid = toPid(personaId);
+  if (pid && !(await personaOfBrand(c.brandId, pid))) return { error: 'Persona não encontrada.' };
   const n = str(name, 80) || 'Novo território';
-  const all = await loadNodes(c.brandId, personaId);
+  const all = await loadTerritoryNodes(c.brandId);
   if (parentId) {
     if (!all.some((x) => x.id === parentId)) return { error: 'Território pai não encontrado.' };
     if (depthOf(all, parentId) + 1 >= MAX_DEPTH) return { error: `O mapa aceita até ${MAX_DEPTH} níveis.` };
@@ -55,11 +44,13 @@ export async function createNode(personaId: string, parentId: string | null, nam
     if (!sib) return { error: 'Território não encontrado.' };
     position = sib.position + 1;
     await db.update(territories).set({ position: sql`${territories.position} + 1` })
-      .where(and(eq(territories.brandId, c.brandId), personaCond(toPid(personaId)), sib.parentId ? eq(territories.parentId, sib.parentId) : sql`${territories.parentId} is null`, gt(territories.position, sib.position)));
-  } else position = await nextPos(c.brandId, personaId, parentId);
-  const [r] = await db.insert(territories).values({ brandId: c.brandId, personaId: toPid(personaId), parentId, name: n, position, source: 'manual', createdBy: c.userId }).returning();
+      .where(and(eq(territories.brandId, c.brandId), sib.parentId ? eq(territories.parentId, sib.parentId) : sql`${territories.parentId} is null`, gt(territories.position, sib.position)));
+  } else position = await nextPos(c.brandId, parentId);
+  const [r] = await db.insert(territories).values({ brandId: c.brandId, personaId: pid, parentId, name: n, position, source: 'manual', createdBy: c.userId }).returning();
+  const node: TNode = { id: r.id, personaId: pid ?? PUBLICO_ID, parentId, name: r.name, description: r.description, position: r.position, source: r.source, links: [] };
+  if (pid && !effectivePersonas([...all, node], r.id).includes(pid)) { await ensureLink(c.brandId, [...all, node], r.id, pid); node.links = [{ personaId: pid, translation: '' }]; }
   done();
-  return { node: { id: r.id, personaId: toPid(personaId) ?? PUBLICO_ID, parentId, name: r.name, description: r.description, position: r.position, source: r.source } };
+  return { node };
 }
 
 export async function updateNode(id: string, input: { name: string; description: string }): Promise<{ error?: string }> {
@@ -76,14 +67,14 @@ export async function moveNode(id: string, newParentId: string | null): Promise<
   const c = await ctx();
   const [cur] = await db.select().from(territories).where(and(eq(territories.id, id), eq(territories.brandId, c.brandId)));
   if (!cur) return { error: 'Território não encontrado.' };
-  const all = await loadNodes(c.brandId, cur.personaId);
+  const all = await loadTerritoryNodes(c.brandId);
   if (newParentId) {
     if (descendantIds(all, id).has(newParentId)) return { error: 'Não dá para mover um território para dentro dele mesmo.' };
     if (!all.some((x) => x.id === newParentId)) return { error: 'Destino não encontrado.' };
     const sub = Math.max(...[...descendantIds(all, id)].map((d) => depthOf(all, d))) - depthOf(all, id);
     if (depthOf(all, newParentId) + 1 + sub >= MAX_DEPTH) return { error: `O mapa aceita até ${MAX_DEPTH} níveis.` };
   }
-  await db.update(territories).set({ parentId: newParentId, position: await nextPos(c.brandId, cur.personaId, newParentId), updatedAt: new Date() }).where(eq(territories.id, id));
+  await db.update(territories).set({ parentId: newParentId, position: await nextPos(c.brandId, newParentId), updatedAt: new Date() }).where(eq(territories.id, id));
   done();
   return {};
 }
@@ -97,10 +88,11 @@ export async function deleteNode(id: string): Promise<{ error?: string }> {
 }
 
 /** Grava os territórios sugeridos que o usuário aprovou, sob `parentId` (ou na raiz da persona). */
-export async function addSuggestedNodes(personaId: string, parentId: string | null, nodes: SuggestedNode[]): Promise<{ added?: number; error?: string }> {
+export async function addSuggestedNodes(personaId: string | null, parentId: string | null, nodes: SuggestedNode[]): Promise<{ added?: number; error?: string }> {
   const c = await ctx();
-  if (!(await ownPersona(c.brandId, personaId))) return { error: 'Persona não encontrada.' };
-  const all = await loadNodes(c.brandId, personaId);
+  const pid = toPid(personaId);
+  if (pid && !(await personaOfBrand(c.brandId, pid))) return { error: 'Persona não encontrada.' };
+  const all = await loadTerritoryNodes(c.brandId);
   if (parentId && !all.some((x) => x.id === parentId)) return { error: 'Território pai não encontrado.' };
   const base = parentId ? depthOf(all, parentId) + 1 : 0;
   const idByRef = new Map<string, string>();
@@ -115,10 +107,12 @@ export async function addSuggestedNodes(personaId: string, parentId: string | nu
     const d = x.parentRef ? (depthByRef.get(x.parentRef) ?? 0) + 1 : base;
     if (d >= MAX_DEPTH) continue;
     const key = parent ?? 'root';
-    const pos = counters.get(key) ?? (await nextPos(c.brandId, personaId, parent ?? null));
+    const pos = counters.get(key) ?? (await nextPos(c.brandId, parent ?? null));
     counters.set(key, pos + 1);
-    const [r] = await db.insert(territories).values({ brandId: c.brandId, personaId: toPid(personaId), parentId: parent ?? null, name, description: str(x.description, 400), position: pos, score: x.score ? clampScore(x.score) : null, scoreReason: str(x.reason, 200), source: 'ai', createdBy: c.userId }).returning({ id: territories.id });
+    const [r] = await db.insert(territories).values({ brandId: c.brandId, personaId: pid, parentId: parent ?? null, name, description: str(x.description, 400), position: pos, score: x.score ? clampScore(x.score) : null, scoreReason: str(x.reason, 200), source: 'ai', createdBy: c.userId }).returning({ id: territories.id });
     idByRef.set(x.ref, r.id); depthByRef.set(x.ref, d); added++;
+    // com persona em foco, o tema novo já nasce ligado a ela (a menos que ela já o herde do pai)
+    if (pid) { const n: TNode = { id: r.id, personaId: pid, parentId: parent ?? null, name, description: '', position: pos, source: 'ai', links: [] }; all.push(n); const before = effectivePersonas(all, r.id).includes(pid); await ensureLink(c.brandId, all, r.id, pid, 'ai'); if (!before) n.links = [{ personaId: pid, translation: '' }]; }
   }
   done();
   return { added };
@@ -149,4 +143,42 @@ export async function savePriorityConfig(input: PriorityConfig): Promise<{ error
   await db.update(brandSettings).set({ priorityConfig: config, updatedAt: new Date() }).where(eq(brandSettings.brandId, c.brandId));
   done();
   return { config };
+}
+
+
+/** Liga uma persona a um território (ela passa a enxergar o tema e os filhos dele). */
+export async function linkPersona(territoryId: string, personaId: string): Promise<{ error?: string }> {
+  const c = await ctx();
+  const [t] = await db.select({ id: territories.id }).from(territories).where(and(eq(territories.id, territoryId), eq(territories.brandId, c.brandId)));
+  if (!t) return { error: 'Território não encontrado.' };
+  if (!(await personaOfBrand(c.brandId, personaId))) return { error: 'Persona não encontrada.' };
+  await db.insert(territoryPersonas).values({ brandId: c.brandId, territoryId, personaId, source: 'manual' }).onConflictDoNothing();
+  done();
+  return {};
+}
+
+/** Desliga a ligação própria da persona com o território (a tradução vai junto). */
+export async function unlinkPersona(territoryId: string, personaId: string): Promise<{ error?: string }> {
+  const c = await ctx();
+  await db.delete(territoryPersonas).where(and(eq(territoryPersonas.brandId, c.brandId), eq(territoryPersonas.territoryId, territoryId), eq(territoryPersonas.personaId, personaId)));
+  done();
+  return {};
+}
+
+/** Grava as traduções do tema (uma por persona), ligando a persona ao território se ainda não estiver. */
+export async function saveTranslations(territoryId: string, items: { personaId: string; translation: string; source?: 'ai' | 'manual' }[]): Promise<{ saved?: number; error?: string }> {
+  const c = await ctx();
+  const [t] = await db.select({ id: territories.id }).from(territories).where(and(eq(territories.id, territoryId), eq(territories.brandId, c.brandId)));
+  if (!t) return { error: 'Território não encontrado.' };
+  let saved = 0;
+  for (const x of items.slice(0, 60)) {
+    if (!(await personaOfBrand(c.brandId, x.personaId))) continue;
+    const translation = str(x.translation, 1200);
+    const source = x.source === 'ai' ? 'ai' : 'manual';
+    await db.insert(territoryPersonas).values({ brandId: c.brandId, territoryId, personaId: x.personaId, translation, source })
+      .onConflictDoUpdate({ target: [territoryPersonas.territoryId, territoryPersonas.personaId], set: { translation, source, updatedAt: new Date() } });
+    saved++;
+  }
+  done();
+  return { saved };
 }
