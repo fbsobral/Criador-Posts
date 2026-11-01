@@ -38,6 +38,12 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
   const [err, setErr] = useState('');
   const [ai, setAi] = useState<{ parent: TNode | null } | null>(null);
   const [tr, setTr] = useState<{ node: TNode; preselect?: string[] } | null>(null);
+  // celular: o painel do território vira uma folha (abre pelo "detalhes" da barra do nó) e o arraste vira "Mover para…"
+  const [sheet, setSheet] = useState(false);
+  const [fine, setFine] = useState(true);
+  useEffect(() => setFine(window.matchMedia('(pointer: fine)').matches), []);
+  // celular: abre um pouco afastado e já com os primeiros temas à vista (o cartão da marca fica logo à esquerda)
+  useEffect(() => { if (window.matchMedia('(max-width: 900px)').matches) { setZoom(0.85); requestAnimationFrame(() => wrapRef.current?.scrollTo({ left: 150 })); } }, []);
   const wrapRef = useRef<HTMLDivElement>(null);
   usePan(wrapRef);
 
@@ -52,6 +58,7 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
 
   // se o nó selecionado foi apagado/movido para fora, limpa a seleção
   useEffect(() => { if (selected && !nodes.some((x) => x.id === selected)) setSelected(null); }, [nodes, selected]);
+  useEffect(() => { if (!selected) setSheet(false); }, [selected]);
   // traz o nó selecionado para a vista
   useEffect(() => {
     if (!selected || !wrapRef.current) return;
@@ -204,7 +211,7 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
                 return (
                   <div key={n.id} className={`tr-node tr-gnode${vis.context.has(n.id) ? ' ctx' : ''}${isSel ? ' sel' : ''}${drag === n.id ? ' dragging' : ''}${over === n.id ? ' over' : ''}`}
                     style={{ left: p.x, top: p.y, width: NODE_W, height: NODE_H, borderLeftColor: c }}
-                    draggable={editing !== n.id}
+                    draggable={fine && editing !== n.id}
                     onDragStart={(e) => { e.dataTransfer.setData('text/plain', n.id); e.dataTransfer.effectAllowed = 'move'; setDrag(n.id); }}
                     onDragEnd={() => { setDrag(null); setOver(null); }}
                     onDragOver={(e) => { if (drag && drag !== n.id && !descendantIds(nodes, drag).has(n.id)) { e.preventDefault(); setOver(n.id); } }}
@@ -254,9 +261,21 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
         </div>
       </div>
 
-      <aside className="tr-panel card-surface">
+      {sel && editing !== sel.id && !sheet && (
+        <div className="tr-mbar" role="toolbar" aria-label={`Ações em “${sel.name}”`}>
+          <button type="button" onClick={() => setSheet(true)}><IconEdit /><span>Detalhes</span></button>
+          <button type="button" onClick={() => addChild(sel.id)}><IconPlus /><span>Filho</span></button>
+          <button type="button" onClick={() => addSibling(sel)}><IconPlus /><span>Irmão</span></button>
+          <button type="button" onClick={() => setAi({ parent: sel })}><IconSpark /><span>IA</span></button>
+          <button type="button" onClick={() => setTr({ node: sel })}><span aria-hidden>🔁</span><span>Traduzir</span></button>
+          <Link href={`/admin/ideias?t=${sel.id}${lens ? `&p=${lens.id}` : ''}`}><span aria-hidden>💡</span><span>Ideias</span></Link>
+        </div>
+      )}
+      {sheet && sel && <div className="tr-sheet-back" onMouseDown={() => setSheet(false)} />}
+      <aside className={`tr-panel card-surface${sheet && sel ? ' m-open' : ''}`}>
         {sel ? (
           <>
+            <button type="button" className="btn small ghost tr-sheet-close" onClick={() => setSheet(false)} aria-label="Fechar detalhes">✕ Fechar</button>
             <div className="tr-crumb">{pathOf(nodes, sel.id).map((x, i, a) => <span key={i}>{x}{i < a.length - 1 ? ' › ' : ''}</span>)}</div>
             <div className="field"><label htmlFor="tn">Nome</label><input id="tn" key={sel.id + sel.name} defaultValue={sel.name} maxLength={80} onBlur={(e) => saveName(sel, e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} /></div>
             <div className="field"><label htmlFor="td">Descrição</label><textarea id="td" key={sel.id} rows={4} defaultValue={sel.description} maxLength={400} placeholder="O que entra neste território e por que importa" onBlur={(e) => saveDesc(sel, e.target.value)} /></div>
@@ -311,6 +330,14 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
                 <Link href={`/admin/ideias?t=${sel.id}&ver=1`} className="btn small">Ver</Link>
               </div>
             </div>
+            <div className="field">
+              <label htmlFor="tmv">Mover para</label>
+              <select id="tmv" value={sel.parentId ?? ''} onChange={(e) => move(sel.id, e.target.value || null)}>
+                <option value="">Raiz do mapa (1º nível)</option>
+                {moveTargets(nodes, sel.id).map((o) => <option key={o.id} value={o.id}>{'\u00A0\u00A0'.repeat(o.depth)}{o.name}</option>)}
+              </select>
+            </div>
+            {sheet && err && <div className="notice err">{err}</div>}
             <div className="tr-meta">{kidsCount(sel.id)} {kidsCount(sel.id) === 1 ? 'território dentro' : 'territórios dentro'} · {sel.source === 'ai' ? 'criado pela IA' : 'criado à mão'}</div>
             <div className="tr-actions">
               <button type="button" className="btn small primary" onClick={() => setAi({ parent: sel })}><IconSpark /> Gerar com IA</button>
@@ -342,6 +369,15 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
       {tr && <TranslateModal node={{ id: tr.node.id, name: tr.node.name, path: pathOf(nodes, tr.node.id).join(' › ') }} personas={personas} linked={effectivePersonas(nodes, tr.node.id)} translated={effectivePersonas(nodes, tr.node.id).filter((pid) => translationFor(nodes, tr.node.id, pid).text)} preselect={tr.preselect} hasKey={hasKey} hasAbout={hasAbout} onClose={() => setTr(null)} />}
     </div>
   );
+}
+
+/** Destinos possíveis para mover um território (qualquer outro, menos ele mesmo e o que está dentro dele), em ordem de árvore. */
+function moveTargets(nodes: TNode[], id: string) {
+  const bad = descendantIds(nodes, id);
+  const out: { id: string; name: string; depth: number }[] = [];
+  const walk = (items: ReturnType<typeof buildTree>, depth: number) => { for (const it of items) { if (bad.has(it.id)) continue; out.push({ id: it.id, name: it.data.name, depth }); walk(it.children, depth + 1); } };
+  walk(buildTree(nodes), 0);
+  return out;
 }
 
 export { GROUP_COLORS };

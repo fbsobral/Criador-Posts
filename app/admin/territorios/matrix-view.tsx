@@ -67,7 +67,7 @@ export function MatrixView({ personas, nodes, ideaCounts, hasKey, hasAbout }: {
             {shownRows.map(({ node: n, d }) => (
               <tr key={n.id} className={d === 0 ? 'top' : ''}>
                 <td style={{ paddingLeft: 12 + d * 22 }}>
-                  <b>{n.name}</b>{n.personaId === 'publico' && <span className="tr-also inline" title="Tema macro: nasceu sem persona">macro</span>}
+                  <b>{n.name}</b>{n.personaId === 'publico' && d === 0 && <span className="tr-also inline" title="Tema macro: nasceu sem persona">macro</span>}
                   <Link href={`/admin/territorios?n=${n.id}`} className="vd-link" style={{ marginLeft: 8 }} title="Abrir no mapa">mapa →</Link>
                 </td>
                 {personas.map((p) => {
