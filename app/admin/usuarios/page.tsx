@@ -24,7 +24,7 @@ export default async function UsersPage() {
     <div className="page">
       <PageHead title="Usuários" description={`Quem tem acesso a ${c.brandName}. Administradores convidam e removem pessoas.`} />
 
-      <div className="card-surface table-card">
+      <div className="card-surface table-card users-t">
         <table>
           <thead><tr><th>Pessoa</th><th className="hide-s">E-mail</th><th>Papel</th><th className="right"></th></tr></thead>
           <tbody>

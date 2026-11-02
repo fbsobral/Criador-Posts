@@ -954,3 +954,34 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
   .vd-sp-row { grid-template-columns: 1fr; } .vd-formats { grid-template-columns: 1fr; }
   .tr-about { gap: 8px; }
 }
+
+/* ============ celular: revisão dos demais módulos ============ */
+@media (max-width: 900px) {
+  /* Usuários: a tabela passava de 590px e o papel/"Remover" ficavam fora da tela; vira lista de cartões */
+  .users-t { overflow: visible; }
+  .users-t table, .users-t tbody, .users-t tr, .users-t td { display: block; }
+  .users-t thead { display: none; }
+  .users-t tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 10px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .users-t tr:last-child { border-bottom: 0; }
+  .users-t td { padding: 0; border: 0; } .users-t td.hide-s { display: none; }
+  .users-t td:nth-child(1) { grid-column: 1; grid-row: 1 / span 2; min-width: 0; }
+  .users-t td:nth-child(1) small { overflow-wrap: anywhere; }
+  .users-t td:nth-child(3) { grid-column: 2; grid-row: 1; justify-self: end; }
+  .users-t td.right { grid-column: 2; grid-row: 2; justify-self: end; text-align: right; }
+  .users-t td.right:empty { display: none; }
+
+  /* Personas: as ferramentas do cartão ficam sempre visíveis e cobriam o nome */
+  .pe-card-head { flex-wrap: wrap; }
+  .pe-card .pe-card-tools { position: static; flex-basis: 100%; justify-content: flex-end; order: 9; background: none; box-shadow: none; border-radius: 0; border-top: 1px solid var(--line); padding-top: 6px; margin-top: 2px; }
+  .pe-card .pe-card-tools .btn { padding: 7px 12px; }
+
+  /* alvos de toque pequenos: caixas e botões-pílula */
+  input[type=checkbox], input[type=radio] { width: 20px; height: 20px; }
+  .pe-check { width: 22px; height: 22px; }
+  button.pill { min-height: 32px; padding-left: 12px; padding-right: 12px; }
+
+  /* editor: a barra de fora e a do post somavam 140px antes do editor; o menu de baixo cobria o fim da página */
+  .admin:has(.editor-wrap) { grid-template-rows: minmax(0, 1fr); }
+  .admin:has(.editor-wrap) .side { display: none; }
+  .content:has(.editor-wrap) { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
+}
