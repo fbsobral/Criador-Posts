@@ -987,9 +987,13 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 }
 .vd-col-empty .pe-empty-ai { display: flex; margin: 10px auto 0; }
 
-/* Personas: as colunas dos grupos ocupam toda a altura do quadro, e a área vazia vira um alvo de soltar grande */
-.pe-board { min-height: max(320px, calc(100dvh - 330px)); }
-.pe-col { display: flex; flex-direction: column; }
-.pe-col .pe-col-body { flex: 1; min-height: 0; }
+/* Personas: quadro de altura fixa, colunas com a altura toda e a lista de cartões rolando dentro de cada uma */
+.pe-board { height: max(360px, calc(100dvh - 330px)); max-height: none; min-height: 0; overflow-x: auto; overflow-y: hidden; align-items: stretch; }
+.pe-col { display: flex; flex-direction: column; min-height: 0; }
+.pe-col .pe-col-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #c9c1ad transparent; padding-right: 2px; }
 .pe-col .vd-col-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 120px; }
-@media (max-width: 900px) { .pe-board { min-height: 320px; } }
+@media (max-width: 900px) {
+  /* no celular a página rola: sem rolagem aninhada, as colunas só esticam até a mais alta */
+  .pe-board { height: auto; min-height: 320px; overflow-y: visible; }
+  .pe-col .pe-col-body { overflow-y: visible; }
+}
