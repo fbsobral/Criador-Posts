@@ -17,7 +17,7 @@ export type Idea = IdeaFields & {
 export type IdeaInput = IdeaFields & { personaId: string | null; territoryId: string | null; territory: string };
 
 export const IDEA_FIELDS: { key: keyof IdeaFields; label: string; rows: number; max: number; placeholder: string; help: string }[] = [
-  { key: 'pain', label: 'Dor (linguagem de rua)', rows: 3, max: 400, placeholder: '“Todo mês eu pago o aluguel e não sobra nada pra mim.”', help: 'Como a pessoa fala de boca, sem jargão e sem "marketês".' },
+  { key: 'pain', label: 'Dor (linguagem de rua)', rows: 3, max: 400, placeholder: '“Todo mês eu pago o aluguel e não sobra nada pra mim.”', help: 'Como a pessoa fala de boca, sem jargão e sem "marketês". Sem persona: uma afirmação sobre o fato ou o território, nunca uma fala em primeira pessoa.' },
   { key: 'impact', label: 'Impacto', rows: 2, max: 400, placeholder: 'O que essa dor faz na vida dela: contas, saúde, família, tempo.', help: 'As consequências concretas da dor no dia a dia.' },
   { key: 'cause', label: 'Causa', rows: 2, max: 400, placeholder: 'Por que isso acontece (a causa coletiva, não a culpa da pessoa).', help: 'A raiz do problema, sem culpar quem sofre.' },
   { key: 'guide', label: 'Guia (enquadramento progressista)', rows: 3, max: 600, placeholder: 'Cuidado e proteção: uma cidade que cuida de quem mora nela, como uma casa onde todo mundo cabe.', help: 'Lakoff: o valor e a imagem que conduzem a conversa, sem repetir o discurso do outro lado nem se defender dele.' },

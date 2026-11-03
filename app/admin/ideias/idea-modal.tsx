@@ -75,6 +75,7 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
                       </>
                     ) : <PersonaOptions personas={personas} />}
                   </select>
+                  {persona === PUBLICO_ID && <small className="muted">Sem persona, a dor sai como <b>afirmação sobre o tema</b> (um fato do mercado ou do território), não como fala em primeira pessoa.</small>}
                 </div>
               ) : (
                 <div className="field" key="t">

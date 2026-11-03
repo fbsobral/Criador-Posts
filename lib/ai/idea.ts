@@ -47,6 +47,14 @@ REGRAS GERAIS
 - Respeite o tom de voz e as regras da marca. Evite clichês de IA ("mergulhe", "desvende", "no mundo de hoje").
 - Não ataque pessoas nem grupos; o foco é a dor real e o caminho de cuidado e solução.`;
 
+/** Quando a ideia nasce de um território sem persona, não há alguém falando: a dor é um fato, não uma fala. */
+const NO_PERSONA_RULES = `
+
+IDEIA SEM PERSONA (esta regra SUBSTITUI a da "dor em linguagem de rua" e qualquer fala em primeira pessoa)
+- Não existe uma pessoa específica falando. Por isso, a "pain" NÃO é fala em primeira pessoa, não usa "eu", "meu", "a gente" nem aspas de depoimento. A "pain" é uma AFIRMAÇÃO (statement) clara e concreta sobre a situação: um fato do mercado, da sociedade ou do território em si, em terceira pessoa ou de forma impessoal. Ex.: "Quase tudo que um jovem ganha no primeiro emprego vai para o aluguel e o transporte." Em 1 ou 2 frases, linguagem simples, sem jargão, sem número inventado (se precisar de um dado, escreva "[checar dado]").
+- "impact", "cause", "gain" e "desire" também ficam impessoais ou falam de "quem...", "as famílias...", "os jovens..." (nunca "eu" ou "minha"). O "desire" é o sentimento de quem passa por isso quando o problema acaba, descrito de fora.
+- "guide" e "plan" seguem as regras normais. A "cta" convida o público em geral (ex.: "Compartilhe com quem precisa saber disso", "Conheça o caminho"), sem supor uma persona.`;
+
 export function personaBlock(p: { name: string; tagline: string; role: string; data: PersonaData }) {
   const L = (t: string, a: string[]) => (a.length ? `\n- ${t}: ${a.join('; ')}` : '');
   return `PERSONA: ${p.name}${p.role ? ` (${p.role})` : ''}\nResumo: ${p.tagline}\nContexto: ${p.data.bio}${L('Objetivos', p.data.goals)}${L('Dores', p.data.pains)}${L('Objeções', p.data.objections)}${L('Gatilhos', p.data.triggers)}`;
@@ -80,6 +88,7 @@ export async function suggestIdeas(a: SuggestIdeasArgs): Promise<{ ideas: Sugges
       ? `TERRITÓRIO: ${a.territory.path.join(' › ')}${a.territory.description ? `\nO que entra aqui: ${a.territory.description}` : ''}${a.territory.children.length ? `\nSubtemas (use como ângulos, sem esgotar): ${a.territory.children.join('; ')}` : ''}${a.territory.translation ? `\nTRADUÇÃO DO TEMA PARA ESTA PERSONA (como ele aparece no dia a dia dela; use como ponte entre o debate coletivo e a dor em linguagem de rua):\n${a.territory.translation}` : ''}`
       : 'TERRITÓRIO: nenhum específico. Escolha ângulos relevantes para esta persona e para o que a organização faz.',
     a.existingPains.length ? `IDEIAS QUE JÁ EXISTEM (não repita as dores nem os ângulos):\n${a.existingPains.map((p) => `- ${p}`).join('\n')}` : '',
+    !a.persona ? 'ATENÇÃO: sem persona. A "pain" é uma afirmação sobre o fato ou o território (nunca uma fala em primeira pessoa).' : '',
     `TAREFA: crie ${n} ideia(s) de conteúdo com os 8 campos (pain, impact, cause, guide, plan, gain, desire, cta).`,
     a.instructions.trim() ? `INSTRUÇÕES EXTRAS DO USUÁRIO:\n${a.instructions.trim()}` : '',
   ].filter(Boolean).join('\n\n');
@@ -87,7 +96,7 @@ export async function suggestIdeas(a: SuggestIdeasArgs): Promise<{ ideas: Sugges
   try {
     const res = await new Anthropic().beta.messages.create({
       model: AI_MODEL, max_tokens: 12000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
-      system: [SYSTEM, brandBlock(a.brand)].filter(Boolean).join('\n\n'),
+      system: [SYSTEM + (a.persona ? '' : NO_PERSONA_RULES), brandBlock(a.brand)].filter(Boolean).join('\n\n'),
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } },
       messages: [{ role: 'user', content: user }],
     });
@@ -150,7 +159,7 @@ export async function refineIdea(a: {
   try {
     const res = await new Anthropic().beta.messages.create({
       model: AI_MODEL, max_tokens: 6000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
-      system: [SYSTEM + REFINE_RULES, brandBlock(a.brand)].filter(Boolean).join('\n\n'),
+      system: [SYSTEM + (a.persona ? '' : NO_PERSONA_RULES) + REFINE_RULES, brandBlock(a.brand)].filter(Boolean).join('\n\n'),
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: REFINE_SCHEMA } },
       messages: [{ role: 'user', content: user }],
     });
