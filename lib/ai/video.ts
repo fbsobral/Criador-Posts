@@ -172,8 +172,8 @@ export type RefineScriptInput = {
   /** Instruções de cada parte do formato (na ordem; vazio se o formato não existe mais). */
   instructions: string[]; formatName: string; seconds: number; platform: Platform; angle: string;
   feedback: string;
-  /** Índice da parte a refinar (as outras ficam como estão); nulo = o roteiro inteiro. */
-  scope: number | null; brand: BrandProfile;
+  /** Índice da parte a refinar (as outras ficam como estão); "caption" = só a legenda e as hashtags; nulo = o roteiro inteiro. */
+  scope: number | 'caption' | null; brand: BrandProfile;
 };
 
 /** Refina um roteiro já gerado (a versão que está na tela) a partir de um feedback. Não grava: o usuário aprova antes. */
@@ -185,6 +185,7 @@ export async function refineVideoScript(i: RefineScriptInput): Promise<{ title: 
   });
   if (process.env.AI_MOCK === '1') {
     await new Promise((r) => setTimeout(r, 600));
+    if (i.scope === 'caption') return { title: i.title, data: { ...i.data, caption: `${i.data.caption} (refinada: ${i.feedback.slice(0, 30)})` }, note: 'Versão simulada (AI_MOCK=1).' };
     return { title: i.title, data: { ...i.data, parts: i.data.parts.map((p, k) => (i.scope !== null && i.scope !== k ? p : { ...p, speech: `${p.speech} (refinado: ${i.feedback.slice(0, 30)})` })) }, note: 'Versão simulada (AI_MOCK=1).' };
   }
   if (!process.env.ANTHROPIC_API_KEY) throw new AiError('ANTHROPIC_API_KEY não configurada no servidor.');
@@ -196,7 +197,7 @@ export async function refineVideoScript(i: RefineScriptInput): Promise<{ title: 
     `FORMATO: ${i.formatName || 'Vídeo curto'}\nDuração total: ${i.seconds} segundos. Plataforma: ${plat}. ${PLATFORM_GUIDE[i.platform]}${i.angle ? `\nIdeia do vídeo: ${i.angle}` : ''}`,
     `REGRAS
 - Aplique o pedido do usuário. Mude só o que o pedido exige e o que for necessário para manter a coerência; preserve o resto (ideia, fatos, estrutura, o que já estava bom).
-- "parts" deve ter EXATAMENTE ${n} itens, na mesma ordem. ${i.scope !== null ? `Só a PARTE ${i.scope + 1} deve mudar: devolva as outras partes exatamente como estão.` : 'Você pode ajustar qualquer parte que o pedido atingir, mantendo a sequência fluida.'}
+- "parts" deve ter EXATAMENTE ${n} itens, na mesma ordem. ${i.scope === 'caption' ? 'NÃO mude nenhuma parte: devolva todas as partes exatamente como estão. Só a "caption" (legenda) e as "hashtags" devem mudar.' : i.scope !== null ? `Só a PARTE ${i.scope + 1} deve mudar: devolva as outras partes exatamente como estão.` : 'Você pode ajustar qualquer parte que o pedido atingir, mantendo a sequência fluida.'}
 - Respeite o limite de palavras de fala de cada parte (o vídeo tem de caber em ${i.seconds} s) e as instruções da parte, quando houver.
 - Português do Brasil, linguagem FALADA: frases curtas, ritmo de conversa. NÃO invente fatos, números, datas, nomes ou fontes: use só o que já está no roteiro ou no pedido. Respeite o tom e as regras da marca; evite clichês de IA e de vídeo.
 - Fala e tela se complementam: não peça para a pessoa "ler" o que a tela já diz. "on_screen": até 6 palavras, ou "" se não houver.
@@ -204,7 +205,7 @@ export async function refineVideoScript(i: RefineScriptInput): Promise<{ title: 
 - "title" (até 70 caracteres), "caption" e "hashtags" (sem "#"): mantenha como estão, a menos que o pedido os atinja.
 - "note": uma frase curta dizendo o que você mudou.`,
   ].filter(Boolean).join('\n\n');
-  const user = [`ROTEIRO ATUAL:\n${show(i.title, i.data)}`, i.previous ? `SUGESTÃO ANTERIOR (não aprovada):\n${show(i.previous.title, i.previous.data)}` : '', `PEDIDO DO USUÁRIO${i.scope !== null ? ` (só sobre a parte ${i.scope + 1})` : ''}:\n${i.feedback}`].filter(Boolean).join('\n\n');
+  const user = [`ROTEIRO ATUAL:\n${show(i.title, i.data)}`, i.previous ? `SUGESTÃO ANTERIOR (não aprovada):\n${show(i.previous.title, i.previous.data)}` : '', `PEDIDO DO USUÁRIO${i.scope === 'caption' ? ' (só sobre a legenda e as hashtags)' : i.scope !== null ? ` (só sobre a parte ${i.scope + 1})` : ''}:\n${i.feedback}`].filter(Boolean).join('\n\n');
   try {
     const res = await new Anthropic().beta.messages.create({
       model: AI_MODEL, max_tokens: 8000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
@@ -215,7 +216,10 @@ export async function refineVideoScript(i: RefineScriptInput): Promise<{ title: 
     if (res.stop_reason === 'max_tokens') throw new AiError('A resposta ficou grande demais. Tente de novo.', true);
     const raw = JSON.parse(textOf(res)) as { title?: string; parts?: { speech: string; on_screen: string; visual: string }[]; caption?: string; hashtags?: string[]; note?: string };
     if (!Array.isArray(raw.parts) || raw.parts.length !== n) throw new AiError('A IA devolveu o roteiro com um número diferente de partes. Tente de novo.', true);
-    return { title: clean(raw.title, 80) || i.title, data: build(raw.parts, clean(raw.title, 80), raw.caption ?? '', raw.hashtags ?? i.data.hashtags), note: clean(raw.note, 300) };
+    const out = build(raw.parts, clean(raw.title, 80), raw.caption ?? '', raw.hashtags ?? i.data.hashtags);
+    // só a legenda e as hashtags: título e partes ficam exatamente como estavam (garantia no código)
+    if (i.scope === 'caption') return { title: i.title, data: { ...i.data, caption: out.caption, hashtags: out.hashtags }, note: clean(raw.note, 300) };
+    return { title: clean(raw.title, 80) || i.title, data: out, note: clean(raw.note, 300) };
   } catch (e) {
     if (e instanceof SyntaxError) throw new AiError('A IA devolveu uma resposta inválida.', true);
     return fail(e);

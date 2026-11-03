@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   if (!current) return Response.json({ error: 'O roteiro mudou de estrutura. Recarregue a página.' }, { status: 400 });
   const prev = b?.previous as { title?: unknown; data?: unknown } | undefined;
   const previousData = prev ? toData(prev.data, row.data) : null;
-  const scope = Number.isInteger(b?.scope) && Number(b?.scope) >= 0 && Number(b?.scope) < current.parts.length ? Number(b?.scope) : null;
+  const scope: number | 'caption' | null = b?.scope === 'caption' ? 'caption' : Number.isInteger(b?.scope) && Number(b?.scope) >= 0 && Number(b?.scope) < current.parts.length ? Number(b?.scope) : null;
   const format = row.formatId ? await loadFormat(c.brandId, row.formatId) : null;
   try {
     const r = await refineVideoScript({

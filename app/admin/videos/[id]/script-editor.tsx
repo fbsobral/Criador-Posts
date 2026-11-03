@@ -98,6 +98,30 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
     setUndo({ title, data }); setData(nd); saveNow(title, nd);
     setPr(null);
   };
+  // refinar com IA só a legenda e as hashtags (botão no bloco da legenda)
+  type CapRefine = { fb: string; busy: boolean; err: string; sugg: { caption: string; hashtags: string[] } | null; note: string };
+  const [cr, setCr] = useState<CapRefine | null>(null);
+  const CCHIPS = ['Mais curta', 'Gancho mais forte na 1ª linha', 'Tom mais natural', 'Menos hashtags'];
+  const tagText = (h: string[]) => h.map((x) => `#${x}`).join(' ');
+  async function askCaption() {
+    if (!cr) return;
+    const prev = cr.sugg;
+    setCr({ ...cr, busy: true, err: '' });
+    try {
+      const previous = prev ? { title, data: { ...data, caption: prev.caption, hashtags: prev.hashtags } } : undefined;
+      const r = await fetch('/api/videos/refine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, title, current: data, feedback: cr.fb, scope: 'caption', previous }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'Não foi possível refinar a legenda.');
+      const d = j.data as ScriptData;
+      setCr((x) => (x ? { ...x, busy: false, sugg: { caption: d.caption ?? '', hashtags: d.hashtags ?? [] }, note: j.note ?? '' } : x));
+    } catch (e) { setCr((x) => (x ? { ...x, busy: false, err: e instanceof Error ? e.message : 'Erro inesperado.' } : x)); }
+  }
+  const capChanged = !!cr?.sugg && (cr.sugg.caption.trim() !== data.caption.trim() || tagText(cr.sugg.hashtags) !== tagText(data.hashtags));
+  const applyCaption = () => {
+    if (!cr?.sugg) return;
+    const nd = { ...data, caption: cr.sugg.caption, hashtags: cr.sugg.hashtags };
+    setUndo({ title, data }); setData(nd); saveNow(title, nd); setCr(null);
+  };
   const changes = (() => {
     if (!sugg) return [] as { label: string; before: string; after: string }[];
     const out: { label: string; before: string; after: string }[] = [];
@@ -261,6 +285,38 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
       </div>
 
       <div className="card-surface form-card vd-cap">
+        <div className="id-fhead" style={{ marginBottom: 8 }}>
+          <b style={{ fontFamily: 'var(--font-head)', fontSize: 15 }}>Legenda e hashtags</b>
+          <button type="button" className="btn small ghost id-fai" onClick={() => setCr(cr ? null : { fb: '', busy: false, err: '', sugg: null, note: '' })} disabled={!hasKey} aria-expanded={!!cr} title={!hasKey ? 'A IA não está configurada neste servidor' : 'Refinar a legenda e as hashtags com IA'}><IconSpark /> {data.caption.trim() ? 'Refinar' : 'Sugerir'}</button>
+        </div>
+        {cr && (
+          <div className="id-fref" style={{ marginBottom: 12 }}>
+            {cr.sugg === null ? (
+              <>
+                <textarea rows={2} autoFocus value={cr.fb} onChange={(e) => setCr({ ...cr, fb: e.target.value })} maxLength={800} placeholder={data.caption.trim() ? 'O que mudar na legenda? Ex.: mais curta, comece com a dor, menos hashtags…' : 'Como deve ser a legenda? Ex.: curta, com a pergunta do gancho e um convite para comentar…'} />
+                <div className="aim-chips pe-chips-row">{CCHIPS.map((c) => <button type="button" key={c} onClick={() => setCr({ ...cr, fb: (cr.fb.trim() ? `${cr.fb.trim()}; ` : '') + c.toLowerCase() })}>{c}</button>)}</div>
+              </>
+            ) : (
+              <div className="id-fdiff">
+                {cr.note && <p className="pe-note">{cr.note}</p>}
+                {!capChanged ? <p className="muted">A IA não mudou nada. Tente pedir de outro jeito.</p> : (
+                  <>
+                    {cr.sugg.caption.trim() !== data.caption.trim() && <div><span>Legenda</span>{data.caption.trim() && <s>{data.caption}</s>}<p>{cr.sugg.caption || '(vazio)'}</p></div>}
+                    {tagText(cr.sugg.hashtags) !== tagText(data.hashtags) && <div><span>Hashtags</span>{data.hashtags.length > 0 && <s>{tagText(data.hashtags)}</s>}<p>{tagText(cr.sugg.hashtags) || '(vazio)'}</p></div>}
+                  </>
+                )}
+                <textarea rows={2} value={cr.fb} onChange={(e) => setCr({ ...cr, fb: e.target.value })} maxLength={800} placeholder="Não é bem isso? Peça outro ajuste sobre esta sugestão…" />
+              </div>
+            )}
+            {cr.err && <div className="notice err">{cr.err}</div>}
+            {cr.busy && <div className="notice info" role="status">Refinando… leva cerca de 10 a 25 segundos.</div>}
+            <div className="row-actions">
+              {cr.sugg !== null && <button type="button" className="btn small primary" onClick={applyCaption} disabled={!capChanged}>✓ Aplicar na legenda</button>}
+              <button type="button" className={`btn small${cr.sugg === null ? ' primary' : ''}`} onClick={askCaption} disabled={cr.busy || cr.fb.trim().length < 3}>{cr.busy ? 'Refinando…' : cr.sugg === null ? <><IconSpark /> Sugerir</> : 'Pedir outro ajuste'}</button>
+              <button type="button" className="btn small ghost" onClick={() => setCr(null)}>{cr.sugg === null ? 'Cancelar' : 'Descartar'}</button>
+            </div>
+          </div>
+        )}
         <div className="field"><label htmlFor="cap">Legenda</label><textarea id="cap" rows={3} value={data.caption} onChange={(e) => setData((d) => ({ ...d, caption: e.target.value }))} maxLength={2200} /></div>
         <div className="field"><label htmlFor="tags">Hashtags <span className="muted">(separadas por espaço)</span></label>
           <input id="tags" value={data.hashtags.map((h) => `#${h}`).join(' ')} onChange={(e) => setData((d) => ({ ...d, hashtags: e.target.value.split(/[\s,]+/).map((h) => h.replace(/^#+/, '')).filter(Boolean) }))} /></div>
