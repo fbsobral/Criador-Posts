@@ -67,11 +67,11 @@ const lines = (t: string) => t.split('\n').map((l) => l.replace(/^\s*(?:[-•*]|
 
 /** A ideia como texto de entrada para a IA (roteiro ou post): a história inteira, na ordem. */
 export function ideaBrief(f: IdeaFields, persona: string, territory: string): string {
-  return [`IDEIA DE CONTEÚDO para a persona: ${persona || 'público geral'}${territory ? ` (território: ${territory})` : ''}`, ...LABELS.filter(([k]) => f[k]).map(([k, l]) => `${l.toUpperCase()}: ${k === 'plan' ? lines(f[k]).join(' → ') : f[k]}`)].join('\n');
+  return [`IDEIA DE CONTEÚDO para a persona: ${persona || 'público geral'}${territory ? ` (território: ${territory})` : ''}`, ...LABELS.filter(([k]) => f[k]).map(([k, l]) => `${l.toUpperCase()}: ${k === 'plan' ? `${lines(f[k]).join(' → ')} (passos possíveis: use só o mais concreto, desenvolvido, não todos)` : f[k]}`)].join('\n');
 }
 /** Orientação extra para a IA (roteiro ou post) respeitar a ideia: arco didático, linguagem da persona, guia como bússola, sem números inventados. */
 export const IDEA_INSTRUCTIONS = `ESTE CONTEÚDO PARTE DE UMA IDEIA ESTRUTURADA. Siga estas regras:
-1) COMEÇO, MEIO E FIM, DIDÁTICO. Começo: a cena/dor que a pessoa reconhece. Meio: EXPLIQUE, em ordem de causa e efeito e com palavras simples, por que isso acontece, e depois o que fazer, em passos curtos e concretos. Fim: o ganho racional (o oposto do impacto: o que melhora na prática), o desejo (o sentimento de ter a dor resolvida) e o convite (CTA). Cada frase deve levar à seguinte ("porque", "por isso", "aí", "então"). Fale como para um amigo que não entende do assunto.
+1) COMEÇO, MEIO E FIM, DIDÁTICO. Começo: a cena/dor que a pessoa reconhece. Meio: EXPLIQUE, em ordem de causa e efeito e com palavras simples, por que isso acontece, e depois mostre o caminho: não precisa usar todos os passos do plano; escolha o passo (ou no máximo dois) mais concreto e DESENVOLVA-O ligado à causa, com uma situação do dia a dia (quem faz o quê e o que muda), sem listar etapas em sequência nem usar verbos vagos (aproximar, acompanhar, fortalecer) sem dizer o que acontece de verdade. Fim: o ganho racional (o oposto do impacto: o que melhora na prática), o desejo (o sentimento de ter a dor resolvida) e o convite (CTA). Cada frase deve levar à seguinte ("porque", "por isso", "aí", "então"). Fale como para um amigo que não entende do assunto.
 2) CONCRETO, NÃO ABSTRATO. Troque palavras abstratas (transparência, repasse, equidade, sistema) por ações e situações visíveis do dia a dia da pessoa. Se usar um termo difícil, explique logo em seguida com uma frase simples.
 3) FALE COM A PERSONA: use o jeito de falar, os exemplos, o trabalho e as contas dela; se couber, responda à objeção dela.
 4) O GUIA é bússola: use o valor para escolher o ponto de vista e as palavras, mas NÃO narre a metáfora do guia nem diga "valor" ou "enquadramento". Só use imagem se vier do universo da própria persona.
@@ -79,8 +79,8 @@ export const IDEA_INSTRUCTIONS = `ESTE CONTEÚDO PARTE DE UMA IDEIA ESTRUTURADA.
 6) Não ataque pessoas nem grupos.
 Se houver poucas partes ou slides, comprima, mas mantenha começo, meio e fim.`;
 /** Resumo da ideia para o campo "Ideia" do roteiro: a causa e o caminho, em linguagem simples. */
-export const ideaAngle = (f: IdeaFields) => [f.cause, f.plan ? `O que fazer: ${lines(f.plan).join('; ')}.` : ''].filter(Boolean).join(' ').slice(0, 500);
+export const ideaAngle = (f: IdeaFields) => [f.cause, f.plan ? `Caminho (use só o passo mais concreto, não todos): ${lines(f.plan).join('; ')}.` : ''].filter(Boolean).join(' ').slice(0, 500);
 /** Título curto a partir da dor. */
 export const ideaTitle = (pain: string) => { const t = pain.replace(/^["“”'\s]+|["“”'\s]+$/g, '').replace(/\s+/g, ' '); return t.length > 120 ? `${t.slice(0, 117)}…` : t; };
 /** Pontos principais (os passos do plano, ou ganho e desejo) para o planejamento do roteiro. */
-export const ideaPoints = (f: IdeaFields) => [...lines(f.plan), f.gain, f.desire].filter(Boolean).slice(0, 6);
+export const ideaPoints = (f: IdeaFields) => [lines(f.plan).length ? `Caminho: escolha UM destes passos (o mais concreto) e desenvolva, sem listar todos: ${lines(f.plan).join('; ')}` : '', f.gain, f.desire].filter(Boolean).slice(0, 6);
