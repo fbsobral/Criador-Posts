@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODEL, AiError, brandBlock, type BrandProfile } from './generate';
 import type { PersonaData } from '../persona';
-import { MAX_IDEAS_PER_RUN, type IdeaFields } from '../idea';
+import { IDEA_OBJECTIVES, MAX_IDEAS_PER_RUN, type IdeaFields } from '../idea';
 
 export type SuggestedIdea = IdeaFields;
 const KEYS = ['pain', 'impact', 'cause', 'guide', 'plan', 'gain', 'desire', 'cta'] as const;
@@ -31,7 +31,12 @@ ESTRUTURA DE CADA IDEIA (todos os campos são obrigatórios; juntos contam uma h
 5. "plan" — o PLANO: o caminho para sair da dor, em 2 a 4 passos curtos e concretos (um por linha, separados por quebra de linha, sem numeração nem marcadores). Coerente com a causa e com o guia, e ligado, de forma natural, ao que a ORGANIZAÇÃO faz ou ensina. Sem inventar leis, números, prazos ou programas: se precisar de um dado que não tem certeza, escreva "[checar dado]".
 6. "gain" — o GANHO: o resultado RACIONAL de a dor ser resolvida, em 1 ou 2 frases. É o que dá para medir ou ver no mundo real (dinheiro, tempo, segurança, direito garantido, contas que fecham) e normalmente é o OPOSTO do impacto: se o impacto era "sobra pouco no fim do mês", o ganho é "sobra dinheiro no fim do mês". Concreto, sem promessa milagrosa e sem número inventado.
 7. "desire" — o DESEJO: o resultado EMOCIONAL de a dor estar resolvida, em 1 frase: como a pessoa se sente quando o problema acaba (tranquila, respeitada, orgulhosa, segura, livre, em paz com a família). É o sentimento, não o resultado prático: o ganho é a razão, o desejo é a emoção.
-8. "cta" — a CTA: o convite final, em 1 frase, claro e natural, que dá um próximo passo fácil (olhar, perceber, conversar, guardar, compartilhar com quem passa por isso, conhecer o caminho). Sem tom de venda agressivo ("compre já", "clique agora").
+8. "cta" — a CTA: o convite final, em 1 frase, que pede UMA ação concreta e é o PRIMEIRO DEGRAU do caminho do plano (coerente com o último passo do plano e com o OBJETIVO indicado). Estratégia da CTA:
+   - Escolha a ação pelo momento da pessoa: quem acabou de perceber o problema ainda não está pronto para doar ou se inscrever; peça um passo proporcional (guardar, compartilhar, conversar, conhecer) e só peça um compromisso maior (doar, se inscrever, ser voluntário) quando a ideia e o objetivo já levarem até lá.
+   - Comece com um verbo no imperativo e diga a ação e o porquê em poucas palavras (ex.: "Mande para quem está procurando a primeira vaga: ele pode não saber que a mentoria existe.").
+   - Só convide para o que a ORGANIZAÇÃO realmente faz ou oferece (veja a identidade da marca); não invente programas, links, prazos nem benefícios.
+   - A CTA não depende do canal (nada de "link na bio" ou "comente QUERO"): a mecânica do canal é decidida depois, quando virar post ou roteiro.
+   - Evite convites genéricos e vazios ("curta e compartilhe", "saiba mais") e tom de venda agressivo ("compre já", "clique agora").
 
 CLAREZA E DIDÁTICA (vale para todos os campos)
 - Escreva para quem NÃO entende do assunto: explique como se fosse para um amigo na mesa do bar. Nada de abstração solta: troque palavras como "transparência", "equidade", "repasse", "sistema", "estrutura" por situações, ações e coisas que dá para ver.
@@ -46,6 +51,13 @@ REGRAS GERAIS
 - Fique no território indicado e na persona indicada. Ligue ao que a ORGANIZAÇÃO faz (veja a identidade da marca) de forma natural.
 - Respeite o tom de voz e as regras da marca. Evite clichês de IA ("mergulhe", "desvende", "no mundo de hoje").
 - Não ataque pessoas nem grupos; o foco é a dor real e o caminho de cuidado e solução.`;
+
+/** Objetivo das ideias: fixo (o escolhido) ou a IA decide por ideia. */
+function objectiveBlock(id: string | undefined, hasPersona: boolean, n: number): string {
+  const o = IDEA_OBJECTIVES.find((x) => x.id === id && x.id !== 'auto');
+  if (o) return `OBJETIVO ${n > 1 ? 'DAS IDEIAS' : 'DA IDEIA'} (a CTA e o plano devem servir a ele):\n${o.guide}`;
+  return `OBJETIVO: escolha o melhor para ${n > 1 ? 'cada ideia' : 'a ideia'}, entre conscientizar, engajar, aproximar (captar contato), apoiar (doar/patrocinar) e participar (voluntariar-se/inscrever-se), pelo momento da ${hasPersona ? 'persona' : 'pessoa em geral'}, pelo território e pelo último passo do plano.${n > 1 ? ' Varie o objetivo entre as ideias quando fizer sentido.' : ''}${hasPersona ? '' : ' Sem persona definida, prefira objetivos de conscientizar e engajar.'} Deixe a CTA coerente com o objetivo escolhido.`;
+}
 
 /** Quando a ideia nasce de um território sem persona, não há alguém falando: a dor é um fato, não uma fala. */
 const NO_PERSONA_RULES = `
@@ -71,6 +83,8 @@ export type SuggestIdeasArgs = {
   existingPains: string[];
   count: number;
   instructions: string;
+  /** Objetivo da ideia (id de IDEA_OBJECTIVES); vazio ou "auto" = a IA escolhe, ideia por ideia. */
+  objective?: string;
 };
 
 /** Sugere ideias de conteúdo. Não grava nada: o usuário aprova antes. */
@@ -89,6 +103,7 @@ export async function suggestIdeas(a: SuggestIdeasArgs): Promise<{ ideas: Sugges
       : 'TERRITÓRIO: nenhum específico. Escolha ângulos relevantes para esta persona e para o que a organização faz.',
     a.existingPains.length ? `IDEIAS QUE JÁ EXISTEM (não repita as dores nem os ângulos):\n${a.existingPains.map((p) => `- ${p}`).join('\n')}` : '',
     !a.persona ? 'ATENÇÃO: sem persona. A "pain" é uma afirmação sobre o fato ou o território (nunca uma fala em primeira pessoa).' : '',
+    objectiveBlock(a.objective, !!a.persona, n),
     `TAREFA: crie ${n} ideia(s) de conteúdo com os 8 campos (pain, impact, cause, guide, plan, gain, desire, cta).`,
     a.instructions.trim() ? `INSTRUÇÕES EXTRAS DO USUÁRIO:\n${a.instructions.trim()}` : '',
   ].filter(Boolean).join('\n\n');

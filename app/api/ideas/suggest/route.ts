@@ -4,7 +4,7 @@ import { brandSettings, contentIdeas, personas } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { AiError } from '@/lib/ai/generate';
 import { suggestIdeas } from '@/lib/ai/idea';
-import { MAX_IDEAS_PER_RUN } from '@/lib/idea';
+import { IDEA_OBJECTIVES, MAX_IDEAS_PER_RUN } from '@/lib/idea';
 import { PUBLICO_ID, pathOf, translationFor } from '@/lib/territory';
 import { loadTerritoryNodes } from '@/lib/territory-server';
 import { loadBrandProfile } from '@/lib/video-server';
@@ -43,6 +43,7 @@ export async function POST(req: Request) {
       territory, existingPains: existing.map((x) => x.pain),
       count: Math.min(MAX_IDEAS_PER_RUN, Math.max(1, Math.round(Number(b?.count)) || 3)),
       instructions: String(b?.instructions ?? '').slice(0, 1200),
+      objective: IDEA_OBJECTIVES.some((o) => o.id === b?.objective) ? String(b?.objective) : 'auto',
     });
     return Response.json({ ideas: r.ideas });
   } catch (e) {

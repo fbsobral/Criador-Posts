@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { fmtUsd } from '@/lib/ai/constants';
 import type { SuggestedIdea } from '@/lib/ai/idea';
-import { ESTIMATED_COST_IDEA_BASE, ESTIMATED_COST_PER_IDEA, type TerritoryOption } from '@/lib/idea';
+import { ESTIMATED_COST_IDEA_BASE, ESTIMATED_COST_PER_IDEA, IDEA_OBJECTIVES, type IdeaObjective, type TerritoryOption } from '@/lib/idea';
 import { addSuggestedIdeas } from '@/lib/idea-actions';
 import { PUBLICO_ID } from '@/lib/territory';
 import { IdeaBody } from './idea-body';
@@ -23,6 +23,7 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
   const [persona, setPersona] = useState(initialPersona || all[0]?.id || PUBLICO_ID);
   const [territory, setTerritory] = useState(initialTerritory);
   const [count, setCount] = useState(3);
+  const [objective, setObjective] = useState<IdeaObjective>('auto');
   const [instructions, setInstructions] = useState('');
   const [step, setStep] = useState<'ask' | 'review'>('ask');
   const [busy, setBusy] = useState(false);
@@ -37,7 +38,7 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
   async function suggest() {
     setBusy(true); setErr('');
     try {
-      const r = await fetch('/api/ideas/suggest', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ personaId: persona, territoryId: territory || null, count, instructions }) });
+      const r = await fetch('/api/ideas/suggest', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ personaId: persona, territoryId: territory || null, count, instructions, objective }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Não foi possível sugerir ideias.');
       setIdeas(j.ideas); setOff(new Set()); setStep('review');
@@ -90,6 +91,13 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
               <div className="field">
                 <label>Quantas ideias?</label>
                 <div className="vd-chips">{[1, 2, 3, 5, 8].map((n) => <button key={n} type="button" className={`vd-chip${count === n ? ' on' : ''}`} onClick={() => setCount(n)}>{n}</button>)}</div>
+              </div>
+              <div className="field">
+                <label>{count === 1 ? 'Objetivo desta ideia' : 'Objetivo destas ideias'}</label>
+                <div className="vd-chips" role="radiogroup" aria-label={count === 1 ? 'Objetivo desta ideia' : 'Objetivo destas ideias'}>
+                  {IDEA_OBJECTIVES.map((o) => <button key={o.id} type="button" role="radio" aria-checked={objective === o.id} className={`vd-chip${objective === o.id ? ' on' : ''}`} onClick={() => setObjective(o.id)} title={o.hint}>{o.label}</button>)}
+                </div>
+                <small className="muted">{IDEA_OBJECTIVES.find((o) => o.id === objective)?.hint}. É o que a CTA vai pedir {count === 1 ? 'à pessoa' : 'às pessoas'}.</small>
               </div>
               <details className="vd-more">
                 <summary>Instruções extras <span className="muted">(opcional)</span></summary>

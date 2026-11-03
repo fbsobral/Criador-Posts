@@ -28,6 +28,17 @@ export const IDEA_FIELDS: { key: keyof IdeaFields; label: string; rows: number; 
 ];
 export const EMPTY_FIELDS: IdeaFields = { pain: '', impact: '', cause: '', guide: '', plan: '', gain: '', desire: '', cta: '' };
 
+/** O que a ideia quer provocar na pessoa. "auto" = a IA escolhe, ideia por ideia. */
+export type IdeaObjective = 'auto' | 'conscientizar' | 'engajar' | 'aproximar' | 'apoiar' | 'participar';
+export const IDEA_OBJECTIVES: { id: IdeaObjective; label: string; hint: string; /** instrução para a IA */ guide: string }[] = [
+  { id: 'auto', label: 'A IA escolhe', hint: 'Escolhe o melhor para cada ideia', guide: '' },
+  { id: 'conscientizar', label: 'Conscientizar', hint: 'Fazer perceber o problema', guide: 'CONSCIENTIZAR: fazer a pessoa perceber e entender o problema e a causa coletiva. A CTA pede um passo leve de atenção: guardar, compartilhar com quem precisa saber, seguir para ver mais.' },
+  { id: 'engajar', label: 'Engajar', hint: 'Abrir conversa', guide: 'ENGAJAR: abrir conversa. A CTA pede uma resposta fácil: contar a própria experiência, comentar, responder uma pergunta, mandar para alguém que vive isso.' },
+  { id: 'aproximar', label: 'Aproximar', hint: 'Captar contato', guide: 'APROXIMAR (captar contato): trazer a pessoa para perto da organização. A CTA pede um primeiro contato de baixo esforço: deixar o contato, entrar na lista de novidades, chamar para conversar, conhecer o programa.' },
+  { id: 'apoiar', label: 'Apoiar', hint: 'Doar ou patrocinar', guide: 'APOIAR (doar/patrocinar): levar a pessoa ou a empresa a contribuir. A CTA pede um gesto concreto de apoio (doar, patrocinar, apoiar um projeto), com a razão de por que isso importa, sem pressão de venda.' },
+  { id: 'participar', label: 'Participar', hint: 'Voluntariar-se ou se inscrever', guide: 'PARTICIPAR: levar a pessoa a agir junto. A CTA convida a se inscrever, se voluntariar, ser mentor, comparecer a uma atividade ou se candidatar a um programa.' },
+];
+
 export const MAX_IDEAS_PER_RUN = 8;
 export const ESTIMATED_COST_PER_IDEA = 0.022;
 export const ESTIMATED_COST_IDEA_BASE = 0.01;
