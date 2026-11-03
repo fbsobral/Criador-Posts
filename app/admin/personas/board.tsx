@@ -87,7 +87,7 @@ export function PersonaBoard({ groups: g0, people: p0, icp, hasKey }: { groups: 
   const boardRef = useRef<HTMLDivElement>(null);
   usePan(boardRef, !empty || adding);
   return (
-    <div className="page">
+    <div className="page pe-page">
       <PageHead
         title="Personas"
         description={empty ? 'Quem você quer alcançar. Descreva o seu ICP e a IA sugere personas agrupadas por segmento.' : `${people.length} ${people.length === 1 ? 'persona' : 'personas'} em ${groups.length} ${groups.length === 1 ? 'grupo' : 'grupos'}. Arraste os cartões entre os grupos.`}

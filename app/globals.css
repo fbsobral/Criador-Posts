@@ -1017,3 +1017,22 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 .id-kcard .id-ktools { opacity: .55; transition: opacity .15s; } .id-kcard:hover .id-ktools, .id-kcard:focus-within .id-ktools { opacity: 1; }
 @media (max-width: 900px) { .id-board { grid-template-columns: repeat(3, 280px); } .id-kcard .id-ktools { opacity: 1; } .id-kfoot .vd-kmove { display: block; } .id-kcard { cursor: pointer; } }
 .tr-tools .danger { color: #FFB4A6; } .tr-tools .danger:hover { background: rgba(200, 52, 31, .45); color: #fff; }
+
+/* Personas (desktop): a página ocupa a altura toda e o quadro preenche exatamente o que sobra, sem vão embaixo */
+@media (min-width: 901px) {
+  .content:has(.pe-page) { padding-bottom: 24px; display: flex; flex-direction: column; }
+  .pe-page { flex: 1 0 560px; width: 100%; display: flex; flex-direction: column; min-height: 0; }
+  .pe-page > * { flex: none; }
+  .pe-page > .pe-board { flex: 1 1 0; height: auto; min-height: 360px; }
+}
+
+/* Ideias (desktop, em quadro): a página ocupa a altura toda, o quadro preenche o que sobra e cada coluna rola por dentro, sem estourar a tela */
+@media (min-width: 901px) {
+  .content:has(.id-page) { padding-bottom: 24px; display: flex; flex-direction: column; }
+  .id-page { flex: 1 0 560px; width: 100%; display: flex; flex-direction: column; min-height: 0; }
+  .id-page > * { flex: none; }
+  .id-page > .id-board { flex: 1 1 0; height: auto; max-height: none; min-height: 360px; overflow-y: hidden; align-items: stretch; }
+  .id-board .vd-col { display: flex; flex-direction: column; min-height: 0; }
+  .id-board .vd-col-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #c9c1ad transparent; padding-right: 2px; }
+  .id-board .vd-col-empty { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 120px; }
+}

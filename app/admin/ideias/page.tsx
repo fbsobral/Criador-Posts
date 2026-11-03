@@ -31,7 +31,7 @@ export default async function IdeiasPage({ searchParams }: { searchParams: Promi
   }));
   const tnodes = nodes;
   return (
-    <div className="page">
+    <div className="page id-page">
       <PageHead actions={<OrgPill name={c.brandName} />} title="Ideias de conteúdo" description="Cada ideia conta uma história para uma persona: da dor ao impacto, à causa, ao guia (enquadramento), ao plano, ao ganho, ao desejo e à CTA. Gere com IA a partir de um território ou escreva à mão." />
       <IdeasView ideas={ideas} personas={people.map((p) => ({ id: p.id, name: p.name, group: p.groupId ? gname.get(p.groupId) : undefined }))} nodes={tnodes} hasKey={!!process.env.ANTHROPIC_API_KEY || process.env.AI_MOCK === '1'} hasAbout={!!(bs?.about ?? '').trim()}
         formats={vformats.map((f) => ({ id: f.id, name: f.name, description: f.description, defaultSeconds: f.defaultSeconds, parts: f.parts }))}
