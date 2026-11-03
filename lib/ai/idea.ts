@@ -47,7 +47,7 @@ CLAREZA E DIDÁTICA (vale para todos os campos)
 - O GUIA é a bússola da ideia: orienta o valor e as palavras, e a imagem dele deve vir do universo da própria persona (o volante, a corrida, a feira dela), nunca de um mundo que ela não vive.
 
 REGRAS GERAIS
-- Cada ideia ataca UM ângulo diferente do território e uma dor diferente. Nada de ideias parecidas entre si nem repetidas das já existentes (você recebe a lista).
+- Cada ideia ataca UM ângulo diferente do território e uma dor diferente. Nada de ideias parecidas entre si nem repetidas das já existentes (você recebe a lista, da mesma persona e do mesmo território): não repita dor, ângulo, cena, imagem do guia nem CTA, e prefira ocupar lacunas que ainda não foram cobertas.
 - Fique no território indicado e na persona indicada. Ligue ao que a ORGANIZAÇÃO faz (veja a identidade da marca) de forma natural.
 - Respeite o tom de voz e as regras da marca. Evite clichês de IA ("mergulhe", "desvende", "no mundo de hoje").
 - Não ataque pessoas nem grupos; o foco é a dor real e o caminho de cuidado e solução.`;
@@ -72,6 +72,27 @@ export function personaBlock(p: { name: string; tagline: string; role: string; d
   return `PERSONA: ${p.name}${p.role ? ` (${p.role})` : ''}\nResumo: ${p.tagline}\nContexto: ${p.data.bio}${L('Objetivos', p.data.goals)}${L('Dores', p.data.pains)}${L('Objeções', p.data.objections)}${L('Gatilhos', p.data.triggers)}`;
 }
 
+/** Ideia já criada, mostrada à IA para ela não repetir e complementar. */
+export type ExistingIdea = { pain: string; guide: string; cta: string; persona: string; territory: string; /** same = mesma persona e território; persona = só a persona; territory = só o território */ scope: 'same' | 'persona' | 'territory' };
+
+const clip = (t: string, n: number) => { const x = t.replace(/\s+/g, ' ').trim(); return x.length > n ? `${x.slice(0, n)}…` : x; };
+
+/** Lista das ideias que já existem (da mesma persona e/ou do mesmo território), agrupadas por proximidade. */
+export function existingBlock(list: ExistingIdea[], hasPersona: boolean, hasTerritory: boolean): string {
+  if (!list.length) return '';
+  const groups: [ExistingIdea['scope'], string][] = [
+    ['same', hasPersona && hasTerritory ? 'MESMA PERSONA E MESMO TERRITÓRIO' : hasPersona ? 'MESMA PERSONA' : hasTerritory ? 'MESMO TERRITÓRIO, SEM PERSONA' : 'SEM PERSONA'],
+    ['persona', 'MESMA PERSONA, OUTROS TERRITÓRIOS'],
+    ['territory', 'MESMO TERRITÓRIO, OUTRAS PERSONAS'],
+  ];
+  const parts = groups.map(([k, title]) => {
+    const rows = list.filter((x) => x.scope === k);
+    if (!rows.length) return '';
+    return `[${title}]\n${rows.map((x) => `- Dor: ${clip(x.pain, 170)}${x.guide ? ` | Guia: ${clip(x.guide, 130)}` : ''}${x.cta ? ` | CTA: ${clip(x.cta, 110)}` : ''}${k !== 'same' ? ` | (${[k === 'territory' ? x.persona : '', k === 'persona' ? x.territory : ''].filter(Boolean).join(' · ') || '—'})` : ''}`).join('\n')}`;
+  }).filter(Boolean);
+  return `IDEIAS JÁ CRIADAS${hasPersona ? ' PARA ESTA PERSONA' : ''}${hasPersona && hasTerritory ? ' E' : ''}${hasTerritory ? ' PARA ESTE TERRITÓRIO' : ''}. Leia tudo antes de escrever e crie ideias NOVAS que COMPLEMENTEM o conjunto:\n- não repita a mesma dor, o mesmo ângulo, a mesma cena nem a mesma imagem/metáfora do guia;\n- varie também a CTA (outra ação, outro convite) em relação às já usadas;\n- procure o que ainda NÃO foi coberto (outro momento, outra consequência, outra causa, outro passo do plano);\n- as do mesmo território com outras personas mostram o que já foi dito sobre o tema: traga o que é específico desta persona.\n\n${parts.join('\n\n')}`;
+}
+
 export type SuggestIdeasArgs = {
   /** Nulo = público geral (sem persona). */
   persona: { name: string; tagline: string; role: string; data: PersonaData } | null;
@@ -81,6 +102,8 @@ export type SuggestIdeasArgs = {
   territory: { path: string[]; description: string; children: string[]; /** Como o tema aparece na vida desta persona (se já foi traduzido). */ translation?: string } | null;
   /** Dores das ideias que já existem para este território/persona. */
   existingPains: string[];
+  /** Ideias já criadas da mesma persona e/ou território (contexto para não repetir e complementar). */
+  existing?: ExistingIdea[];
   count: number;
   instructions: string;
   /** Objetivo da ideia (id de IDEA_OBJECTIVES); vazio ou "auto" = a IA escolhe, ideia por ideia. */
@@ -101,7 +124,7 @@ export async function suggestIdeas(a: SuggestIdeasArgs): Promise<{ ideas: Sugges
     a.territory
       ? `TERRITÓRIO: ${a.territory.path.join(' › ')}${a.territory.description ? `\nO que entra aqui: ${a.territory.description}` : ''}${a.territory.children.length ? `\nSubtemas (use como ângulos, sem esgotar): ${a.territory.children.join('; ')}` : ''}${a.territory.translation ? `\nTRADUÇÃO DO TEMA PARA ESTA PERSONA (como ele aparece no dia a dia dela; use como ponte entre o debate coletivo e a dor em linguagem de rua):\n${a.territory.translation}` : ''}`
       : 'TERRITÓRIO: nenhum específico. Escolha ângulos relevantes para esta persona e para o que a organização faz.',
-    a.existingPains.length ? `IDEIAS QUE JÁ EXISTEM (não repita as dores nem os ângulos):\n${a.existingPains.map((p) => `- ${p}`).join('\n')}` : '',
+    a.existing?.length ? existingBlock(a.existing, !!a.persona, !!a.territory) : a.existingPains.length ? `IDEIAS QUE JÁ EXISTEM (não repita as dores nem os ângulos):\n${a.existingPains.map((p) => `- ${p}`).join('\n')}` : '',
     !a.persona ? 'ATENÇÃO: sem persona. A "pain" é uma afirmação sobre o fato ou o território (nunca uma fala em primeira pessoa).' : '',
     objectiveBlock(a.objective, !!a.persona, n),
     `TAREFA: crie ${n} ideia(s) de conteúdo com os 8 campos (pain, impact, cause, guide, plan, gain, desire, cta).`,

@@ -1,15 +1,15 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
-import { IconSpark } from '../../icons';
+import { useEffect, useRef, useState, useTransition } from 'react';
+import { IconEdit, IconSpark } from '../../icons';
 import { PersonaOptions, type PersonaOpt } from './persona-options';
 import { EMPTY_FIELDS, IDEA_FIELDS, type Idea, type IdeaFields, type TerritoryOption } from '@/lib/idea';
 import { createIdea, updateIdea } from '@/lib/idea-actions';
 import { PUBLICO_ID } from '@/lib/territory';
 import { TerritorySelect } from './territory-select';
 
-/** Criar ou editar uma ideia à mão. */
+/** Ver, criar ou editar uma ideia, em um lightbox: cada campo aparece como texto legível em uma caixa e só vira campo de edição quando você clica em Editar (ideia nova já abre tudo em edição). */
 export function IdeaDrawer({ idea, personas, options, defaults, startRefine = false, hasKey = true, onClose }: {
   idea: Idea | null; personas: PersonaOpt[]; options: TerritoryOption[]; defaults: { persona: string; territory: string }; startRefine?: boolean; hasKey?: boolean; onClose: () => void;
 }) {
@@ -43,6 +43,21 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
   const applyRefined = () => { if (!sugg) return; setF(sugg.fields); setSugg(null); setRefine(false); setFb(''); setFirstFb(''); };
   const CHIPS = ['Dor mais de rua', 'Guia mais forte', 'Causa mais coletiva', 'Plano mais prático', 'Mais curto', 'CTA mais suave'];
 
+  // quais caixas estão em edição: ideia nova abre tudo; ideia existente abre só o que você clicar
+  const ALL = ['meta', ...IDEA_FIELDS.map((x) => x.key)];
+  const [editing, setEditing] = useState<Set<string>>(() => new Set(idea ? [] : ALL));
+  const toggle = (k: string) => setEditing((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+  const allOn = ALL.every((k) => editing.has(k));
+  const snap = useRef(JSON.stringify([persona, territory, territoryText, f]));
+  const dirty = JSON.stringify([persona, territory, territoryText, f]) !== snap.current;
+  const tryClose = () => { if (dirty && !confirm('Descartar as alterações desta ideia?')) return; onClose(); };
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => { if (e.key === 'Escape') tryClose(); };
+    document.addEventListener('keydown', key); return () => document.removeEventListener('keydown', key);
+  });
+  const personaName = persona === PUBLICO_ID ? 'Público geral' : personas.find((x) => x.id === persona)?.name ?? '—';
+  const planItems = f.plan.split('\n').map((l) => l.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, '').trim()).filter(Boolean);
+
   const save = () => start(async () => {
     const input = { personaId: persona === PUBLICO_ID ? null : persona, territoryId: territory || null, territory: territoryText, ...f };
     const r = idea ? await updateIdea(idea.id, input) : await createIdea(input);
@@ -51,13 +66,16 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
   });
 
   return (
-    <div className="pe-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <aside className="pe-drawer" role="dialog" aria-modal="true" aria-label={idea ? 'Editar ideia' : 'Nova ideia'}>
+    <div className="pe-overlay center" onMouseDown={(e) => { if (e.target === e.currentTarget && !dirty) onClose(); }}>
+      <div className="pe-modal id-lightbox" role="dialog" aria-modal="true" aria-label={idea ? 'Ideia de conteúdo' : 'Nova ideia'}>
         <header>
-          <h2>{idea ? 'Editar ideia' : 'Nova ideia'}</h2>
-          <button type="button" className="btn small ghost" onClick={onClose} aria-label="Fechar">✕</button>
+          <h2>{idea ? 'Ideia de conteúdo' : 'Nova ideia'}</h2>
+          <div className="row-actions">
+            {idea && <button type="button" className="btn small ghost" onClick={() => setEditing(allOn ? new Set() : new Set(ALL))}><IconEdit /> {allOn ? 'Concluir edição' : 'Editar tudo'}</button>}
+            <button type="button" className="btn small ghost" onClick={tryClose} aria-label="Fechar">✕</button>
+          </div>
         </header>
-        <div className="pe-drawer-body">
+        <div className="pe-modal-body">
           {!refine ? (
             <button type="button" className="btn pe-refine-open" onClick={() => setRefine(true)} disabled={!f.pain.trim() || !hasKey} title={!hasKey ? 'A IA não está configurada neste servidor' : undefined}><IconSpark /> Refinar com IA</button>
           ) : (
@@ -94,31 +112,60 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
               )}
             </div>
           )}
-          <div className="field">
-            <label htmlFor="dp">Persona relacionada</label>
-            <select id="dp" value={persona} onChange={(e) => setPersona(e.target.value)}><PersonaOptions personas={personas} /></select>
-            <small className="muted">Quem vai se reconhecer nesta ideia.</small>
-          </div>
-          <div className="field">
-            <label htmlFor="dt">Território</label>
-            <TerritorySelect id="dt" options={options} persona={persona} value={territory} onChange={setTerritory} empty="Sem território do mapa" />
-            {!territory && <input type="text" value={territoryText} onChange={(e) => setTerritoryText(e.target.value)} maxLength={200} placeholder="Ou escreva o tema à mão" style={{ marginTop: 6 }} />}
-            <small className="muted">De onde a ideia nasce (opcional).</small>
-          </div>
-          {IDEA_FIELDS.map((x) => (
-            <div key={x.key} className="field">
-              <label htmlFor={`f-${x.key}`}>{x.label}</label>
-              <textarea id={`f-${x.key}`} rows={x.rows} value={f[x.key]} maxLength={x.max} placeholder={x.placeholder} onChange={(e) => setF((s) => ({ ...s, [x.key]: e.target.value }))} />
-              <small className="muted">{x.help}</small>
+          {editing.has('meta') ? (
+            <div className="id-metaedit">
+              <div className="field">
+                <label htmlFor="dp">Persona relacionada</label>
+                <select id="dp" value={persona} onChange={(e) => setPersona(e.target.value)}><PersonaOptions personas={personas} /></select>
+                <small className="muted">Quem vai se reconhecer nesta ideia. Sem persona, a dor é uma afirmação sobre o tema.</small>
+              </div>
+              <div className="field">
+                <label htmlFor="dt">Território</label>
+                <TerritorySelect id="dt" options={options} persona={persona} value={territory} onChange={setTerritory} empty="Sem território do mapa" />
+                {!territory && <input type="text" value={territoryText} onChange={(e) => setTerritoryText(e.target.value)} maxLength={200} placeholder="Ou escreva o tema à mão" style={{ marginTop: 6 }} />}
+                <small className="muted">De onde a ideia nasce (opcional).</small>
+              </div>
+              {idea && <button type="button" className="btn small" onClick={() => toggle('meta')}>Concluir</button>}
             </div>
-          ))}
+          ) : (
+            <div className="id-metabox">
+              <div className="id-tags">
+                <span className="id-tag persona">{personaName}</span>
+                {territoryName && <span className="id-tag" title={territoryName}>{territoryName}</span>}
+              </div>
+              <button type="button" className="btn small ghost" onClick={() => toggle('meta')}><IconEdit /> Editar</button>
+            </div>
+          )}
+          <div className="id-fgrid">
+            {IDEA_FIELDS.map((x) => {
+              const on = editing.has(x.key), text = f[x.key].trim();
+              return (
+                <div key={x.key} className={`id-fbox k-${x.key}${on ? ' editing' : ''}`}>
+                  <div className="id-fhead">
+                    <label htmlFor={`f-${x.key}`}>{x.label}</label>
+                    <button type="button" className="btn small ghost" onClick={() => toggle(x.key)}>{on ? 'Concluir' : <><IconEdit /> Editar</>}</button>
+                  </div>
+                  {on ? (
+                    <>
+                      <textarea id={`f-${x.key}`} autoFocus={!!idea} rows={Math.min(14, Math.max(x.rows + 1, Math.ceil(f[x.key].length / 58) + 1))} value={f[x.key]} maxLength={x.max} placeholder={x.placeholder} onChange={(e) => setF((s) => ({ ...s, [x.key]: e.target.value }))} />
+                      <small className="muted">{x.help}</small>
+                    </>
+                  ) : text ? (
+                    x.key === 'plan' && planItems.length > 1 ? <ol className="id-ftext">{planItems.map((it, i) => <li key={i}>{it}</li>)}</ol> : <p className="id-ftext">{f[x.key]}</p>
+                  ) : (
+                    <button type="button" className="id-fempty" onClick={() => toggle(x.key)}>Sem texto ainda. Clique para escrever.</button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
           {err && <div className="notice err">{err}</div>}
         </div>
         <footer>
-          <button type="button" className="btn ghost" onClick={onClose}>Cancelar</button>
+          <button type="button" className="btn ghost" onClick={tryClose}>Cancelar</button>
           <button type="button" className="btn primary" onClick={save} disabled={pending || !f.pain.trim()}>{pending ? 'Salvando…' : 'Salvar ideia'}</button>
         </footer>
-      </aside>
+      </div>
     </div>
   );
 }
