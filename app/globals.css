@@ -1056,3 +1056,4 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 .id-fbtns { display: inline-flex; gap: 2px; } .id-fai { color: var(--primary); } .id-fai:disabled { color: var(--muted); }
 .id-fref { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1.5px dashed #F9D2B8; border-radius: 12px; background: #FFF8F4; }
 .id-fdiff { display: flex; flex-direction: column; gap: 8px; } .id-fdiff > div { display: flex; flex-direction: column; gap: 2px; } .id-fdiff span { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); } .id-fdiff s { color: var(--muted); font-size: 13.5px; line-height: 1.5; } .id-fdiff p { font-size: 14.5px; line-height: 1.55; margin: 0; white-space: pre-wrap; }
+.id-savestate { margin-right: auto; margin-left: 12px; font-size: 12.5px; color: var(--muted); } .id-savestate.err { color: var(--danger); }

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { IconEdit, IconSpark } from '../../icons';
 import { PersonaOptions, type PersonaOpt } from './persona-options';
 import { EMPTY_FIELDS, IDEA_FIELDS, type Idea, type IdeaFields, type TerritoryOption } from '@/lib/idea';
+import { actionErrorMessage } from '@/lib/action-error';
 import { createIdea, updateIdea } from '@/lib/idea-actions';
 import { PUBLICO_ID } from '@/lib/territory';
 import { TerritorySelect } from './territory-select';
@@ -55,13 +56,27 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
     } catch (e) { setFr((s) => (s ? { ...s, busy: false, err: e instanceof Error ? e.message : 'Erro inesperado.' } : s)); }
   }
   const changes = sugg ? IDEA_FIELDS.filter((x) => sugg.fields[x.key].trim() !== f[x.key].trim()).map((x) => ({ label: x.label.replace(/ \(.*\)/, ''), before: f[x.key], after: sugg.fields[x.key] })) : [];
-  const applyRefined = () => { if (!sugg) return; setF(sugg.fields); setSugg(null); setRefine(false); setFb(''); setFirstFb(''); };
+  const applyRefined = () => { if (!sugg) return; const nf = sugg.fields; setF(nf); setSugg(null); setRefine(false); setFb(''); setFirstFb(''); persist({ f: nf }); };
   const CHIPS = ['Dor mais de rua', 'Guia mais forte', 'Causa mais coletiva', 'Plano mais prático', 'Mais curto', 'CTA mais suave'];
 
   // quais caixas estão em edição: ideia nova abre tudo; ideia existente abre só o que você clicar
   const ALL = ['meta', ...IDEA_FIELDS.map((x) => x.key)];
   const [editing, setEditing] = useState<Set<string>>(() => new Set(idea ? [] : ALL));
   const toggle = (k: string) => setEditing((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+  // ideia que já existe: salva na hora ao concluir uma caixa ou aplicar uma sugestão (sem fechar). A ideia nova só é criada ao clicar em Salvar.
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  async function persist(over?: { f?: IdeaFields; persona?: string; territory?: string; territoryText?: string }) {
+    if (!idea) return;
+    const nf = over?.f ?? f, np = over?.persona ?? persona, nt = over?.territory ?? territory, ntx = over?.territoryText ?? territoryText;
+    if (!nf.pain.trim()) { setErr('Escreva a dor antes de salvar.'); setSaveState('error'); return; }
+    setSaveState('saving'); setErr('');
+    try {
+      const r = await updateIdea(idea.id, { personaId: np === PUBLICO_ID ? null : np, territoryId: nt || null, territory: ntx, ...nf });
+      if (r.error) { setErr(r.error); setSaveState('error'); return; }
+      snap.current = JSON.stringify([np, nt, ntx, nf]); setSaveState('saved'); router.refresh();
+    } catch (e) { setErr(actionErrorMessage(e)); setSaveState('error'); }
+  }
+  const finish = (k: string) => { toggle(k); persist(); };
   const allOn = ALL.every((k) => editing.has(k));
   const snap = useRef(JSON.stringify([persona, territory, territoryText, f]));
   const dirty = JSON.stringify([persona, territory, territoryText, f]) !== snap.current;
@@ -86,7 +101,7 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
         <header>
           <h2>{idea ? 'Ideia de conteúdo' : 'Nova ideia'}</h2>
           <div className="row-actions">
-            {idea && <button type="button" className="btn small ghost" onClick={() => setEditing(allOn ? new Set() : new Set(ALL))}><IconEdit /> {allOn ? 'Concluir edição' : 'Editar tudo'}</button>}
+            {idea && <button type="button" className="btn small ghost" onClick={() => { if (allOn) { setEditing(new Set()); persist(); } else setEditing(new Set(ALL)); }}><IconEdit /> {allOn ? 'Concluir edição' : 'Editar tudo'}</button>}
             <button type="button" className="btn small ghost" onClick={tryClose} aria-label="Fechar">✕</button>
           </div>
         </header>
@@ -140,7 +155,7 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
                 {!territory && <input type="text" value={territoryText} onChange={(e) => setTerritoryText(e.target.value)} maxLength={200} placeholder="Ou escreva o tema à mão" style={{ marginTop: 6 }} />}
                 <small className="muted">De onde a ideia nasce (opcional).</small>
               </div>
-              {idea && <button type="button" className="btn small" onClick={() => toggle('meta')}>Concluir</button>}
+              {idea && <button type="button" className="btn small" onClick={() => finish('meta')}>Concluir</button>}
             </div>
           ) : (
             <div className="id-metabox">
@@ -160,7 +175,7 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
                     <label htmlFor={`f-${x.key}`}>{x.label}</label>
                     <span className="id-fbtns">
                       <button type="button" className="btn small ghost id-fai" onClick={() => setFr(fr?.key === x.key ? null : { key: x.key, fb: '', busy: false, err: '', sugg: null, note: '' })} disabled={!hasKey || !f.pain.trim()} aria-expanded={fr?.key === x.key} title={!hasKey ? 'A IA não está configurada neste servidor' : `Refinar “${x.label.replace(/ \(.*\)/, '')}” com IA`}><IconSpark /> Refinar</button>
-                      <button type="button" className="btn small ghost" onClick={() => toggle(x.key)}>{on ? 'Concluir' : <><IconEdit /> Editar</>}</button>
+                      <button type="button" className="btn small ghost" onClick={() => (on ? finish(x.key) : toggle(x.key))}>{on ? 'Concluir' : <><IconEdit /> Editar</>}</button>
                     </span>
                   </div>
                   {fr?.key === x.key && (
@@ -181,7 +196,7 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
                       {fr.err && <div className="notice err">{fr.err}</div>}
                       {fr.busy && <div className="notice info" role="status">Refinando… leva cerca de 10 a 25 segundos.</div>}
                       <div className="row-actions">
-                        {fr.sugg !== null && <button type="button" className="btn small primary" onClick={() => { setF((v) => ({ ...v, [x.key]: fr.sugg ?? '' })); setFr(null); }} disabled={!fr.sugg}>✓ Aplicar neste campo</button>}
+                        {fr.sugg !== null && <button type="button" className="btn small primary" onClick={() => { const nf = { ...f, [x.key]: fr.sugg ?? '' }; setF(nf); setFr(null); persist({ f: nf }); }} disabled={!fr.sugg}>✓ Aplicar neste campo</button>}
                         <button type="button" className={`btn small${fr.sugg === null ? ' primary' : ''}`} onClick={askField} disabled={fr.busy || fr.fb.trim().length < 3}>{fr.busy ? 'Refinando…' : fr.sugg === null ? <><IconSpark /> Sugerir</> : 'Pedir outro ajuste'}</button>
                         <button type="button" className="btn small ghost" onClick={() => setFr(null)}>{fr.sugg === null ? 'Cancelar' : 'Descartar'}</button>
                       </div>
@@ -204,8 +219,9 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
           {err && <div className="notice err">{err}</div>}
         </div>
         <footer>
-          <button type="button" className="btn ghost" onClick={tryClose}>Cancelar</button>
-          <button type="button" className="btn primary" onClick={save} disabled={pending || !f.pain.trim()}>{pending ? 'Salvando…' : 'Salvar ideia'}</button>
+          <button type="button" className="btn ghost" onClick={tryClose}>{idea ? 'Fechar' : 'Cancelar'}</button>
+          {idea && <span className={`id-savestate${saveState === 'error' ? ' err' : ''}`} role="status">{saveState === 'saving' ? 'Salvando…' : dirty ? 'Alterações ainda não salvas' : saveState === 'saved' ? '✓ Salvo' : saveState === 'error' ? 'Não foi possível salvar' : ''}</span>}
+          <button type="button" className="btn primary" onClick={save} disabled={pending || !f.pain.trim()}>{pending ? 'Salvando…' : idea ? 'Salvar e fechar' : 'Salvar ideia'}</button>
         </footer>
       </div>
     </div>

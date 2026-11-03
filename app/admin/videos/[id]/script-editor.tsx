@@ -35,8 +35,12 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
 
   const flush = useCallback(async () => {
     setSave('saving');
-    const r = await saveScript({ id, ...latest.current });
-    setSave(r.error ? 'error' : 'saved');
+    try { const r = await saveScript({ id, ...latest.current }); setSave(r.error ? 'error' : 'saved'); } catch { setSave('error'); }
+  }, [id]);
+  // aplicar uma sugestão da IA salva na hora, sem esperar o salvamento automático
+  const saveNow = useCallback(async (t: string, d: ScriptData) => {
+    setSave('saving');
+    try { const r = await saveScript({ id, title: t, status: latest.current.status, data: d }); setSave(r.error ? 'error' : 'saved'); } catch { setSave('error'); }
   }, [id]);
   useEffect(() => {
     if (first.current) { first.current = false; return; }
@@ -90,7 +94,8 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   const applyPart = () => {
     if (!pr?.sugg) return;
     const i = pr.i, n = pr.sugg;
-    setUndo({ title, data }); setData((d) => ({ ...d, parts: d.parts.map((p, k) => (k === i ? { ...p, speech: n.speech, onScreen: n.onScreen, visual: n.visual } : p)) }));
+    const nd = { ...data, parts: data.parts.map((p, k) => (k === i ? { ...p, speech: n.speech, onScreen: n.onScreen, visual: n.visual } : p)) };
+    setUndo({ title, data }); setData(nd); saveNow(title, nd);
     setPr(null);
   };
   const changes = (() => {
@@ -109,10 +114,10 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   })();
   const applyRefined = () => {
     if (!sugg) return;
-    setUndo({ title, data }); setTitle(sugg.title); setData(sugg.data);
+    setUndo({ title, data }); setTitle(sugg.title); setData(sugg.data); saveNow(sugg.title, sugg.data);
     setSugg(null); setRefine(false); setFb(''); setFirstFb(''); setScope(null);
   };
-  const undoRefine = () => { if (!undo) return; setTitle(undo.title); setData(undo.data); setUndo(null); };
+  const undoRefine = () => { if (!undo) return; setTitle(undo.title); setData(undo.data); saveNow(undo.title, undo.data); setUndo(null); };
 
   const copy = async () => { try { await navigator.clipboard.writeText(scriptToText(title, data)); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* sem permissão de área de transferência */ } };
   // duplicar e excluir mostram o que deu errado (antes, uma ação que falhava, por exemplo com a página aberta de antes de uma atualização do app, não fazia nada e não avisava)
