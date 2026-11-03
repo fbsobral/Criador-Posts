@@ -44,9 +44,10 @@ COMO CRIAR
 - Seja específico e acionável para quem produz conteúdo e campanhas: dores concretas, objeções reais ("já tentei e não funcionou", "não tenho tempo"), gatilhos de decisão e onde essa pessoa está (canais, comunidades, formatos).
 - Não invente estatísticas, pesquisas ou dados de mercado. Tudo é hipótese plausível derivada do ICP.
 - Evite estereótipos ofensivos e clichês genéricos. Escreva de forma simples e direta.
+- LINGUAGEM DO DIA A DIA: o nome (a característica que acompanha o primeiro nome) e o resumo (tagline) devem soar como alguém descreveria a pessoa numa conversa, sem jargão, termo acadêmico ou palavra de relatório. Prefira "a engenheira que mora fora e quer ajudar os jovens de lá" a "a profissional da diáspora que quer devolver"; "a mãe que sustenta a casa sozinha" a "chefe de família monoparental". Vale também para bio, dores, objetivos e objeções: palavras simples, concretas, da rotina da pessoa.
 
 CAMPOS
-- name, tagline (uma frase que resume quem é e o que quer), age (ex.: "34 anos"), role (profissão/cargo/papel), location (cidade/região/porte), bio (2 a 3 frases sobre o contexto), goals (3 a 4), pains (3 a 4), objections (2 a 3), triggers (2 a 3 gatilhos de compra/decisão), channels (2 a 4 onde consome informação), quote (uma frase que ela diria).`;
+- name, tagline (uma frase simples, em linguagem do dia a dia, que resume quem é e o que quer), age (ex.: "34 anos"), role (profissão/cargo/papel), location (cidade/região/porte), bio (2 a 3 frases sobre o contexto), goals (3 a 4), pains (3 a 4), objections (2 a 3), triggers (2 a 3 gatilhos de compra/decisão), channels (2 a 4 onde consome informação), quote (uma frase que ela diria).`;
 
 function existingBlock(ex: ExistingPersona[]): string {
   if (!ex.length) return 'PERSONAS JÁ EXISTENTES: nenhuma ainda.';
@@ -128,6 +129,7 @@ const REFINE_SYSTEM = `Você é um estrategista de marketing e pesquisador de au
 REGRAS
 - Aplique o feedback do usuário. Mude só o que o feedback pede (e o que for necessário para manter a persona coerente); preserve o resto como está, inclusive o tom e o nível de detalhe.
 - Mantenha a persona realista, específica e acionável. Não invente estatísticas ou pesquisas.
+- Use linguagem do dia a dia no nome e no resumo (como alguém descreveria a pessoa numa conversa), sem jargão nem palavra de relatório.
 - LIGAÇÃO COM A ORGANIZAÇÃO: a persona continua sendo alguém que a organização quer alcançar (veja "O que a organização faz" na identidade da marca); dores, objetivos, objeções e gatilhos devem ter relação com o que a organização oferece e resolve.
 - Ela deve continuar claramente DIFERENTE das outras personas listadas (não vire uma variação delas).
 - Se houver "SUGESTÃO ANTERIOR (não aprovada)", parta dela e aplique o novo pedido, sem desfazer o que já estava bom.
