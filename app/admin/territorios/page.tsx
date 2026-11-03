@@ -20,7 +20,7 @@ export const metadata = { title: 'Territórios' };
 export default async function TerritoriosPage({ searchParams }: { searchParams: Promise<{ p?: string; v?: string; n?: string }> }) {
   const c = (await getCtx())!;
   const sp = await searchParams;
-  const [people, nodes, [bs], groups, approvedRows, pairRows] = await Promise.all([
+  const [people, nodes, [bs], groups, approvedRows, pairRows, totalRows] = await Promise.all([
     db.select({ id: personas.id, name: personas.name, tagline: personas.tagline, data: personas.data, groupId: personas.groupId }).from(personas).where(eq(personas.brandId, c.brandId)).orderBy(personas.position, personas.createdAt),
     loadTerritoryNodes(c.brandId),
     db.select({ about: brandSettings.aiAbout, pc: brandSettings.priorityConfig }).from(brandSettings).where(eq(brandSettings.brandId, c.brandId)),
@@ -31,9 +31,14 @@ export default async function TerritoriosPage({ searchParams }: { searchParams: 
     // ideias por dupla território × persona (para a matriz)
     db.select({ t: contentIdeas.territoryId, p: contentIdeas.personaId, n: count() }).from(contentIdeas)
       .where(and(eq(contentIdeas.brandId, c.brandId), isNotNull(contentIdeas.territoryId), isNotNull(contentIdeas.personaId))).groupBy(contentIdeas.territoryId, contentIdeas.personaId),
+    // total de ideias por território, de qualquer estágio e com ou sem persona (para o aviso ao excluir)
+    db.select({ t: contentIdeas.territoryId, n: count() }).from(contentIdeas)
+      .where(and(eq(contentIdeas.brandId, c.brandId), isNotNull(contentIdeas.territoryId))).groupBy(contentIdeas.territoryId),
   ]);
   const approved = Object.fromEntries(approvedRows.map((r) => [r.id as string, r.n]));
   const ideaCounts = Object.fromEntries(pairRows.map((r) => [`${r.t}|${r.p}`, r.n]));
+  const ideaTotals: Record<string, number> = {};
+  for (const r of totalRows) ideaTotals[r.t as string] = r.n;
   const gIndex = new Map(groups.map((g, i) => [g.id, i]));
   const gName = new Map(groups.map((g) => [g.id, g.name]));
   // mesma cor do grupo no quadro de Personas
@@ -69,7 +74,7 @@ export default async function TerritoriosPage({ searchParams }: { searchParams: 
       {matrix ? (
         <MatrixView personas={list} nodes={nodes} ideaCounts={ideaCounts} hasKey={hasKey} hasAbout={!!about.trim()} />
       ) : (
-        <MindMap key={lens?.id ?? 'todas'} lens={lens} personas={list} brandName={c.brandName} nodes={nodes} hasKey={hasKey} priority={priority} approved={approved} hasAbout={!!about.trim()} initialSelected={sel} />
+        <MindMap key={lens?.id ?? 'todas'} lens={lens} personas={list} brandName={c.brandName} nodes={nodes} hasKey={hasKey} priority={priority} approved={approved} ideaTotals={ideaTotals} hasAbout={!!about.trim()} initialSelected={sel} />
       )}
     </div>
   );

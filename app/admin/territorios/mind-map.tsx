@@ -4,10 +4,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { actionErrorMessage } from '@/lib/action-error';
-import { createNode, deleteNode, linkPersona, moveNode, saveTranslations, setScore, unlinkPersona, updateNode } from '@/lib/territory-actions';
+import { createNode, deleteNode, duplicateNode, linkPersona, moveNode, saveTranslations, setScore, unlinkPersona, updateNode } from '@/lib/territory-actions';
 import { GROUP_COLORS, splitPersonaName } from '@/lib/persona';
 import { NODE_H, NODE_W, PUBLICO_ID, buildTree, descendantIds, edgePath, effectivePersonas, layoutTree, lensNodes, pathOf, translationFor, type TNode } from '@/lib/territory';
-import { IconEdit, IconPlus, IconSpark, IconTrash } from '../../icons';
+import { IconCopy, IconEdit, IconPlus, IconSpark, IconTrash } from '../../icons';
 import { usePan } from '../use-pan';
 import { levelOf, type PriorityConfig } from '@/lib/priority';
 import { Menu } from './menu';
@@ -21,8 +21,8 @@ const DEPTH_COLORS = ['#F97335', '#1D9BF0', '#8B5CF6', '#1F9D63', '#E5484D', '#F
 const initialsOf = (n: string) => n.replace(/,.*/, '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
 
 /** Mapa mental horizontal dos territórios da MARCA (uma árvore só). Com uma persona na "lente", mostra só o que ela enxerga; sem lente, mostra tudo, com as personas ligadas em cada tema. Criar irmão/filho, arrastar para mudar o pai, recolher, traduzir para as personas e gerar com IA. */
-export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout, priority, approved = {}, initialSelected = null }: {
-  lens: PersonaLite | null; personas: PersonaLite[]; brandName: string; nodes: TNode[]; hasKey: boolean; hasAbout: boolean; priority: PriorityConfig; approved?: Record<string, number>; initialSelected?: string | null;
+export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout, priority, approved = {}, ideaTotals = {}, initialSelected = null }: {
+  lens: PersonaLite | null; personas: PersonaLite[]; brandName: string; nodes: TNode[]; hasKey: boolean; hasAbout: boolean; priority: PriorityConfig; approved?: Record<string, number>; /** total de ideias (de qualquer estágio) por território */ ideaTotals?: Record<string, number>; initialSelected?: string | null;
 }) {
   const router = useRouter();
   const [, start] = useTransition();
@@ -90,11 +90,35 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
   const addSibling = (n: TNode) => add(n.parentId, n.id);
 
   const remove = (n: TNode) => {
-    const k = kidsCount(n.id);
-    if (!confirm(`Excluir “${n.name}”${k ? ` e os ${k} territórios dentro dele` : ''}?`)) return;
-    const ids = descendantIds(nodes, n.id); const prev = nodes;
+    const ids = descendantIds(nodes, n.id); const k = ids.size - 1;
+    const inside = nodes.filter((x) => ids.has(x.id));
+    const links = inside.reduce((a, x) => a + x.links.length, 0), trs = inside.reduce((a, x) => a + x.links.filter((l) => l.translation.trim()).length, 0);
+    const ideas = [...ids].reduce((a, id) => a + (ideaTotals[id] ?? 0), 0);
+    const lines = [
+      `Excluir “${n.name}”?`, '',
+      'Isso apaga de forma definitiva:',
+      k ? `• ${k} ${k === 1 ? 'subtema dentro dele' : 'subtemas dentro dele'}` : '• o território (não há subtemas dentro dele)',
+      links ? `• ${links} ${links === 1 ? 'ligação com persona' : 'ligações com personas'}${trs ? `, incluindo ${trs} ${trs === 1 ? 'tradução escrita' : 'traduções escritas'}` : ''}` : '',
+      ideas ? `\nAs ${ideas} ${ideas === 1 ? 'ideia de conteúdo criada' : 'ideias de conteúdo criadas'} neste tema NÃO são apagadas, mas perdem a ligação com o mapa (ficam só com o nome do caminho em texto).` : '',
+      '\nEsta ação não pode ser desfeita.',
+    ].filter((x) => x !== '');
+    if (!confirm(lines.join('\n'))) return;
+    const prev = nodes;
     setNodes((a) => a.filter((x) => !ids.has(x.id))); setSelected(null);
     start(async () => { try { const r = await deleteNode(n.id); if (r.error) { setErr(r.error); setNodes(prev); } else router.refresh(); } catch (e) { setErr(actionErrorMessage(e)); setNodes(prev); } });
+  };
+
+  const duplicate = (n: TNode) => {
+    setErr('');
+    start(async () => {
+      try {
+        const r = await duplicateNode(n.id);
+        if (r.error || !r.nodes || !r.rootId) { setErr(r.error ?? 'Não foi possível duplicar.'); return; }
+        setNodes((a) => [...a.map((x) => (x.parentId === n.parentId && x.position > n.position ? { ...x, position: x.position + 1 } : x)), ...r.nodes!]);
+        if (n.parentId) setCollapsed((c) => { const m = new Set(c); m.delete(n.parentId!); return m; });
+        setSelected(r.rootId); router.refresh();
+      } catch (e) { setErr(actionErrorMessage(e)); }
+    });
   };
 
   const move = (id: string, parentId: string | null) => {
@@ -245,7 +269,9 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
                         <button type="button" onClick={() => addSibling(n)} title="Adicionar irmão (Enter)" aria-label="Adicionar irmão">↓ irmão</button>
                         <button type="button" onClick={() => setAi({ parent: n })} title="Gerar subtemas com IA" aria-label="Gerar subtemas com IA"><IconSpark /> subtemas</button>
                         <button type="button" onClick={() => setTr({ node: n })} title="Traduzir este tema para as personas" aria-label="Traduzir para as personas">🔁 traduzir</button>
+                        <button type="button" onClick={() => duplicate(n)} title="Duplicar este território e o que há dentro dele" aria-label="Duplicar território"><IconCopy /></button>
                         <Link href={`/admin/ideias?t=${n.id}${lens ? `&p=${lens.id}` : ''}`} title="Gerar ideias de conteúdo para este tema" aria-label="Gerar ideias de conteúdo">💡 ideias</Link>
+                        <button type="button" className="danger" onClick={() => remove(n)} title="Excluir este território (pede confirmação)" aria-label="Excluir território"><IconTrash /></button>
                       </div>
                     )}
                   </div>
@@ -356,10 +382,11 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
               <button type="button" className="btn small" onClick={() => setAi({ parent: sel })}><IconSpark /> Subtemas com IA</button>
               <button type="button" className="btn small" onClick={() => addChild(sel.id)}><IconPlus /> Subtema</button>
               <button type="button" className="btn small" onClick={() => addSibling(sel)}><IconPlus /> Irmão</button>
+              <button type="button" className="btn small ghost danger" onClick={() => remove(sel)} title="Excluir este território (pede confirmação)"><IconTrash /> Excluir</button>
               <Menu label="Mais" align="right">
                 <ReclassifyButton className="tr-menu-item" target={{ scope: 'node', nodeId: sel.id }} count={kidsCount(sel.id) + 1} label={kidsCount(sel.id) ? 'Reclassificar este e filhos' : 'Reclassificar'} disabled={!hasKey || !priority.criteria.length} onError={setErr} />
                 <button type="button" className="tr-menu-item" data-close onClick={() => startEdit(sel.id, sel.name)}><IconEdit /> Renomear</button>
-                <button type="button" className="tr-menu-item danger" data-close onClick={() => remove(sel)}><IconTrash /> Excluir</button>
+                <button type="button" className="tr-menu-item" data-close onClick={() => duplicate(sel)}><IconCopy /> Duplicar com o que há dentro</button>
               </Menu>
             </div>
           </>

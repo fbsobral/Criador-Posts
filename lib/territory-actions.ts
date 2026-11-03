@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { brandSettings, territories, territoryPersonas } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
-import { MAX_DEPTH, PUBLICO_ID, descendantIds, depthOf, effectivePersonas, type TNode } from '@/lib/territory';
+import { MAX_DEPTH, PUBLICO_ID, buildTree, descendantIds, depthOf, effectivePersonas, type TNode, type TreeItem } from '@/lib/territory';
 import { ensureLink, loadTerritoryNodes, personaOfBrand } from '@/lib/territory-server';
 import { clampScore, sanitizePriority, type PriorityConfig } from '@/lib/priority';
 import type { SuggestedNode } from '@/lib/ai/territory';
@@ -77,6 +77,33 @@ export async function moveNode(id: string, newParentId: string | null): Promise<
   await db.update(territories).set({ parentId: newParentId, position: await nextPos(c.brandId, newParentId), updatedAt: new Date() }).where(eq(territories.id, id));
   done();
   return {};
+}
+
+/** Duplica o território com tudo que está dentro dele (subtemas, ligações com personas e traduções), logo depois do original. As ideias de conteúdo não são copiadas. */
+export async function duplicateNode(id: string): Promise<{ rootId?: string; nodes?: TNode[]; error?: string }> {
+  const c = await ctx();
+  const all = await loadTerritoryNodes(c.brandId);
+  const src = all.find((n) => n.id === id);
+  if (!src) return { error: 'Território não encontrado.' };
+  const inside = descendantIds(all, id);
+  if (inside.size > 200) return { error: 'Este território tem itens demais para duplicar de uma vez (máximo 200).' };
+  const tree = buildTree(all.filter((n) => inside.has(n.id)))[0] as TreeItem<TNode> | undefined;
+  if (!tree) return { error: 'Território não encontrado.' };
+  // abre espaço logo depois do original
+  await db.update(territories).set({ position: sql`${territories.position} + 1` })
+    .where(and(eq(territories.brandId, c.brandId), src.parentId ? eq(territories.parentId, src.parentId) : sql`${territories.parentId} is null`, gt(territories.position, src.position)));
+  const created: TNode[] = [];
+  const copy = async (it: TreeItem<TNode>, parentId: string | null, position: number, isRoot: boolean) => {
+    const n = it.data;
+    const [r] = await db.insert(territories).values({ brandId: c.brandId, personaId: toPid(n.personaId), parentId, name: isRoot ? str(`${n.name} (cópia)`, 80) : n.name, description: n.description, position, score: n.score ?? null, scoreReason: n.scoreReason ?? '', source: 'manual', createdBy: c.userId }).returning();
+    if (n.links.length) await db.insert(territoryPersonas).values(n.links.map((l) => ({ brandId: c.brandId, territoryId: r.id, personaId: l.personaId, translation: l.translation, source: 'manual' }))).onConflictDoNothing();
+    created.push({ id: r.id, personaId: n.personaId, parentId, name: r.name, description: r.description, position: r.position, source: 'manual', score: r.score, scoreReason: r.scoreReason, links: n.links.map((l) => ({ ...l })) });
+    for (let i = 0; i < it.children.length; i++) await copy(it.children[i], r.id, i, false);
+    return r.id;
+  };
+  const rootId = await copy(tree, src.parentId, src.position + 1, true);
+  done();
+  return { rootId, nodes: created };
 }
 
 /** Exclui o território e tudo que está dentro dele. */

@@ -1016,3 +1016,4 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 .id-ktools { display: inline-flex; gap: 0; margin-left: auto; } .id-ktools .btn { padding: 6px; } .id-ktools svg { width: 16px; height: 16px; }
 .id-kcard .id-ktools { opacity: .55; transition: opacity .15s; } .id-kcard:hover .id-ktools, .id-kcard:focus-within .id-ktools { opacity: 1; }
 @media (max-width: 900px) { .id-board { grid-template-columns: repeat(3, 280px); } .id-kcard .id-ktools { opacity: 1; } .id-kfoot .vd-kmove { display: block; } .id-kcard { cursor: pointer; } }
+.tr-tools .danger { color: #FFB4A6; } .tr-tools .danger:hover { background: rgba(200, 52, 31, .45); color: #fff; }
