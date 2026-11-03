@@ -11,12 +11,12 @@ import { IconSpark } from '../../icons';
 const COUNTS = [1, 2, 3, 5, 8, 12];
 
 /** Gera personas com IA em 2 passos: 1) ICP e quantidade; 2) revisar o que entra no quadro. */
-export function SuggestModal({ initialIcp, existingCount, groupNames, hasKey, onClose }: { initialIcp: string; existingCount: number; groupNames: string[]; hasKey: boolean; onClose: () => void }) {
+export function SuggestModal({ initialIcp, existingCount, groupNames, hasKey, group, onClose }: { initialIcp: string; existingCount: number; groupNames: string[]; hasKey: boolean; /** Só neste grupo: as novas personas entram nele. */ group?: { id: string; name: string; description: string; count: number }; onClose: () => void }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [step, setStep] = useState<'ask' | 'review'>('ask');
   const [icp, setIcp] = useState(initialIcp);
-  const [count, setCount] = useState(5);
+  const [count, setCount] = useState(group ? 3 : 5);
   const [instructions, setInstructions] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -30,7 +30,7 @@ export function SuggestModal({ initialIcp, existingCount, groupNames, hasKey, on
   async function suggest() {
     setBusy(true); setErr('');
     try {
-      const r = await fetch('/api/personas/suggest', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ icp, count, instructions }) });
+      const r = await fetch('/api/personas/suggest', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ icp, count, instructions, groupId: group?.id }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Não foi possível sugerir personas.');
       setGroups(j.groups); setOff(new Set()); setStep('review');
@@ -50,7 +50,7 @@ export function SuggestModal({ initialIcp, existingCount, groupNames, hasKey, on
     <div className="pe-overlay center" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="pe-modal" role="dialog" aria-modal="true" aria-label="Sugerir personas com IA">
         <header>
-          <h2>{step === 'ask' ? 'Sugerir personas com IA' : 'Revise as personas sugeridas'}</h2>
+          <h2>{step === 'ask' ? (group ? `Sugerir personas para “${group.name}”` : 'Sugerir personas com IA') : 'Revise as personas sugeridas'}</h2>
           <button type="button" className="btn small ghost" onClick={onClose} aria-label="Fechar">✕</button>
         </header>
 
@@ -58,8 +58,8 @@ export function SuggestModal({ initialIcp, existingCount, groupNames, hasKey, on
           <>
             <div className="pe-modal-body">
               <div className="field">
-                <label htmlFor="icp">Seu ICP <span className="muted">· perfil de cliente ideal</span></label>
-                <textarea id="icp" rows={7} value={icp} onChange={(e) => setIcp(e.target.value)} maxLength={4000}
+                <label htmlFor="icp">Seu ICP <span className="muted">· perfil de cliente ideal{group ? ' (opcional neste grupo)' : ''}</span></label>
+                <textarea id="icp" rows={group ? 4 : 7} value={icp} onChange={(e) => setIcp(e.target.value)} maxLength={4000}
                   placeholder="Quem é o seu cliente ideal? Setor, porte, cargo, momento de vida ou do negócio, o que busca, o que o trava, onde consome conteúdo… Quanto mais específico, melhores as personas." />
               </div>
               <div className="field">
@@ -73,24 +73,25 @@ export function SuggestModal({ initialIcp, existingCount, groupNames, hasKey, on
                 <summary>Instruções extras <span className="muted">(opcional)</span></summary>
                 <textarea rows={3} value={instructions} onChange={(e) => setInstructions(e.target.value)} maxLength={1200} placeholder="Ex.: Foque em quem já comprou de concorrentes. Inclua pelo menos uma persona decisora e uma influenciadora." />
               </details>
-              {existingCount > 0 && <div className="notice info">Já existem <b>{existingCount}</b> {existingCount === 1 ? 'persona' : 'personas'} no quadro. A IA vai considerá-las para <b>não repetir</b> perfis e, quando fizer sentido, encaixar as novas nos grupos existentes.</div>}
+              {group && <div className="notice info">As novas personas entram <b>só no grupo “{group.name}”</b>{group.description ? <> ({group.description})</> : ''}. A IA parte do contexto do grupo{group.count > 0 ? <> e das <b>{group.count}</b> {group.count === 1 ? 'persona que já está' : 'personas que já estão'} nele</> : ''} para <b>não repetir</b> perfis.</div>}
+              {!group && existingCount > 0 && <div className="notice info">Já existem <b>{existingCount}</b> {existingCount === 1 ? 'persona' : 'personas'} no quadro. A IA vai considerá-las para <b>não repetir</b> perfis e, quando fizer sentido, encaixar as novas nos grupos existentes.</div>}
               {!hasKey && <div className="notice warn">A IA não está configurada neste servidor (falta a <code>ANTHROPIC_API_KEY</code>).</div>}
               {busy && <div className="notice info" role="status">A IA está criando as personas. Isso leva cerca de {count <= 5 ? '30 a 60 segundos' : '1 a 2 minutos'}; mantenha esta janela aberta.</div>}
               {err && <div className="notice err">{err}</div>}
             </div>
             <footer>
               <span className="muted">≈ {fmtUsd(ESTIMATED_COST_PERSONA_BASE + count * ESTIMATED_COST_PER_PERSONA)} · nada é salvo antes da sua aprovação</span>
-              <button type="button" className="btn primary" onClick={suggest} disabled={busy || icp.trim().length < 20 || !hasKey}>{busy ? 'Criando personas…' : <><IconSpark /> Sugerir {count} {count === 1 ? 'persona' : 'personas'}</>}</button>
+              <button type="button" className="btn primary" onClick={suggest} disabled={busy || (!group && icp.trim().length < 20) || !hasKey}>{busy ? 'Criando personas…' : <><IconSpark /> Sugerir {count} {count === 1 ? 'persona' : 'personas'}</>}</button>
             </footer>
           </>
         ) : (
           <>
             <div className="pe-modal-body">
-              <p className="muted">Desmarque as que não quiser e ajuste o nome dos grupos. As aprovadas entram no quadro.</p>
+              <p className="muted">{group ? `Desmarque as que não quiser. As aprovadas entram no grupo “${group.name}”.` : 'Desmarque as que não quiser e ajuste o nome dos grupos. As aprovadas entram no quadro.'}</p>
               {groups.map((g, gi) => (
                 <section key={gi} className="pe-sug-group">
                   <div className="pe-sug-head">
-                    <input value={g.name} onChange={(e) => setGroups((a) => a.map((x, k) => (k === gi ? { ...x, name: e.target.value } : x)))} maxLength={60} aria-label="Nome do grupo" />
+                    <input value={g.name} readOnly={!!group} onChange={(e) => setGroups((a) => a.map((x, k) => (k === gi ? { ...x, name: e.target.value } : x)))} maxLength={60} aria-label="Nome do grupo" />
                     <span className={`pill ${existing.has(normName(g.name)) ? 'published' : ''}`}>{existing.has(normName(g.name)) ? 'Grupo existente' : 'Grupo novo'}</span>
                   </div>
                   {g.description && <small className="muted">{g.description}</small>}

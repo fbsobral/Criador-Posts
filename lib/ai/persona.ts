@@ -55,12 +55,12 @@ function existingBlock(ex: ExistingPersona[]): string {
 }
 
 /** Sugere personas (já agrupadas) a partir de um ICP, evitando repetir as que existem. Não grava nada. */
-export async function suggestPersonas(i: { icp: string; count: number; instructions: string; existing: ExistingPersona[]; brand: BrandProfile }): Promise<{ groups: SuggestedGroup[]; inputTokens: number; outputTokens: number }> {
+export async function suggestPersonas(i: { icp: string; count: number; instructions: string; existing: ExistingPersona[]; brand: BrandProfile; /** Só dentro deste grupo: todas as novas personas entram nele. */ group?: { name: string; description: string } }): Promise<{ groups: SuggestedGroup[]; inputTokens: number; outputTokens: number }> {
   const n = Math.max(1, Math.round(i.count));
   if (process.env.AI_MOCK === '1') {
     await new Promise((r) => setTimeout(r, 900));
     const names = ['Marina', 'Carlos', 'Beatriz', 'Rafael', 'Camila', 'Diego', 'Luana', 'Paulo', 'Helena', 'Tiago', 'Aline', 'Bruno', 'Sofia', 'Marcos', 'Renata'];
-    const gnames = ['Iniciantes', 'Em crescimento', 'Experientes'];
+    const gnames = i.group ? [i.group.name] : ['Iniciantes', 'Em crescimento', 'Experientes'];
     const groups: SuggestedGroup[] = gnames.map((g, gi) => ({ name: g, description: `Segmento ${g.toLowerCase()} do ICP.`, personas: [] }));
     for (let k = 0; k < n; k++) {
       const nm = `${names[(k + i.existing.length) % names.length]} ${k + 1}`;
@@ -72,7 +72,9 @@ export async function suggestPersonas(i: { icp: string; count: number; instructi
   const user = [
     `ICP (perfil de cliente ideal):\n${i.icp.trim()}`,
     existingBlock(i.existing),
-    `QUANTIDADE: crie exatamente ${n} persona(s) NOVA(S), distribuídas em grupos (de 2 a 5 personas por grupo, quando possível).`,
+    i.group
+      ? `GRUPO ALVO: "${i.group.name}"${i.group.description ? ` (${i.group.description})` : ''}.\nCrie TODAS as personas dentro deste único grupo, usando EXATAMENTE este nome de grupo. Elas compartilham o contexto e a motivação do grupo, mas cada uma deve ser claramente diferente das outras e das que já estão nele. Não crie outros grupos.\nQUANTIDADE: crie exatamente ${n} persona(s) NOVA(S).`
+      : `QUANTIDADE: crie exatamente ${n} persona(s) NOVA(S), distribuídas em grupos (de 2 a 5 personas por grupo, quando possível).`,
     i.instructions.trim() ? `INSTRUÇÕES EXTRAS DO USUÁRIO:\n${i.instructions.trim()}` : '',
   ].filter(Boolean).join('\n\n');
   try {
@@ -99,6 +101,8 @@ export async function suggestPersonas(i: { icp: string; count: number; instructi
       if (ps.length) groups.push({ name: clean(g.name, 60) || 'Sem nome', description: clean(g.description, 200), personas: ps });
     }
     if (!groups.length) throw new AiError('A IA não devolveu personas novas. Tente de novo ou ajuste o ICP.', true);
+    if (i.group) groups.splice(0, groups.length, { name: i.group.name, description: i.group.description, personas: groups.flatMap((g) => g.personas) }); // tudo no grupo pedido, mesmo que a IA tenha dividido
+
     const u = res.usage as { input_tokens?: number; output_tokens?: number } | undefined;
     return { groups, inputTokens: u?.input_tokens ?? 0, outputTokens: u?.output_tokens ?? 0 };
   } catch (e) {

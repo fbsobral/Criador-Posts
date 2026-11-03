@@ -16,8 +16,9 @@ export async function POST(req: Request) {
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
   if (!rateLimit(`ai:${c.userId}`, 100, 10 * 60_000)) return Response.json(TOO_MANY, { status: 429 });
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
-  const icp = String(b?.icp ?? '').trim().slice(0, 4000);
-  if (icp.length < 20) return Response.json({ error: 'Descreva o seu ICP com um pouco mais de detalhe (quem é, o que faz, o que busca).' }, { status: 400 });
+  const typedIcp = String(b?.icp ?? '').trim().slice(0, 4000);
+  const groupId = typeof b?.groupId === 'string' && b.groupId ? b.groupId : null;
+  if (!groupId && typedIcp.length < 20) return Response.json({ error: 'Descreva o seu ICP com um pouco mais de detalhe (quem é, o que faz, o que busca).' }, { status: 400 });
   const count = Math.min(MAX_PERSONAS_PER_RUN, Math.max(1, Math.round(Number(b?.count)) || 3));
 
   const [rows, groups] = await Promise.all([
@@ -25,10 +26,14 @@ export async function POST(req: Request) {
     db.select().from(personaGroups).where(eq(personaGroups.brandId, c.brandId)),
   ]);
   const gname = new Map(groups.map((g) => [g.id, g.name]));
-  await db.update(brandSettings).set({ personaIcp: icp, aiAudience: icp.slice(0, 1200) }).where(eq(brandSettings.brandId, c.brandId)); // lembra o ICP para a próxima vez
+  const target = groupId ? groups.find((g) => g.id === groupId) : null;
+  if (groupId && !target) return Response.json({ error: 'Grupo não encontrado.' }, { status: 404 });
+  // sem ICP digitado, dentro de um grupo o contexto vem do próprio grupo e das personas dele
+  const icp = typedIcp.length >= 20 ? typedIcp : `Grupo "${target!.name}"${target!.description ? `: ${target!.description}` : ''}`;
+  if (typedIcp.length >= 20) await db.update(brandSettings).set({ personaIcp: icp, aiAudience: icp.slice(0, 1200) }).where(eq(brandSettings.brandId, c.brandId)); // lembra o ICP para a próxima vez
   try {
     const r = await suggestPersonas({
-      icp, count, instructions: String(b?.instructions ?? '').slice(0, 1200), brand: await loadBrandProfile(c.brandId),
+      icp, count, group: target ? { name: target.name, description: target.description } : undefined, instructions: String(b?.instructions ?? '').slice(0, 1200), brand: await loadBrandProfile(c.brandId),
       existing: rows.map((p) => ({ name: p.name, tagline: p.tagline, role: p.data.role, group: p.groupId ? (gname.get(p.groupId) ?? '') : '', pains: p.data.pains })),
     });
     return Response.json({ groups: r.groups, existingGroups: groups.map((g) => g.name) });
