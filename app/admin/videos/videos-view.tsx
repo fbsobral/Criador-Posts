@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { deleteScript, duplicateScript, setScriptStatus } from '@/lib/video-actions';
-import { PLATFORMS, STAGES, fmtSecs, stageOf, type Stage } from '@/lib/video';
+import { STAGES, fmtSecs, stageOf, type Stage } from '@/lib/video';
 import { IconBoard, IconCopy, IconList, IconTrash } from '../../icons';
 import { usePan } from '../use-pan';
 import { PartsBar } from './parts-bar';
@@ -12,7 +12,6 @@ import { PartsBar } from './parts-bar';
 export type VideoRow = { id: string; title: string; hook: string; formatName: string; seconds: number; platform: string; status: Stage; ago: string; parts: { name: string; seconds: number }[] };
 export type VideosMode = 'lista' | 'kanban';
 
-const platformLabel = (p: string) => PLATFORMS.find((x) => x.id === p)?.label ?? 'Reels';
 
 /** Alterna entre a lista e o esteira de produção (cada um tem a sua rota). */
 export function ModeToggle({ mode }: { mode: VideosMode }) {
@@ -91,7 +90,7 @@ export function VideosView({ rows, mode }: { rows: VideoRow[]; mode: VideosMode 
           </div>
 
           <div className="card-surface vd-list" role="table">
-            <div className="vd-row head" role="row"><span>Roteiro</span><span>Formato</span><span>Duração</span><span>Plataforma</span><span>Etapa</span><span>Atualizado</span><span /></div>
+            <div className="vd-row head" role="row"><span>Roteiro</span><span>Formato</span><span>Duração</span><span>Etapa</span><span>Atualizado</span><span /></div>
             {shown.map((x) => (
               <div key={x.id} className="vd-row" role="row">
                 <Link href={`/admin/videos/${x.id}`} className="vd-row-main">
@@ -100,7 +99,6 @@ export function VideosView({ rows, mode }: { rows: VideoRow[]; mode: VideosMode 
                 </Link>
                 <span className="vd-cell" data-l="Formato">{x.formatName || '—'}</span>
                 <span className="vd-cell" data-l="Duração">{fmtSecs(x.seconds)}</span>
-                <span className="vd-cell" data-l="Plataforma">{platformLabel(x.platform)}</span>
                 <span className="vd-cell"><StageSelect value={x.status} onChange={(s) => move(x.id, s)} /></span>
                 <span className="vd-cell muted" data-l="Atualizado">{x.ago}</span>
                 <RowActions onDuplicate={() => duplicate(x.id)} onDelete={() => remove(x.id, x.title)} />
@@ -129,7 +127,7 @@ export function VideosView({ rows, mode }: { rows: VideoRow[]; mode: VideosMode 
                         <Link href={`/admin/videos/${x.id}`} draggable={false}><b>{x.title}</b></Link>
                         {x.hook && <p>“{x.hook.length > 90 ? `${x.hook.slice(0, 90)}…` : x.hook}”</p>}
                         <PartsBar parts={x.parts} small />
-                        <div className="vd-kmeta"><span>{fmtSecs(x.seconds)}</span><i>·</i><span>{platformLabel(x.platform)}</span><i>·</i><span>{x.ago}</span></div>
+                        <div className="vd-kmeta"><span>{fmtSecs(x.seconds)}</span><i>·</i><span>{x.ago}</span></div>
                         <div className="vd-kfoot"><div className="vd-kmove"><StageSelect value={x.status} onChange={(st) => move(x.id, st)} /></div><RowActions onDuplicate={() => duplicate(x.id)} onDelete={() => remove(x.id, x.title)} /></div>
                       </article>
                     ))}

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fmtUsd } from '@/lib/ai/constants';
 import {
-  DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, ESTIMATED_COST_PLAN, MAX_CONTENT_CHARS, MAX_SECONDS, MAX_VIDEO_IDEAS, MIN_SECONDS, PLATFORMS,
+  DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, ESTIMATED_COST_PLAN, MAX_CONTENT_CHARS, MAX_SECONDS, MAX_VIDEO_IDEAS, MIN_SECONDS,
   allocate, countWords, fmtSecs, wordsFor, type Platform, type VideoIdea, type VideoPart,
 } from '@/lib/video';
 import { IconBack, IconPlus, IconSpark, IconTrash } from '../../../icons';
@@ -22,7 +22,7 @@ export function Wizard({ formats, hasKey, remaining, canEditFormats }: { formats
   const [formatId, setFormatId] = useState(formats[0]?.id ?? '');
   const format = formats.find((f) => f.id === formatId);
   const [seconds, setSeconds] = useState(Math.max(MIN_SECONDS, formats[0]?.defaultSeconds ?? 45));
-  const [platform, setPlatform] = useState<Platform>('reels');
+  const platform: Platform = 'all'; // sem escolha de plataforma: o roteiro serve para Reels, TikTok e Shorts
   const [count, setCount] = useState(3);
   const [instructions, setInstructions] = useState('');
   const [ideas, setIdeas] = useState<VideoIdea[]>([]);
@@ -143,12 +143,6 @@ export function Wizard({ formats, hasKey, remaining, canEditFormats }: { formats
                 <small className="muted">≈ {wordsFor(seconds)} palavras de fala no vídeo todo</small>
               </div>
               <div className="field">
-                <div className="lbl">Plataforma</div>
-                <div className="vd-segmented" role="radiogroup">
-                  {PLATFORMS.map((p) => <button key={p.id} type="button" role="radio" aria-checked={platform === p.id} className={platform === p.id ? 'on' : ''} onClick={() => setPlatform(p.id)}>{p.label}<small>{p.hint}</small></button>)}
-                </div>
-              </div>
-              <div className="field">
                 <div className="lbl">Quantos roteiros?</div>
                 <div className="vd-stepper">
                   <button type="button" onClick={() => setCount((n) => Math.max(1, n - 1))} aria-label="Menos">−</button>
@@ -181,7 +175,7 @@ export function Wizard({ formats, hasKey, remaining, canEditFormats }: { formats
       {step === 2 && (
         <div className="vd-step2">
           <div className="vd-summary">
-            <span className="pill">{format?.name}</span><span className="pill">{fmtSecs(seconds)}</span><span className="pill">{PLATFORMS.find((p) => p.id === platform)?.label}</span>
+            <span className="pill">{format?.name}</span><span className="pill">{fmtSecs(seconds)}</span>
             <button type="button" className="vd-link" onClick={() => setStep(1)}>Alterar</button>
           </div>
           <p className="muted vd-lead">Revise as ideias: edite o título e o ângulo, tire as que não quiser ou acrescente as suas. Cada ideia vira um roteiro.</p>

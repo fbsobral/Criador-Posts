@@ -6,7 +6,7 @@ import { actionErrorMessage } from '@/lib/action-error';
 import { fmtUsd } from '@/lib/ai/constants';
 import { IDEA_INSTRUCTIONS, ideaAngle, ideaBrief, ideaPoints, ideaTitle, type Idea } from '@/lib/idea';
 import { createPostFromIdea } from '@/lib/idea-actions';
-import { DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, MIN_SECONDS, PLATFORMS, fmtSecs, type Platform, type VideoPart } from '@/lib/video';
+import { DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, MIN_SECONDS, fmtSecs, type Platform, type VideoPart } from '@/lib/video';
 import { IconSpark } from '../../icons';
 
 export type VideoFormatLite = { id: string; name: string; description: string; defaultSeconds: number; parts: VideoPart[] };
@@ -20,7 +20,7 @@ export function IdeaConvertModal({ idea, mode, formats, templates, hasKey, onClo
   const [pending, start] = useTransition();
   const [formatId, setFormatId] = useState(formats[0]?.id ?? '');
   const [seconds, setSeconds] = useState(Math.max(MIN_SECONDS, formats[0]?.defaultSeconds ?? 45));
-  const [platform, setPlatform] = useState<Platform>('reels');
+  const platform: Platform = 'all'; // sem escolha de plataforma
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? '');
   const [slides, setSlides] = useState(7);
   const [extra, setExtra] = useState('');
@@ -73,10 +73,6 @@ export function IdeaConvertModal({ idea, mode, formats, templates, hasKey, onClo
               <div className="field">
                 <label>Duração</label>
                 <div className="vd-chips">{DURATION_PRESETS.map((s) => <button key={s} type="button" className={`vd-chip${seconds === s ? ' on' : ''}`} onClick={() => setSeconds(s)}>{fmtSecs(s)}</button>)}</div>
-              </div>
-              <div className="field">
-                <label>Plataforma</label>
-                <div className="vd-chips">{PLATFORMS.map((p) => <button key={p.id} type="button" className={`vd-chip${platform === p.id ? ' on' : ''}`} onClick={() => setPlatform(p.id)}>{p.label}</button>)}</div>
               </div>
             </>
           ) : (

@@ -559,7 +559,7 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 .vd-filters { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; }
 .vd-search { min-width: 220px; padding: 8px 12px; }
 .vd-list { overflow: hidden; }
-.vd-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px 80px 100px 130px 110px 76px; gap: 14px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.vd-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px 80px 130px 110px 76px; gap: 14px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line); }
 .vd-row:last-child { border-bottom: 0; }
 .vd-row.head { padding: 10px 18px; background: var(--surface-2); font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .vd-row:not(.head):hover { background: #FFFBF8; }
@@ -1036,3 +1036,20 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
   .id-board .vd-col-body { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #c9c1ad transparent; padding-right: 2px; }
   .id-board .vd-col-empty { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 120px; }
 }
+
+/* Ideia em lightbox: texto legível em caixas, campos só ao clicar em Editar */
+.id-lightbox { width: min(900px, 100%); max-height: 94vh; }
+.id-lightbox select, .id-lightbox textarea, .id-lightbox input[type=text] { width: 100%; min-width: 0; }
+.id-metabox { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); } .id-metabox .id-tags { flex: 1; }
+.id-metaedit { display: flex; flex-direction: column; gap: 4px; padding: 12px; border: 1.5px solid var(--primary); border-radius: 14px; background: #FFFBF8; align-items: flex-start; } .id-metaedit .field { width: 100%; }
+.id-fgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.id-fbox { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-sm); min-width: 0; }
+.id-fbox.k-pain, .id-fbox.k-guide, .id-fbox.k-plan, .id-fbox.k-cta { grid-column: 1 / -1; }
+.id-fbox.editing { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); background: #FFFBF8; }
+.id-fhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; }
+.id-fhead label { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--primary); }
+.id-fhead .btn { padding: 4px 8px; font-size: 12.5px; } .id-fhead .btn svg { width: 14px; height: 14px; }
+.id-ftext { font-size: 15px; line-height: 1.6; color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; } ol.id-ftext { padding-left: 22px; white-space: normal; } ol.id-ftext li { margin: 3px 0; }
+.id-fbox.k-pain .id-ftext { font-size: 17px; font-weight: 600; line-height: 1.5; }
+.id-fempty { text-align: left; padding: 10px 12px; border: 1.5px dashed var(--line-2); border-radius: 10px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; } .id-fempty:hover { border-color: var(--primary); color: var(--primary); }
+@media (max-width: 900px) { .id-fgrid { grid-template-columns: 1fr; } .id-fbox.k-pain .id-ftext { font-size: 16px; } .id-lightbox header .row-actions .btn:not([aria-label]) span { display: none; } }

@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { deleteScript, duplicateScript, saveScript } from '@/lib/video-actions';
-import { PART_COLORS, PLATFORMS, STAGES, countWords, fmtSecs, scriptToText, speakSeconds, stageOf, wordsFor, type ScriptData, type Stage } from '@/lib/video';
+import { PART_COLORS, STAGES, countWords, fmtSecs, scriptToText, speakSeconds, stageOf, wordsFor, type ScriptData, type Stage } from '@/lib/video';
 import { IconCopy, IconPlay, IconSpark, IconTrash } from '../../../icons';
 import { PartsBar } from '../parts-bar';
 
@@ -53,7 +53,6 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   const spoken = data.parts.reduce((a, p) => a + speakSeconds(p.speech), 0);
   const ratio = spoken / meta.seconds;
   const timing = ratio > 1.12 ? 'over' : ratio < 0.7 ? 'under' : 'ok';
-  const platform = PLATFORMS.find((p) => p.id === meta.platform)?.label ?? 'Reels';
 
   const CHIPS = ['Mais curto', 'Gancho mais forte', 'Fala mais natural', 'Visual mais simples de gravar', 'CTA mais suave'];
   async function askRefine(feedback: string, previous?: { title: string; data: ScriptData }) {
@@ -147,7 +146,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
         </div>
       )}
 
-      <div className="vd-meta big"><span>{meta.formatName || 'Formato'}</span><i>·</i><span>{fmtSecs(meta.seconds)}</span><i>·</i><span>{platform}</span></div>
+      <div className="vd-meta big"><span>{meta.formatName || 'Formato'}</span><i>·</i><span>{fmtSecs(meta.seconds)}</span></div>
       {meta.angle && <p className="vd-angle"><b>Ideia:</b> {meta.angle}</p>}
 
       <div className="card-surface vd-timing">
