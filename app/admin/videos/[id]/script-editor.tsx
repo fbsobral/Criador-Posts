@@ -65,6 +65,34 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
       setSugg(j); setFb2('');
     } catch (e) { setRerr(e instanceof Error ? e.message : 'Erro inesperado.'); } finally { setRbusy(false); }
   }
+  // refinar com IA só esta parte (botão em cada bloco): pede, compara antes/depois e aplica só nesta parte (dá para desfazer)
+  type PartRefine = { i: number; fb: string; busy: boolean; err: string; sugg: { speech: string; onScreen: string; visual: string } | null; note: string };
+  const [pr, setPr] = useState<PartRefine | null>(null);
+  const PCHIPS = ['Mais curto', 'Fala mais natural', 'Mais forte', 'Visual mais simples de gravar'];
+  async function askPart() {
+    if (!pr) return;
+    const i = pr.i, prev = pr.sugg;
+    setPr({ ...pr, busy: true, err: '' });
+    try {
+      const previous = prev ? { title, data: { ...data, parts: data.parts.map((p, k) => (k === i ? { ...p, ...prev } : p)) } } : undefined;
+      const r = await fetch('/api/videos/refine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, title, current: data, feedback: pr.fb, scope: i, previous }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'Não foi possível refinar esta parte.');
+      const np = (j.data as ScriptData).parts[i];
+      setPr((x) => (x && x.i === i ? { ...x, busy: false, sugg: { speech: np?.speech ?? '', onScreen: np?.onScreen ?? '', visual: np?.visual ?? '' }, note: j.note ?? '' } : x));
+    } catch (e) { setPr((x) => (x ? { ...x, busy: false, err: e instanceof Error ? e.message : 'Erro inesperado.' } : x)); }
+  }
+  const partChanges = (i: number) => {
+    if (!pr?.sugg || pr.i !== i) return [] as { label: string; before: string; after: string }[];
+    const c = data.parts[i], n = pr.sugg;
+    return ([['Fala', c.speech, n.speech], ['Texto na tela', c.onScreen, n.onScreen], ['Visual', c.visual, n.visual]] as const).filter(([, b, a]) => a.trim() !== b.trim()).map(([label, before, after]) => ({ label, before, after }));
+  };
+  const applyPart = () => {
+    if (!pr?.sugg) return;
+    const i = pr.i, n = pr.sugg;
+    setUndo({ title, data }); setData((d) => ({ ...d, parts: d.parts.map((p, k) => (k === i ? { ...p, speech: n.speech, onScreen: n.onScreen, visual: n.visual } : p)) }));
+    setPr(null);
+  };
   const changes = (() => {
     if (!sugg) return [] as { label: string; before: string; after: string }[];
     const out: { label: string; before: string; after: string }[] = [];
@@ -189,7 +217,33 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
                 <b>{p.name}</b>
                 <span className="vd-sp-time">{fmtSecs(p.seconds)}</span>
                 <span className={`vd-words${w > lim * 1.15 ? ' over' : ''}`}>{w}/{lim} palavras</span>
+                <button type="button" className="btn small ghost id-fai" onClick={() => setPr(pr?.i === i ? null : { i, fb: '', busy: false, err: '', sugg: null, note: '' })} disabled={!hasKey || !p.speech.trim()} aria-expanded={pr?.i === i} title={!hasKey ? 'A IA não está configurada neste servidor' : `Refinar “${p.name}” com IA`}><IconSpark /> Refinar</button>
               </header>
+              {pr?.i === i && (
+                <div className="id-fref" style={{ marginBottom: 12 }}>
+                  {pr.sugg === null ? (
+                    <>
+                      <textarea rows={2} autoFocus value={pr.fb} onChange={(e) => setPr({ ...pr, fb: e.target.value })} maxLength={800} placeholder={`O que mudar em “${p.name}”? Ex.: comece pela dor, corte as frases longas, deixe a fala mais natural…`} />
+                      <div className="aim-chips pe-chips-row">{PCHIPS.map((c) => <button type="button" key={c} onClick={() => setPr({ ...pr, fb: (pr.fb.trim() ? `${pr.fb.trim()}; ` : '') + c.toLowerCase() })}>{c}</button>)}</div>
+                    </>
+                  ) : (
+                    <div className="id-fdiff">
+                      {pr.note && <p className="pe-note">{pr.note}</p>}
+                      {partChanges(i).length === 0 ? <p className="muted">A IA não mudou nada nesta parte. Tente pedir de outro jeito.</p> : partChanges(i).map((c) => (
+                        <div key={c.label}><span>{c.label}</span>{c.before && <s>{c.before}</s>}<p>{c.after || '(vazio)'}</p></div>
+                      ))}
+                      <textarea rows={2} value={pr.fb} onChange={(e) => setPr({ ...pr, fb: e.target.value })} maxLength={800} placeholder="Não é bem isso? Peça outro ajuste sobre esta sugestão…" />
+                    </div>
+                  )}
+                  {pr.err && <div className="notice err">{pr.err}</div>}
+                  {pr.busy && <div className="notice info" role="status">Refinando… leva cerca de 15 a 30 segundos.</div>}
+                  <div className="row-actions">
+                    {pr.sugg !== null && <button type="button" className="btn small primary" onClick={applyPart} disabled={partChanges(i).length === 0}>✓ Aplicar nesta parte</button>}
+                    <button type="button" className={`btn small${pr.sugg === null ? ' primary' : ''}`} onClick={askPart} disabled={pr.busy || pr.fb.trim().length < 3}>{pr.busy ? 'Refinando…' : pr.sugg === null ? <><IconSpark /> Sugerir</> : 'Pedir outro ajuste'}</button>
+                    <button type="button" className="btn small ghost" onClick={() => setPr(null)}>{pr.sugg === null ? 'Cancelar' : 'Descartar'}</button>
+                  </div>
+                </div>
+              )}
               <div className="field"><label htmlFor={`s${i}`}>Fala</label>
                 <textarea id={`s${i}`} className="vd-speech" rows={Math.max(3, Math.ceil(p.speech.length / 70))} value={p.speech} onChange={(e) => setPart(i, { speech: e.target.value })} /></div>
               <div className="vd-sp-row">
