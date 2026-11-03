@@ -39,11 +39,11 @@ async function resolve(brandId: string, i: { personaId: string | null; territory
   }
   return { personaId, personaName, territoryId, territory };
 }
-const fields = (i: IdeaFields) => ({ pain: str(i.pain, 400), impact: str(i.impact, 400), cause: str(i.cause, 400), guide: str(i.guide, 600), plan: str(i.plan, 700), gain: str(i.gain, 400), desire: str(i.desire, 400), cta: str(i.cta, 300) });
+const fields = (i: IdeaFields) => ({ pain: str(i.pain, 400), impact: str(i.impact, 400), cause: str(i.cause, 400), guide: str(i.guide, 600), args: str(i.args, 700), gain: str(i.gain, 400), desire: str(i.desire, 400), cta: str(i.cta, 300) });
 
 const toIdea = (r: typeof contentIdeas.$inferSelect): Idea => ({
   id: r.id, personaId: r.personaId, personaName: r.personaName, territoryId: r.territoryId, territory: r.territory,
-  pain: r.pain, impact: r.impact, cause: r.cause, guide: r.guide, plan: r.plan, gain: r.gain, desire: r.desire, cta: r.cta, status: r.status as IdeaStatus, source: r.source, createdAt: r.createdAt.toISOString(),
+  pain: r.pain, impact: r.impact, cause: r.cause, guide: r.guide, args: r.args, gain: r.gain, desire: r.desire, cta: r.cta, status: r.status as IdeaStatus, source: r.source, createdAt: r.createdAt.toISOString(),
 });
 
 export async function createIdea(input: IdeaInput): Promise<{ idea?: Idea; error?: string }> {

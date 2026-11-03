@@ -49,7 +49,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
     if (persona && (persona === PUBLICO_ID ? i.personaId !== null : i.personaId !== persona)) return false;
     if (territory && i.territoryId !== territory) return false;
     if (status && (local[i.id] ?? i.status) !== status) return false;
-    if (q.trim() && !`${i.pain} ${i.impact} ${i.cause} ${i.guide} ${i.plan} ${i.gain} ${i.desire} ${i.cta} ${i.territory}`.toLowerCase().includes(q.trim().toLowerCase())) return false;
+    if (q.trim() && !`${i.pain} ${i.impact} ${i.cause} ${i.guide} ${i.args} ${i.gain} ${i.desire} ${i.cta} ${i.territory}`.toLowerCase().includes(q.trim().toLowerCase())) return false;
     return true;
   });
   const count = (s: IdeaStatus) => ideas.filter((i) => (local[i.id] ?? i.status) === s).length;

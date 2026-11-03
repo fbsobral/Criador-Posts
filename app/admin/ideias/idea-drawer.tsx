@@ -19,7 +19,7 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
   const [persona, setPersona] = useState(idea ? idea.personaId ?? PUBLICO_ID : defaults.persona || personas[0]?.id || PUBLICO_ID);
   const [territory, setTerritory] = useState(idea ? idea.territoryId ?? '' : defaults.territory);
   const [territoryText, setTerritoryText] = useState(idea?.territoryId ? '' : idea?.territory ?? '');
-  const [f, setF] = useState<IdeaFields>(() => (idea ? { pain: idea.pain, impact: idea.impact, cause: idea.cause, guide: idea.guide, plan: idea.plan, gain: idea.gain, desire: idea.desire, cta: idea.cta } : EMPTY_FIELDS));
+  const [f, setF] = useState<IdeaFields>(() => (idea ? { pain: idea.pain, impact: idea.impact, cause: idea.cause, guide: idea.guide, args: idea.args, gain: idea.gain, desire: idea.desire, cta: idea.cta } : EMPTY_FIELDS));
   const [err, setErr] = useState('');
 
   // refinar com IA: pedir → comparar → aplicar no formulário (só salva quando você clicar em Salvar)
@@ -57,7 +57,7 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
   }
   const changes = sugg ? IDEA_FIELDS.filter((x) => sugg.fields[x.key].trim() !== f[x.key].trim()).map((x) => ({ label: x.label.replace(/ \(.*\)/, ''), before: f[x.key], after: sugg.fields[x.key] })) : [];
   const applyRefined = () => { if (!sugg) return; const nf = sugg.fields; setF(nf); setSugg(null); setRefine(false); setFb(''); setFirstFb(''); persist({ f: nf }); };
-  const CHIPS = ['Dor mais de rua', 'Guia mais forte', 'Causa mais coletiva', 'Plano mais prático', 'Mais curto', 'CTA mais suave'];
+  const CHIPS = ['Dor mais de rua', 'Guia mais forte', 'Causa mais coletiva', 'Argumentos mais fortes', 'Mais curto', 'CTA mais suave'];
 
   // quais caixas estão em edição: ideia nova abre tudo; ideia existente abre só o que você clicar
   const ALL = ['meta', ...IDEA_FIELDS.map((x) => x.key)];
@@ -86,7 +86,7 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
     document.addEventListener('keydown', key); return () => document.removeEventListener('keydown', key);
   });
   const personaName = persona === PUBLICO_ID ? 'Público geral' : personas.find((x) => x.id === persona)?.name ?? '—';
-  const planItems = f.plan.split('\n').map((l) => l.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, '').trim()).filter(Boolean);
+  const argItems = f.args.split('\n').map((l) => l.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, '').trim()).filter(Boolean);
 
   const save = () => start(async () => {
     const input = { personaId: persona === PUBLICO_ID ? null : persona, territoryId: territory || null, territory: territoryText, ...f };
@@ -114,7 +114,7 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
               {!sugg ? (
                 <>
                   <p className="muted">Diga o que mudar nesta ideia. A IA propõe a versão ajustada, você compara e só aplica se gostar.</p>
-                  <textarea rows={3} value={fb} onChange={(e) => setFb(e.target.value)} maxLength={800} placeholder="Ex.: a dor está formal demais, fale como a pessoa falaria no zap; e deixe o plano em 3 passos…" />
+                  <textarea rows={3} value={fb} onChange={(e) => setFb(e.target.value)} maxLength={800} placeholder="Ex.: a dor está formal demais, fale como a pessoa falaria no zap; e deixe os argumentos mais concretos…" />
                   <div className="aim-chips pe-chips-row">{CHIPS.map((c) => <button type="button" key={c} onClick={() => setFb((t) => (t.trim() ? `${t.trim()}; ` : '') + c.toLowerCase())}>{c}</button>)}</div>
                   {rerr && <div className="notice err">{rerr}</div>}
                   {rbusy && <div className="notice info" role="status">Refinando a ideia… leva cerca de 15 a 30 segundos.</div>}
@@ -208,7 +208,7 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
                       <small className="muted">{x.help}</small>
                     </>
                   ) : text ? (
-                    x.key === 'plan' && planItems.length > 1 ? <ol className="id-ftext">{planItems.map((it, i) => <li key={i}>{it}</li>)}</ol> : <p className="id-ftext">{f[x.key]}</p>
+                    x.key === 'args' && argItems.length > 1 ? <ul className="id-ftext">{argItems.map((it, i) => <li key={i}>{it}</li>)}</ul> : <p className="id-ftext">{f[x.key]}</p>
                   ) : (
                     <button type="button" className="id-fempty" onClick={() => toggle(x.key)}>Sem texto ainda. Clique para escrever.</button>
                   )}

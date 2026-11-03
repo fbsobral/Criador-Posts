@@ -93,7 +93,7 @@ export function IdeaConvertModal({ idea, mode, formats, templates, hasKey, onClo
             <summary>Instruções extras <span className="muted">(opcional)</span></summary>
             <textarea rows={3} value={extra} onChange={(e) => setExtra(e.target.value)} maxLength={1200} placeholder="Ex.: tom mais emocional, abrir com uma pergunta." />
           </details>
-          <div className="notice info">A IA usa toda a história da ideia (dor, impacto, causa, guia, plano, ganho, desejo e CTA) e a ideia passa a constar como <b>já usada</b>. {isScript ? 'O roteiro fica pronto para revisar e editar.' : 'O post chega como rascunho no editor.'}</div>
+          <div className="notice info">A IA usa toda a história da ideia (dor, impacto, causa, guia, argumentos, ganho, desejo e CTA) e a ideia passa a constar como <b>já usada</b>. {isScript ? 'O roteiro fica pronto para revisar e editar.' : 'O post chega como rascunho no editor.'}</div>
           {!hasKey && <div className="notice warn">A IA não está configurada neste servidor (falta a <code>ANTHROPIC_API_KEY</code>).</div>}
           {busy && <div className="notice info" role="status">A IA está escrevendo o roteiro. Leva cerca de 20 a 40 segundos; mantenha esta janela aberta.</div>}
           {err && <div className="notice err">{err}</div>}

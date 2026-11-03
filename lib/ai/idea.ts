@@ -4,7 +4,7 @@ import type { PersonaData } from '../persona';
 import { IDEA_OBJECTIVES, MAX_IDEAS_PER_RUN, type IdeaFields } from '../idea';
 
 export type SuggestedIdea = IdeaFields;
-const KEYS = ['pain', 'impact', 'cause', 'guide', 'plan', 'gain', 'desire', 'cta'] as const;
+const KEYS = ['pain', 'impact', 'cause', 'guide', 'args', 'gain', 'desire', 'cta'] as const;
 
 const STR = { type: 'string' } as const;
 const SCHEMA = {
@@ -28,10 +28,10 @@ ESTRUTURA DE CADA IDEIA (todos os campos são obrigatórios; juntos contam uma h
    - Comece pelos valores compartilhados e pela experiência vivida da pessoa, não por estatísticas nem por jargão de política pública.
    - Mostre quem cuida de quem, quem protege e quem é responsável, em vez de culpar a pessoa. A dor é compartilhada e tem causa coletiva.
    - Prefira verbos e imagens concretas a abstrações.
-5. "plan" — o PLANO: o caminho para sair da dor, em 2 a 4 passos curtos e concretos (um por linha, separados por quebra de linha, sem numeração nem marcadores). Coerente com a causa e com o guia, e ligado, de forma natural, ao que a ORGANIZAÇÃO faz ou ensina. Sem inventar leis, números, prazos ou programas: se precisar de um dado que não tem certeza, escreva "[checar dado]".
+5. "args" — os ARGUMENTOS: de 2 a 4 itens (um por linha, separados por quebra de linha, sem numeração nem marcadores) que SUSTENTAM A SOLUÇÃO da dor, isto é, as razões pelas quais sair dela é possível e o caminho proposto funciona. NÃO é passo a passo nem sequência de ações: cada argumento é uma razão independente, uma frase afirmativa e concreta que pode virar uma fala, um slide ou um ponto do roteiro (por que isso funciona, o que muda na prática, o que se evita, por que dá para confiar). Os argumentos devem ser DIFERENTES entre si (por exemplo, um prático, um de confiança ou prova, um de custo-benefício, um de proteção), coerentes com a causa e com o guia, e ligados, de forma natural, ao que a ORGANIZAÇÃO faz ou ensina. Sem inventar leis, números, prazos ou programas: se precisar de um dado que não tem certeza, escreva "[checar dado]".
 6. "gain" — o GANHO: o resultado RACIONAL de a dor ser resolvida, em 1 ou 2 frases. É o que dá para medir ou ver no mundo real (dinheiro, tempo, segurança, direito garantido, contas que fecham) e normalmente é o OPOSTO do impacto: se o impacto era "sobra pouco no fim do mês", o ganho é "sobra dinheiro no fim do mês". Concreto, sem promessa milagrosa e sem número inventado.
 7. "desire" — o DESEJO: o resultado EMOCIONAL de a dor estar resolvida, em 1 frase: como a pessoa se sente quando o problema acaba (tranquila, respeitada, orgulhosa, segura, livre, em paz com a família). É o sentimento, não o resultado prático: o ganho é a razão, o desejo é a emoção.
-8. "cta" — a CTA: o convite final, em 1 frase, que pede UMA ação concreta e é o PRIMEIRO DEGRAU do caminho do plano (coerente com o último passo do plano e com o OBJETIVO indicado). Estratégia da CTA:
+8. "cta" — a CTA: o convite final, em 1 frase, que pede UMA ação concreta e é o PRIMEIRO DEGRAU do caminho que a ideia propõe (coerente com os argumentos e com o OBJETIVO indicado). Estratégia da CTA:
    - Escolha a ação pelo momento da pessoa: quem acabou de perceber o problema ainda não está pronto para doar ou se inscrever; peça um passo proporcional (guardar, compartilhar, conversar, conhecer) e só peça um compromisso maior (doar, se inscrever, ser voluntário) quando a ideia e o objetivo já levarem até lá.
    - Comece com um verbo no imperativo e diga a ação e o porquê em poucas palavras (ex.: "Mande para quem está procurando a primeira vaga: ele pode não saber que a mentoria existe.").
    - Só convide para o que a ORGANIZAÇÃO realmente faz ou oferece (veja a identidade da marca); não invente programas, links, prazos nem benefícios.
@@ -41,7 +41,7 @@ ESTRUTURA DE CADA IDEIA (todos os campos são obrigatórios; juntos contam uma h
 CLAREZA E DIDÁTICA (vale para todos os campos)
 - Escreva para quem NÃO entende do assunto: explique como se fosse para um amigo na mesa do bar. Nada de abstração solta: troque palavras como "transparência", "equidade", "repasse", "sistema", "estrutura" por situações, ações e coisas que dá para ver.
 - Toda palavra técnica ou difícil precisa vir com uma explicação simples na mesma frase, ou ser trocada.
-- Os campos formam um fio com começo, meio e fim: a DOR mostra a cena; o IMPACTO mostra o que ela custa; a CAUSA explica COMO a coisa funciona, passo a passo, de causa a efeito ("primeiro..., aí..., por isso..."); o PLANO diz exatamente o que fazer (cada passo começa com um verbo e diz o quê e como); o GANHO mostra o resultado prático (o oposto do impacto) e o DESEJO, o sentimento de ter a dor resolvida; a CTA fecha. Cada campo deve se apoiar no anterior, sem salto.
+- Os campos formam um fio com começo, meio e fim: a DOR mostra a cena; o IMPACTO mostra o que ela custa; a CAUSA explica COMO a coisa funciona, passo a passo, de causa a efeito ("primeiro..., aí..., por isso..."); os ARGUMENTOS mostram por que a solução funciona (cada um, uma razão concreta e diferente das outras); o GANHO mostra o resultado prático (o oposto do impacto) e o DESEJO, o sentimento de ter a dor resolvida; a CTA fecha. Cada campo deve se apoiar no anterior, sem salto.
 - Use exemplos do dia a dia da persona (o trabalho dela, o lugar, as contas dela), não exemplos genéricos.
 - NÃO invente números, valores, percentuais, datas nem fontes (nem na dor, nem no impacto). Sem dado real no perfil ou no pedido, fale em termos qualitativos ("uma parte grande da corrida", "quase tudo que sobra").
 - O GUIA é a bússola da ideia: orienta o valor e as palavras, e a imagem dele deve vir do universo da própria persona (o volante, a corrida, a feira dela), nunca de um mundo que ela não vive.
@@ -55,8 +55,8 @@ REGRAS GERAIS
 /** Objetivo das ideias: fixo (o escolhido) ou a IA decide por ideia. */
 function objectiveBlock(id: string | undefined, hasPersona: boolean, n: number): string {
   const o = IDEA_OBJECTIVES.find((x) => x.id === id && x.id !== 'auto');
-  if (o) return `OBJETIVO ${n > 1 ? 'DAS IDEIAS' : 'DA IDEIA'} (a CTA e o plano devem servir a ele):\n${o.guide}`;
-  return `OBJETIVO: escolha o melhor para ${n > 1 ? 'cada ideia' : 'a ideia'}, entre conscientizar, engajar, aproximar (captar contato), apoiar (doar/patrocinar) e participar (voluntariar-se/inscrever-se), pelo momento da ${hasPersona ? 'persona' : 'pessoa em geral'}, pelo território e pelo último passo do plano.${n > 1 ? ' Varie o objetivo entre as ideias quando fizer sentido.' : ''}${hasPersona ? '' : ' Sem persona definida, prefira objetivos de conscientizar e engajar.'} Deixe a CTA coerente com o objetivo escolhido.`;
+  if (o) return `OBJETIVO ${n > 1 ? 'DAS IDEIAS' : 'DA IDEIA'} (a CTA e os argumentos devem servir a ele):\n${o.guide}`;
+  return `OBJETIVO: escolha o melhor para ${n > 1 ? 'cada ideia' : 'a ideia'}, entre conscientizar, engajar, aproximar (captar contato), apoiar (doar/patrocinar) e participar (voluntariar-se/inscrever-se), pelo momento da ${hasPersona ? 'persona' : 'pessoa em geral'}, pelo território e pelos argumentos.${n > 1 ? ' Varie o objetivo entre as ideias quando fizer sentido.' : ''}${hasPersona ? '' : ' Sem persona definida, prefira objetivos de conscientizar e engajar.'} Deixe a CTA coerente com o objetivo escolhido.`;
 }
 
 /** Quando a ideia nasce de um território sem persona, não há alguém falando: a dor é um fato, não uma fala. */
@@ -65,7 +65,7 @@ const NO_PERSONA_RULES = `
 IDEIA SEM PERSONA (esta regra SUBSTITUI a da "dor em linguagem de rua" e qualquer fala em primeira pessoa)
 - Não existe uma pessoa específica falando. Por isso, a "pain" NÃO é fala em primeira pessoa, não usa "eu", "meu", "a gente" nem aspas de depoimento. A "pain" é uma AFIRMAÇÃO (statement) clara e concreta sobre a situação: um fato do mercado, da sociedade ou do território em si, em terceira pessoa ou de forma impessoal. Ex.: "Quase tudo que um jovem ganha no primeiro emprego vai para o aluguel e o transporte." Em 1 ou 2 frases, linguagem simples, sem jargão, sem número inventado (se precisar de um dado, escreva "[checar dado]").
 - "impact", "cause", "gain" e "desire" também ficam impessoais ou falam de "quem...", "as famílias...", "os jovens..." (nunca "eu" ou "minha"). O "desire" é o sentimento de quem passa por isso quando o problema acaba, descrito de fora.
-- "guide" e "plan" seguem as regras normais. A "cta" convida o público em geral (ex.: "Compartilhe com quem precisa saber disso", "Conheça o caminho"), sem supor uma persona.`;
+- "guide" e "args" seguem as regras normais. A "cta" convida o público em geral (ex.: "Compartilhe com quem precisa saber disso", "Conheça o caminho"), sem supor uma persona.`;
 
 export function personaBlock(p: { name: string; tagline: string; role: string; data: PersonaData }) {
   const L = (t: string, a: string[]) => (a.length ? `\n- ${t}: ${a.join('; ')}` : '');
@@ -90,7 +90,7 @@ export function existingBlock(list: ExistingIdea[], hasPersona: boolean, hasTerr
     if (!rows.length) return '';
     return `[${title}]\n${rows.map((x) => `- Dor: ${clip(x.pain, 170)}${x.guide ? ` | Guia: ${clip(x.guide, 130)}` : ''}${x.cta ? ` | CTA: ${clip(x.cta, 110)}` : ''}${k !== 'same' ? ` | (${[k === 'territory' ? x.persona : '', k === 'persona' ? x.territory : ''].filter(Boolean).join(' · ') || '—'})` : ''}`).join('\n')}`;
   }).filter(Boolean);
-  return `IDEIAS JÁ CRIADAS${hasPersona ? ' PARA ESTA PERSONA' : ''}${hasPersona && hasTerritory ? ' E' : ''}${hasTerritory ? ' PARA ESTE TERRITÓRIO' : ''}. Leia tudo antes de escrever e crie ideias NOVAS que COMPLEMENTEM o conjunto:\n- não repita a mesma dor, o mesmo ângulo, a mesma cena nem a mesma imagem/metáfora do guia;\n- varie também a CTA (outra ação, outro convite) em relação às já usadas;\n- procure o que ainda NÃO foi coberto (outro momento, outra consequência, outra causa, outro passo do plano);\n- as do mesmo território com outras personas mostram o que já foi dito sobre o tema: traga o que é específico desta persona.\n\n${parts.join('\n\n')}`;
+  return `IDEIAS JÁ CRIADAS${hasPersona ? ' PARA ESTA PERSONA' : ''}${hasPersona && hasTerritory ? ' E' : ''}${hasTerritory ? ' PARA ESTE TERRITÓRIO' : ''}. Leia tudo antes de escrever e crie ideias NOVAS que COMPLEMENTEM o conjunto:\n- não repita a mesma dor, o mesmo ângulo, a mesma cena nem a mesma imagem/metáfora do guia;\n- varie também a CTA (outra ação, outro convite) em relação às já usadas;\n- procure o que ainda NÃO foi coberto (outro momento, outra consequência, outra causa, outro argumento);\n- as do mesmo território com outras personas mostram o que já foi dito sobre o tema: traga o que é específico desta persona.\n\n${parts.join('\n\n')}`;
 }
 
 export type SuggestIdeasArgs = {
@@ -115,7 +115,7 @@ export async function suggestIdeas(a: SuggestIdeasArgs): Promise<{ ideas: Sugges
   const n = Math.min(MAX_IDEAS_PER_RUN, Math.max(1, Math.round(a.count)));
   if (process.env.AI_MOCK === '1') {
     await new Promise((r) => setTimeout(r, 700));
-    return { ideas: Array.from({ length: n }, (_, i) => ({ pain: `"Dor de exemplo ${i + 1}, falada do jeito da rua."`, impact: 'Impacto de exemplo.', cause: 'Causa coletiva de exemplo.', guide: 'Cuidado como valor: uma comunidade que se protege.', plan: 'Passo 1\nPasso 2\nPasso 3', gain: 'Ganho de exemplo.', desire: 'Desejo de exemplo.', cta: 'Compartilhe com quem passa por isso.' })), inputTokens: 1200, outputTokens: 900 };
+    return { ideas: Array.from({ length: n }, (_, i) => ({ pain: `"Dor de exemplo ${i + 1}, falada do jeito da rua."`, impact: 'Impacto de exemplo.', cause: 'Causa coletiva de exemplo.', guide: 'Cuidado como valor: uma comunidade que se protege.', args: 'Argumento 1\nArgumento 2\nArgumento 3', gain: 'Ganho de exemplo.', desire: 'Desejo de exemplo.', cta: 'Compartilhe com quem passa por isso.' })), inputTokens: 1200, outputTokens: 900 };
   }
   if (!process.env.ANTHROPIC_API_KEY) throw new AiError('ANTHROPIC_API_KEY não configurada no servidor.');
 
@@ -127,7 +127,7 @@ export async function suggestIdeas(a: SuggestIdeasArgs): Promise<{ ideas: Sugges
     a.existing?.length ? existingBlock(a.existing, !!a.persona, !!a.territory) : a.existingPains.length ? `IDEIAS QUE JÁ EXISTEM (não repita as dores nem os ângulos):\n${a.existingPains.map((p) => `- ${p}`).join('\n')}` : '',
     !a.persona ? 'ATENÇÃO: sem persona. A "pain" é uma afirmação sobre o fato ou o território (nunca uma fala em primeira pessoa).' : '',
     objectiveBlock(a.objective, !!a.persona, n),
-    `TAREFA: crie ${n} ideia(s) de conteúdo com os 8 campos (pain, impact, cause, guide, plan, gain, desire, cta).`,
+    `TAREFA: crie ${n} ideia(s) de conteúdo com os 8 campos (pain, impact, cause, guide, args, gain, desire, cta).`,
     a.instructions.trim() ? `INSTRUÇÕES EXTRAS DO USUÁRIO:\n${a.instructions.trim()}` : '',
   ].filter(Boolean).join('\n\n');
 
@@ -144,7 +144,7 @@ export async function suggestIdeas(a: SuggestIdeasArgs): Promise<{ ideas: Sugges
     const seen = new Set(a.existingPains.map(norm));
     const ideas: SuggestedIdea[] = [];
     for (const x of raw.ideas ?? []) {
-      const idea = Object.fromEntries(KEYS.map((k) => [k, clean(x[k], k === 'plan' ? 700 : k === 'guide' ? 600 : k === 'cta' ? 300 : 400)])) as SuggestedIdea;
+      const idea = Object.fromEntries(KEYS.map((k) => [k, clean(x[k], k === 'args' ? 700 : k === 'guide' ? 600 : k === 'cta' ? 300 : 400)])) as SuggestedIdea;
       const k = norm(idea.pain);
       if (!idea.pain || seen.has(k)) continue;
       seen.add(k); ideas.push(idea);
@@ -166,7 +166,7 @@ const REFINE_RULES = `
 
 TAREFA: REFINAR UMA IDEIA EXISTENTE
 - Você recebe a ideia ATUAL (a versão que está na tela, mesmo que ainda não salva) e um PEDIDO do usuário. Devolva a ideia inteira, com os mesmos 8 campos, aplicando o pedido.
-- Mude só o que o pedido exige e o que for necessário para manter a coerência da história (dor → impacto → causa → guia → plano → ganho → desejo → CTA). Preserve o resto, as palavras que já estavam boas e a persona.
+- Mude só o que o pedido exige e o que for necessário para manter a coerência da história (dor → impacto → causa → guia → argumentos → ganho → desejo → CTA). Preserve o resto, as palavras que já estavam boas e a persona.
 - Respeite todas as regras de cada campo acima (linguagem de rua na dor, causa coletiva, guia sem repetir o discurso do outro lado, sem inventar dados).
 - Se houver "SUGESTÃO ANTERIOR (não aprovada)", parta dela e aplique o novo pedido, sem desfazer o que já estava bom.
 - "note": uma frase curta dizendo o que você mudou.`;
@@ -208,7 +208,7 @@ export async function refineIdea(a: {
     if (res.stop_reason === 'refusal') throw new AiError('A IA recusou refinar esta ideia.');
     if (res.stop_reason === 'max_tokens') throw new AiError('A resposta ficou grande demais. Tente de novo.', true);
     const raw = JSON.parse(res.content.find((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')?.text ?? '') as Partial<Record<(typeof KEYS)[number] | 'note', string>>;
-    const fields = Object.fromEntries(KEYS.map((k) => [k, clean(raw[k], k === 'plan' ? 700 : k === 'guide' ? 600 : k === 'cta' ? 300 : 400)])) as IdeaFields;
+    const fields = Object.fromEntries(KEYS.map((k) => [k, clean(raw[k], k === 'args' ? 700 : k === 'guide' ? 600 : k === 'cta' ? 300 : 400)])) as IdeaFields;
     if (!fields.pain) throw new AiError('A IA devolveu uma ideia vazia. Tente de novo.', true);
     if (a.field) { const only = fields[a.field]; Object.assign(fields, a.current, { [a.field]: only }); } // garantia no código: só o campo pedido muda
     return { fields, note: clean(raw.note, 300) };

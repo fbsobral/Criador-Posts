@@ -103,8 +103,8 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
                 <summary>Instruções extras <span className="muted">(opcional)</span></summary>
                 <textarea rows={3} value={instructions} onChange={(e) => setInstructions(e.target.value)} maxLength={1200} placeholder="Ex.: Foque em quem paga aluguel. Use a imagem de “casa” como metáfora." />
               </details>
-              <div className="notice info">A IA escreve a <b>dor em linguagem de rua</b>, o <b>impacto</b>, a <b>causa</b>, o <b>guia</b> (enquadramento progressista, à la Lakoff), o <b>plano</b>, o <b>ganho</b>, o <b>desejo</b> e a <b>CTA</b>, sem repetir as ideias que já existem para este território.</div>
-              {!hasAbout && <div className="notice warn">Você ainda não descreveu <b>o que a organização faz</b> (em Territórios). Sem isso, o plano e a CTA ficam genéricos.</div>}
+              <div className="notice info">A IA escreve a <b>dor em linguagem de rua</b>, o <b>impacto</b>, a <b>causa</b>, o <b>guia</b> (enquadramento progressista, à la Lakoff), os <b>argumentos</b> que sustentam a solução, o <b>ganho</b>, o <b>desejo</b> e a <b>CTA</b>, sem repetir as ideias que já existem para este território.</div>
+              {!hasAbout && <div className="notice warn">Você ainda não descreveu <b>o que a organização faz</b> (em Territórios). Sem isso, os argumentos e a CTA ficam genéricos.</div>}
               {!hasKey && <div className="notice warn">A IA não está configurada neste servidor (falta a <code>ANTHROPIC_API_KEY</code>).</div>}
               {busy && <div className="notice info" role="status">A IA está escrevendo as ideias. Leva cerca de 20 a 50 segundos; mantenha esta janela aberta.</div>}
               {err && <div className="notice err">{err}</div>}

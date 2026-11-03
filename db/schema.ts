@@ -358,8 +358,8 @@ export const contentIdeas = pgTable(
     cause: text('cause').notNull().default(''),
     /** Guia: o enquadramento progressista (Lakoff). */
     guide: text('guide').notNull().default(''),
-    /** Plano: o caminho, passo a passo. */
-    plan: text('plan').notNull().default(''),
+    /** Argumentos: o que sustenta a solução da dor (itens para considerar na construção do roteiro ou do post; não é passo a passo). */
+    args: text('args').notNull().default(''),
     /** Ganho concreto quando o plano funciona. */
     gain: text('gain').notNull().default(''),
     /** Desejo de fundo (o que a pessoa quer ser/sentir). */
