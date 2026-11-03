@@ -997,3 +997,11 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
   .pe-board { height: auto; min-height: 320px; overflow-y: visible; }
   .pe-col .pe-col-body { overflow-y: visible; }
 }
+
+/* Territórios: painel em abas e barra de ações do nó */
+.tr-ptabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin: 2px 0 4px; }
+.tr-ptabs button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 6px; border: 0; border-bottom: 2.5px solid transparent; margin-bottom: -1px; background: none; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.tr-ptabs button:hover { color: var(--ink); } .tr-ptabs button.on { color: var(--ink); border-bottom-color: var(--primary); }
+.tr-ptabs button i { font-style: normal; font-size: 11px; font-weight: 700; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 99px; padding: 0 6px; color: var(--ink-2); }
+.tr-hint { font-size: 12.5px; line-height: 1.45; }
+.tr-tools a { border: 0; background: transparent; color: #fff; font: inherit; font-size: 12px; font-weight: 600; padding: 5px 9px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; } .tr-tools a:hover { background: rgba(255,255,255,.18); }

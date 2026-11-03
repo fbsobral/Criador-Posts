@@ -116,6 +116,68 @@ export async function suggestPersonas(i: { icp: string; count: number; instructi
   }
 }
 
+export type SuggestedGroupOnly = { name: string; description: string };
+
+const GROUPS_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['groups'],
+  properties: { groups: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['name', 'description'], properties: { name: STR, description: STR } } } },
+};
+
+const GROUPS_SYSTEM = `Você é um estrategista de marketing e pesquisador de audiência sênior. A partir do ICP (perfil de cliente ideal) informado, você propõe GRUPOS de personas (segmentos de público), em português do Brasil. Os grupos ainda não têm personas: eles são as "gavetas" onde as personas serão criadas depois.
+
+COMO CRIAR
+- Um grupo reúne pessoas que compartilham contexto, momento de vida ou de trabalho, motivação ou comportamento de decisão. Não agrupe só por idade ou gênero.
+- Os grupos devem ser claramente DIFERENTES entre si (sem sobreposição) e, juntos, cobrir bem o ICP.
+- Nome curto (2 a 5 palavras), em linguagem do dia a dia, sem jargão nem palavra de relatório. Ex.: "Jovens que querem estudar", "Empresas que querem ajudar".
+- Descrição de uma frase simples: quem são e o que os move.
+- LIGAÇÃO COM A ORGANIZAÇÃO: os grupos são pessoas e organizações que a entidade quer alcançar ou que podem apoiá-la (veja "O que a organização faz" na identidade da marca).
+- Não invente dados nem estatísticas.`;
+
+/** Sugere grupos de personas (só nome e descrição) a partir do ICP, sem repetir os existentes. Não grava nada. */
+export async function suggestPersonaGroups(i: { icp: string; count: number; instructions: string; existing: SuggestedGroupOnly[]; brand: BrandProfile }): Promise<{ groups: SuggestedGroupOnly[]; inputTokens: number; outputTokens: number }> {
+  const n = Math.max(1, Math.round(i.count));
+  const taken = new Set(i.existing.map((g) => normName(g.name)));
+  if (process.env.AI_MOCK === '1') {
+    await new Promise((r) => setTimeout(r, 700));
+    const base = ['Quem quer começar', 'Quem já está no caminho', 'Quem pode apoiar', 'Quem decide', 'Quem influencia', 'Quem acompanha de longe', 'Quem já ajuda', 'Quem está em dúvida'];
+    return { groups: base.filter((g) => !taken.has(normName(g))).slice(0, n).map((name) => ({ name, description: `Pessoas do grupo “${name.toLowerCase()}”, derivado do ICP.` })), inputTokens: 900, outputTokens: 400 };
+  }
+  if (!process.env.ANTHROPIC_API_KEY) throw new AiError('ANTHROPIC_API_KEY não configurada no servidor.');
+  const user = [
+    `ICP (perfil de cliente ideal):\n${i.icp.trim()}`,
+    i.existing.length ? `GRUPOS JÁ EXISTENTES (NÃO repita nem crie variações; cubra lacunas):\n${i.existing.map((g) => `- ${g.name}${g.description ? `: ${g.description}` : ''}`).join('\n')}` : 'GRUPOS JÁ EXISTENTES: nenhum.',
+    `QUANTIDADE: crie exatamente ${n} grupo(s) NOVO(S).`,
+    i.instructions.trim() ? `INSTRUÇÕES EXTRAS DO USUÁRIO:\n${i.instructions.trim()}` : '',
+  ].filter(Boolean).join('\n\n');
+  try {
+    const res = await new Anthropic().beta.messages.create({
+      model: AI_MODEL, max_tokens: 4000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+      system: [GROUPS_SYSTEM, brandBlock(i.brand)].filter(Boolean).join('\n\n'),
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: GROUPS_SCHEMA } },
+      messages: [{ role: 'user', content: user }],
+    });
+    if (res.stop_reason === 'refusal') throw new AiError('A IA recusou gerar grupos para este ICP.');
+    if (res.stop_reason === 'max_tokens') throw new AiError('A resposta ficou grande demais. Peça menos grupos.', true);
+    const raw = JSON.parse(res.content.find((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')?.text ?? '') as { groups?: { name?: string; description?: string }[] };
+    const groups: SuggestedGroupOnly[] = [];
+    for (const g of raw.groups ?? []) {
+      const name = clean(g.name, 60);
+      if (!name || taken.has(normName(name)) || groups.length >= n) continue;
+      taken.add(normName(name)); groups.push({ name, description: clean(g.description, 200) });
+    }
+    if (!groups.length) throw new AiError('A IA não devolveu grupos novos. Tente de novo ou ajuste as instruções.', true);
+    const u = res.usage as { input_tokens?: number; output_tokens?: number } | undefined;
+    return { groups, inputTokens: u?.input_tokens ?? 0, outputTokens: u?.output_tokens ?? 0 };
+  } catch (e) {
+    if (e instanceof AiError) throw e;
+    if (e instanceof SyntaxError) throw new AiError('A IA devolveu uma resposta inválida. Tente de novo.', true);
+    if (e instanceof Anthropic.RateLimitError) throw new AiError('Limite de uso da IA atingido. Tente em instantes.', true);
+    if (e instanceof Anthropic.AuthenticationError) throw new AiError('Chave da Anthropic inválida no servidor.');
+    if (e instanceof Anthropic.APIError) throw new AiError(`Erro da IA (${e.status}).`, (e.status ?? 500) >= 500);
+    throw new AiError('Não foi possível falar com a IA.', true);
+  }
+}
+
 export type RefinedPersona = { name: string; tagline: string; data: PersonaData; note: string };
 
 const REFINE_SCHEMA = {

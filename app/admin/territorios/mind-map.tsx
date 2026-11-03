@@ -40,6 +40,7 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
   const [tr, setTr] = useState<{ node: TNode; preselect?: string[] } | null>(null);
   // celular: o painel do território vira uma folha (abre pelo "detalhes" da barra do nó) e o arraste vira "Mover para…"
   const [sheet, setSheet] = useState(false);
+  const [ptab, setPtab] = useState<'tema' | 'personas' | 'ideias'>('tema');
   const [fine, setFine] = useState(true);
   useEffect(() => setFine(window.matchMedia('(pointer: fine)').matches), []);
   // celular: abre um pouco afastado e já com os primeiros temas à vista (o cartão da marca fica logo à esquerda)
@@ -240,9 +241,9 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
                     )}
                     {isSel && editing !== n.id && (
                       <div className="tr-tools" onClick={(e) => e.stopPropagation()}>
-                        <button type="button" onClick={() => addChild(n.id)} title="Adicionar filho (Tab)" aria-label="Adicionar filho">↳ filho</button>
+                        <button type="button" onClick={() => addChild(n.id)} title="Adicionar subtema (Tab)" aria-label="Adicionar subtema">↳ subtema</button>
                         <button type="button" onClick={() => addSibling(n)} title="Adicionar irmão (Enter)" aria-label="Adicionar irmão">↓ irmão</button>
-                        <button type="button" onClick={() => setAi({ parent: n })} title="Gerar filhos com IA" aria-label="Gerar com IA"><IconSpark /></button>
+                        <button type="button" onClick={() => setAi({ parent: n })} title="Gerar subtemas com IA" aria-label="Gerar subtemas com IA"><IconSpark /> subtemas</button>
                         <button type="button" onClick={() => setTr({ node: n })} title="Traduzir este tema para as personas" aria-label="Traduzir para as personas">🔁 traduzir</button>
                         <Link href={`/admin/ideias?t=${n.id}${lens ? `&p=${lens.id}` : ''}`} title="Gerar ideias de conteúdo para este tema" aria-label="Gerar ideias de conteúdo">💡 ideias</Link>
                       </div>
@@ -264,9 +265,9 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
       {sel && editing !== sel.id && !sheet && (
         <div className="tr-mbar" role="toolbar" aria-label={`Ações em “${sel.name}”`}>
           <button type="button" onClick={() => setSheet(true)}><IconEdit /><span>Detalhes</span></button>
-          <button type="button" onClick={() => addChild(sel.id)}><IconPlus /><span>Filho</span></button>
+          <button type="button" onClick={() => addChild(sel.id)}><IconPlus /><span>Subtema</span></button>
           <button type="button" onClick={() => addSibling(sel)}><IconPlus /><span>Irmão</span></button>
-          <button type="button" onClick={() => setAi({ parent: sel })}><IconSpark /><span>IA</span></button>
+          <button type="button" onClick={() => setAi({ parent: sel })}><IconSpark /><span>Subtemas</span></button>
           <button type="button" onClick={() => setTr({ node: sel })}><span aria-hidden>🔁</span><span>Traduzir</span></button>
           <Link href={`/admin/ideias?t=${sel.id}${lens ? `&p=${lens.id}` : ''}`}><span aria-hidden>💡</span><span>Ideias</span></Link>
         </div>
@@ -278,6 +279,12 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
             <button type="button" className="btn small ghost tr-sheet-close" onClick={() => setSheet(false)} aria-label="Fechar detalhes">✕ Fechar</button>
             <div className="tr-crumb">{pathOf(nodes, sel.id).map((x, i, a) => <span key={i}>{x}{i < a.length - 1 ? ' › ' : ''}</span>)}</div>
             <div className="field"><label htmlFor="tn">Nome</label><input id="tn" key={sel.id + sel.name} defaultValue={sel.name} maxLength={80} onBlur={(e) => saveName(sel, e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} /></div>
+            <div className="tr-ptabs" role="tablist" aria-label="Seções do território">
+              {([['tema', 'Tema', ''], ['personas', 'Personas', effectivePersonas(nodes, sel.id).length ? String(effectivePersonas(nodes, sel.id).length) : ''], ['ideias', 'Ideias', approved[sel.id] ? `✓${approved[sel.id]}` : '']] as const).map(([k, label, badge]) => (
+                <button key={k} type="button" role="tab" aria-selected={ptab === k} className={ptab === k ? 'on' : ''} onClick={() => setPtab(k)}>{label}{badge && <i>{badge}</i>}</button>
+              ))}
+            </div>
+            {ptab === 'tema' && (<>
             <div className="field"><label htmlFor="td">Descrição</label><textarea id="td" key={sel.id} rows={4} defaultValue={sel.description} maxLength={400} placeholder="O que entra neste território e por que importa" onBlur={(e) => saveDesc(sel, e.target.value)} /></div>
             <div className="field">
               <label htmlFor="ts">Prioridade (score 1 a 100)</label>
@@ -287,6 +294,16 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
               </div>
               {sel.scoreReason && <p className="tr-score-why">{sel.scoreReason}</p>}
             </div>
+            <div className="field">
+              <label htmlFor="tmv">Mover para</label>
+              <select id="tmv" value={sel.parentId ?? ''} onChange={(e) => move(sel.id, e.target.value || null)}>
+                <option value="">Raiz do mapa (1º nível)</option>
+                {moveTargets(nodes, sel.id).map((o) => <option key={o.id} value={o.id}>{'\u00A0\u00A0'.repeat(o.depth)}{o.name}</option>)}
+              </select>
+            </div>
+            {sheet && err && <div className="notice err">{err}</div>}
+            </>)}
+            {ptab === 'personas' && (<>
             {(() => {
               const eff = effectivePersonas(nodes, sel.id);
               const free = personas.filter((x) => !eff.includes(x.id));
@@ -323,6 +340,8 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
                 </div>
               );
             })()}
+            </>)}
+            {ptab === 'ideias' && (<>
             <div className="tr-ideas-box">
               <div><b>Ideias de conteúdo</b><small>{approved[sel.id] ? `✓ ${approved[sel.id]} ${approved[sel.id] === 1 ? 'aprovada' : 'aprovadas'} neste tema` : 'Nenhuma aprovada neste tema ainda'}</small></div>
               <div className="row-actions">
@@ -330,18 +349,12 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
                 <Link href={`/admin/ideias?t=${sel.id}&ver=1`} className="btn small">Ver</Link>
               </div>
             </div>
-            <div className="field">
-              <label htmlFor="tmv">Mover para</label>
-              <select id="tmv" value={sel.parentId ?? ''} onChange={(e) => move(sel.id, e.target.value || null)}>
-                <option value="">Raiz do mapa (1º nível)</option>
-                {moveTargets(nodes, sel.id).map((o) => <option key={o.id} value={o.id}>{'\u00A0\u00A0'.repeat(o.depth)}{o.name}</option>)}
-              </select>
-            </div>
-            {sheet && err && <div className="notice err">{err}</div>}
+              <p className="muted tr-hint">Cada ideia combina este tema com uma persona. Para escolher a persona, use o 💡 ao lado dela na aba Personas, ou abra o gerador e escolha lá.</p>
+            </>)}
             <div className="tr-meta">{kidsCount(sel.id)} {kidsCount(sel.id) === 1 ? 'território dentro' : 'territórios dentro'} · {sel.source === 'ai' ? 'criado pela IA' : 'criado à mão'}</div>
             <div className="tr-actions">
-              <button type="button" className="btn small primary" onClick={() => setAi({ parent: sel })}><IconSpark /> Gerar com IA</button>
-              <button type="button" className="btn small" onClick={() => addChild(sel.id)}><IconPlus /> Filho</button>
+              <button type="button" className="btn small" onClick={() => setAi({ parent: sel })}><IconSpark /> Subtemas com IA</button>
+              <button type="button" className="btn small" onClick={() => addChild(sel.id)}><IconPlus /> Subtema</button>
               <button type="button" className="btn small" onClick={() => addSibling(sel)}><IconPlus /> Irmão</button>
               <Menu label="Mais" align="right">
                 <ReclassifyButton className="tr-menu-item" target={{ scope: 'node', nodeId: sel.id }} count={kidsCount(sel.id) + 1} label={kidsCount(sel.id) ? 'Reclassificar este e filhos' : 'Reclassificar'} disabled={!hasKey || !priority.criteria.length} onError={setErr} />

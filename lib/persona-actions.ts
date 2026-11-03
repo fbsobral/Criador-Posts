@@ -42,6 +42,25 @@ export async function createGroup(name: string, description = ''): Promise<{ id?
   return { id: r.id };
 }
 
+/** Cria os grupos aprovados na revisão da IA (pula os que já existem com o mesmo nome). */
+export async function addSuggestedGroups(items: { name: string; description: string }[]): Promise<{ added?: number; error?: string }> {
+  const c = await ctx();
+  const existing = await db.select().from(personaGroups).where(eq(personaGroups.brandId, c.brandId));
+  const taken = new Set(existing.map((g) => normName(g.name)));
+  let pos = existing.reduce((m, g) => Math.max(m, g.position), -1);
+  let added = 0;
+  for (const g of items.slice(0, 20)) {
+    const name = str(g.name, 60);
+    if (!name || taken.has(normName(name))) continue;
+    taken.add(normName(name));
+    await db.insert(personaGroups).values({ brandId: c.brandId, name, description: str(g.description, 200), position: ++pos });
+    added++;
+  }
+  if (!added) return { error: 'Nenhum grupo novo para adicionar (os nomes já existem).' };
+  done();
+  return { added };
+}
+
 export async function updateGroup(id: string, input: { name: string; description?: string }): Promise<{ error?: string }> {
   const c = await ctx();
   const n = str(input.name, 60);
