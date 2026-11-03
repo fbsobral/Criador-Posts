@@ -6,6 +6,7 @@ import { AiError, type BrandProfile } from '@/lib/ai/generate';
 import { refinePersona } from '@/lib/ai/persona';
 import { emptyPersonaData, type PersonaData } from '@/lib/persona';
 import { loadBrandProfile } from '@/lib/video-server';
+import { TOO_MANY, rateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 90;
 
@@ -21,6 +22,7 @@ const toPersona = (v: unknown) => { const p = (v ?? {}) as Record<string, unknow
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!rateLimit(`ai:${c.userId}`, 100, 10 * 60_000)) return Response.json(TOO_MANY, { status: 429 });
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const feedback = str(b?.feedback, 800);
   if (feedback.length < 3) return Response.json({ error: 'Diga o que você quer mudar nesta persona.' }, { status: 400 });

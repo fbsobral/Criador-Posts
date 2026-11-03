@@ -7,6 +7,7 @@ import { refineIdea } from '@/lib/ai/idea';
 import { EMPTY_FIELDS, IDEA_FIELDS, type IdeaFields } from '@/lib/idea';
 import { PUBLICO_ID } from '@/lib/territory';
 import { loadBrandProfile } from '@/lib/video-server';
+import { TOO_MANY, rateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 90;
 
@@ -19,6 +20,7 @@ const toFields = (v: unknown): IdeaFields => {
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!rateLimit(`ai:${c.userId}`, 100, 10 * 60_000)) return Response.json(TOO_MANY, { status: 429 });
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const feedback = String(b?.feedback ?? '').trim().slice(0, 800);
   if (feedback.length < 3) return Response.json({ error: 'Diga o que você quer mudar nesta ideia.' }, { status: 400 });

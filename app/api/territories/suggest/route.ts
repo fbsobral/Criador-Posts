@@ -8,6 +8,7 @@ import { MAX_TERRITORY_NODES_PER_RUN, PUBLICO_ID, outline, pathOf } from '@/lib/
 import { loadTerritoryNodes } from '@/lib/territory-server';
 import { priorityOf } from '@/lib/priority';
 import { loadBrandProfile } from '@/lib/video-server';
+import { TOO_MANY, rateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 120;
 
@@ -15,6 +16,7 @@ export const maxDuration = 120;
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!rateLimit(`ai:${c.userId}`, 100, 10 * 60_000)) return Response.json(TOO_MANY, { status: 429 });
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const mode: TerritoryMode = b?.mode === 'expand' ? 'expand' : b?.mode === 'full' ? 'full' : 'first';
   const publico = b?.personaId === PUBLICO_ID;

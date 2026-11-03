@@ -4,6 +4,7 @@ import { brandSettings, brands } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { AiError } from '@/lib/ai/generate';
 import { adjustSlideText } from '@/lib/ai/slide-text';
+import { TOO_MANY, rateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 60;
 
@@ -11,6 +12,7 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!rateLimit(`ai:${c.userId}`, 100, 10 * 60_000)) return Response.json(TOO_MANY, { status: 429 });
 
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const str = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n);

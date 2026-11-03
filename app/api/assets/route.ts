@@ -1,4 +1,5 @@
 import { getCtx } from '@/lib/ctx';
+import { rateLimit } from '@/lib/rate-limit';
 import { ASSET_THUMB_URL, ASSET_URL, dataUrlToBuffer, markUsed, saveAsset, searchAssets } from '@/lib/assets';
 
 /** Busca na galeria da marca: ?q=palavras&limit=24&min=1 */
@@ -18,6 +19,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
+  if (Number(req.headers.get('content-length') ?? 0) > 20 * 1024 * 1024) return Response.json({ error: 'Imagem grande demais (máximo 12 MB).' }, { status: 413 });
+  if (!rateLimit(`upload:${c.userId}`, 60, 10 * 60_000)) return Response.json({ error: 'Muitos envios seguidos. Aguarde um instante.' }, { status: 429 });
   const body = (await req.json().catch(() => null)) as { dataUrl?: string; description?: string; use?: string; kind?: string } | null;
 
   // marca uma imagem existente como usada (ranking da busca)

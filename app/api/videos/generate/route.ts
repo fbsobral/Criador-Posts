@@ -7,6 +7,7 @@ import { AiError } from '@/lib/ai/generate';
 import { generateVideoScript } from '@/lib/ai/video';
 import { MAX_CONTENT_CHARS } from '@/lib/video';
 import { VIDEO_DAILY_LIMIT, cleanPlatform, cleanSeconds, loadBrandProfile, loadFormat, scriptsToday } from '@/lib/video-server';
+import { TOO_MANY, rateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 120;
 
@@ -14,6 +15,7 @@ export const maxDuration = 120;
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!rateLimit(`ai:${c.userId}`, 100, 10 * 60_000)) return Response.json(TOO_MANY, { status: 429 });
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const content = String(b?.content ?? '').trim();
   const idea = b?.idea as { title?: string; angle?: string; points?: unknown[] } | undefined;

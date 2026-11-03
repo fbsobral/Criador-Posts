@@ -5,6 +5,7 @@ import { getCtx } from '@/lib/ctx';
 import { cleanTags, deriveImagePrompt, type SlideContext } from '@/lib/ai/image-prompt';
 import { ASSET_THUMB_URL, ASSET_URL, saveAsset } from '@/lib/assets';
 import { ASPECT_RATIOS, IMAGE_MODEL, ImageError, MAX_PROMPT_CHARS, buildPrompt, combineBriefs, generateImage, imageEnabled, type AspectRatio } from '@/lib/ai/image';
+import { TOO_MANY, rateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 130;
 const DAILY_LIMIT = Number(process.env.AI_IMAGE_DAILY_LIMIT) || 60;
@@ -13,6 +14,7 @@ const DAILY_LIMIT = Number(process.env.AI_IMAGE_DAILY_LIMIT) || 60;
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!rateLimit(`ai:${c.userId}`, 100, 10 * 60_000)) return Response.json(TOO_MANY, { status: 429 });
   if (!imageEnabled()) return Response.json({ error: 'Geração de imagens não configurada (GEMINI_API_KEY).' }, { status: 503 });
 
   const body = (await req.json().catch(() => null)) as { prompt?: string; ratio?: string; context?: Partial<SlideContext>; improve?: boolean; postBrief?: string; mode?: string; hint?: string; previousPrompt?: string; feedback?: string; tags?: string[] } | null;

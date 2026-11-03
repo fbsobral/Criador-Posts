@@ -6,7 +6,7 @@ import { actionErrorMessage } from '@/lib/action-error';
 import { fmtUsd } from '@/lib/ai/constants';
 import { IDEA_INSTRUCTIONS, ideaAngle, ideaBrief, ideaPoints, ideaTitle, type Idea } from '@/lib/idea';
 import { createPostFromIdea } from '@/lib/idea-actions';
-import { DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, PLATFORMS, fmtSecs, type Platform, type VideoPart } from '@/lib/video';
+import { DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, MIN_SECONDS, PLATFORMS, fmtSecs, type Platform, type VideoPart } from '@/lib/video';
 import { IconSpark } from '../../icons';
 
 export type VideoFormatLite = { id: string; name: string; description: string; defaultSeconds: number; parts: VideoPart[] };
@@ -19,7 +19,7 @@ export function IdeaConvertModal({ idea, mode, formats, templates, hasKey, onClo
   const router = useRouter();
   const [pending, start] = useTransition();
   const [formatId, setFormatId] = useState(formats[0]?.id ?? '');
-  const [seconds, setSeconds] = useState(formats[0]?.defaultSeconds ?? 45);
+  const [seconds, setSeconds] = useState(Math.max(MIN_SECONDS, formats[0]?.defaultSeconds ?? 45));
   const [platform, setPlatform] = useState<Platform>('reels');
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? '');
   const [slides, setSlides] = useState(7);
@@ -67,7 +67,7 @@ export function IdeaConvertModal({ idea, mode, formats, templates, hasKey, onClo
               <div className="field">
                 <label>Formato do vídeo</label>
                 <div className="tr-choices">
-                  {formats.map((f) => <button key={f.id} type="button" className={`tr-choice${f.id === formatId ? ' on' : ''}`} aria-pressed={f.id === formatId} onClick={() => { setFormatId(f.id); setSeconds(f.defaultSeconds); }}><b>{f.name}</b><small>{f.description || `${f.parts.length} partes`}</small></button>)}
+                  {formats.map((f) => <button key={f.id} type="button" className={`tr-choice${f.id === formatId ? ' on' : ''}`} aria-pressed={f.id === formatId} onClick={() => { setFormatId(f.id); setSeconds(Math.max(MIN_SECONDS, f.defaultSeconds)); }}><b>{f.name}</b><small>{f.description || `${f.parts.length} partes`}</small></button>)}
                 </div>
               </div>
               <div className="field">

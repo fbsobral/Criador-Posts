@@ -8,6 +8,7 @@ import { priorityOf } from '@/lib/priority';
 import { PUBLICO_ID, descendantIds, effectivePersonas, pathOf, type TNode } from '@/lib/territory';
 import { loadTerritoryNodes } from '@/lib/territory-server';
 import { loadBrandProfile } from '@/lib/video-server';
+import { TOO_MANY, rateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 300;
 const CHUNK = 50;
@@ -16,6 +17,7 @@ const CHUNK = 50;
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!rateLimit(`ai:${c.userId}`, 100, 10 * 60_000)) return Response.json(TOO_MANY, { status: 429 });
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const scope = b?.scope === 'all' ? 'all' : b?.scope === 'node' ? 'node' : 'persona';
 

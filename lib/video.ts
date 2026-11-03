@@ -11,8 +11,9 @@ export const PLATFORMS: { id: Platform; label: string; hint: string }[] = [
   { id: 'all', label: 'Todas', hint: 'Reels, TikTok e Shorts' },
 ];
 
-export const DURATION_PRESETS = [15, 30, 45, 60, 90];
-export const MIN_SECONDS = 10;
+/** Um roteiro de menos de 45 s não comporta conteúdo (gancho, desenvolvimento e CTA): este é o mínimo. */
+export const DURATION_PRESETS = [45, 60, 90, 120];
+export const MIN_SECONDS = 45;
 export const MAX_SECONDS = 180;
 export const MAX_PARTS = 10;
 export const MAX_VIDEO_IDEAS = 10;

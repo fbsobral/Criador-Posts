@@ -68,7 +68,8 @@ export function sanitizeHtml(html: string): string {
       }
       return t === 'br' ? '<br>' : `<${t}>`;
     })
-    .replace(/<(?![a-z/])/gi, '&lt;');
+    // o que sobrou de "<" é texto solto ou uma tag que não fechou: vira texto, para nunca "abrir" uma tag com o HTML que vem depois
+    .replace(new RegExp(`<(?!/?(?:${[...ALLOWED_TAGS].join('|')})(?: class="[a-z]+")?>)`, 'gi'), '&lt;');
 }
 
 const clean = (s: unknown, max = 400) => (typeof s === 'string' ? s.trim().slice(0, max) : '');

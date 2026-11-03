@@ -3,6 +3,7 @@ import { AiError } from '@/lib/ai/generate';
 import { planVideoIdeas } from '@/lib/ai/video';
 import { MAX_CONTENT_CHARS, MAX_VIDEO_IDEAS } from '@/lib/video';
 import { VIDEO_DAILY_LIMIT, cleanPlatform, cleanSeconds, loadBrandProfile, loadFormat, scriptsToday } from '@/lib/video-server';
+import { TOO_MANY, rateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 120;
 
@@ -10,6 +11,7 @@ export const maxDuration = 120;
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!rateLimit(`ai:${c.userId}`, 100, 10 * 60_000)) return Response.json(TOO_MANY, { status: 429 });
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const content = String(b?.content ?? '').trim();
   if (content.length < 40) return Response.json({ error: 'Cole um conteúdo maior (um texto, artigo ou transcrição).' }, { status: 400 });

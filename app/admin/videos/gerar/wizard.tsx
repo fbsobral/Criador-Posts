@@ -21,7 +21,7 @@ export function Wizard({ formats, hasKey, remaining, canEditFormats }: { formats
   const [content, setContent] = useState('');
   const [formatId, setFormatId] = useState(formats[0]?.id ?? '');
   const format = formats.find((f) => f.id === formatId);
-  const [seconds, setSeconds] = useState(formats[0]?.defaultSeconds ?? 45);
+  const [seconds, setSeconds] = useState(Math.max(MIN_SECONDS, formats[0]?.defaultSeconds ?? 45));
   const [platform, setPlatform] = useState<Platform>('reels');
   const [count, setCount] = useState(3);
   const [instructions, setInstructions] = useState('');
@@ -48,7 +48,7 @@ export function Wizard({ formats, hasKey, remaining, canEditFormats }: { formats
     return () => window.removeEventListener('beforeunload', h);
   }, [running]);
 
-  const pickFormat = (f: Format) => { setFormatId(f.id); setSeconds(f.defaultSeconds); };
+  const pickFormat = (f: Format) => { setFormatId(f.id); setSeconds(Math.max(MIN_SECONDS, f.defaultSeconds)); };
   const common = () => ({ content, formatId, seconds, platform, instructions });
 
   async function plan(withFeedback?: string) {
@@ -138,7 +138,7 @@ export function Wizard({ formats, hasKey, remaining, canEditFormats }: { formats
                 <div className="lbl">Duração</div>
                 <div className="vd-chips">
                   {DURATION_PRESETS.map((d) => <button key={d} type="button" className={`vd-chip${seconds === d ? ' on' : ''}`} onClick={() => setSeconds(d)}>{d}s</button>)}
-                  <label className="vd-custom">outra: <input type="number" min={MIN_SECONDS} max={MAX_SECONDS} value={seconds} onChange={(e) => setSeconds(Math.min(MAX_SECONDS, Math.max(MIN_SECONDS, Number(e.target.value) || MIN_SECONDS)))} /> s</label>
+                  <label className="vd-custom">outra: <input type="number" min={MIN_SECONDS} max={MAX_SECONDS} value={seconds} onChange={(e) => setSeconds(Math.min(MAX_SECONDS, Math.round(Number(e.target.value)) || 0))} onBlur={() => setSeconds((v) => Math.max(MIN_SECONDS, v))} /> s</label>
                 </div>
                 <small className="muted">≈ {wordsFor(seconds)} palavras de fala no vídeo todo</small>
               </div>

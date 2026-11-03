@@ -213,7 +213,8 @@ export async function inviteMember(_prev: InviteState, formData: FormData): Prom
   const role = formData.get('role') === 'org:admin' ? 'org:admin' : 'org:member';
   // o link do convite leva a pessoa para a tela de cadastro deste app
   const h = await headers();
-  const host = h.get('x-forwarded-host') ?? h.get('host');
+  const rawHost = h.get('x-forwarded-host') ?? h.get('host');
+  const host = rawHost && /^[a-z0-9.-]+(:\d{1,5})?$/i.test(rawHost) ? rawHost : null; // nunca monta o link do convite com um host estranho
   const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https');
   const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || (host ? `${proto}://${host}` : '');
   try {

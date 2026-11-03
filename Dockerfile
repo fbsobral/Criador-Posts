@@ -19,7 +19,9 @@ RUN npm run build
 
 FROM base AS run
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
-COPY --from=build /app ./
+# roda sem privilégios de root: um problema no app não vira acesso total ao contêiner
+COPY --from=build --chown=node:node /app ./
+USER node
 EXPOSE 3000
 # Aplica migrações pendentes e sobe o app
 CMD ["sh", "-c", "node scripts/migrate.mjs && npm start"]

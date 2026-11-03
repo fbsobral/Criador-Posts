@@ -15,7 +15,7 @@ export function FormatEditor({ initial }: { initial: Initial }) {
   const [pending, start] = useTransition();
   const [name, setName] = useState(initial.name);
   const [description, setDescription] = useState(initial.description);
-  const [seconds, setSeconds] = useState(initial.defaultSeconds);
+  const [seconds, setSeconds] = useState(Math.max(MIN_SECONDS, initial.defaultSeconds));
   const [parts, setParts] = useState<VideoPart[]>(initial.parts);
   const [err, setErr] = useState('');
   const [open, setOpen] = useState<string | null>(initial.parts[0]?.id ?? null);
@@ -51,7 +51,7 @@ export function FormatEditor({ initial }: { initial: Initial }) {
           <label>Duração padrão</label>
           <div className="vd-chips">
             {DURATION_PRESETS.map((d) => <button key={d} type="button" className={`vd-chip${seconds === d ? ' on' : ''}`} onClick={() => setSeconds(d)}>{d}s</button>)}
-            <label className="vd-custom">outra: <input type="number" min={MIN_SECONDS} max={MAX_SECONDS} value={seconds} onChange={(e) => setSeconds(Math.min(MAX_SECONDS, Math.max(MIN_SECONDS, Number(e.target.value) || MIN_SECONDS)))} /> s</label>
+            <label className="vd-custom">outra: <input type="number" min={MIN_SECONDS} max={MAX_SECONDS} value={seconds} onChange={(e) => setSeconds(Math.min(MAX_SECONDS, Math.round(Number(e.target.value)) || 0))} onBlur={() => setSeconds((v) => Math.max(MIN_SECONDS, v))} /> s</label>
           </div>
         </div>
       </div>

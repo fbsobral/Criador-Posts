@@ -6,6 +6,7 @@ import { AiError } from '@/lib/ai/generate';
 import { suggestCriteria } from '@/lib/ai/criteria';
 import { priorityOf } from '@/lib/priority';
 import { loadBrandProfile } from '@/lib/video-server';
+import { TOO_MANY, rateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 60;
 
@@ -13,6 +14,7 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!rateLimit(`ai:${c.userId}`, 100, 10 * 60_000)) return Response.json(TOO_MANY, { status: 429 });
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const [s] = await db.select({ icp: brandSettings.personaIcp, aud: brandSettings.aiAudience, pc: brandSettings.priorityConfig }).from(brandSettings).where(eq(brandSettings.brandId, c.brandId));
   const brand = await loadBrandProfile(c.brandId);

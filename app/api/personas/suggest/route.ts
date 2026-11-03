@@ -6,6 +6,7 @@ import { AiError } from '@/lib/ai/generate';
 import { suggestPersonas } from '@/lib/ai/persona';
 import { MAX_PERSONAS_PER_RUN } from '@/lib/persona';
 import { loadBrandProfile } from '@/lib/video-server';
+import { TOO_MANY, rateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 120;
 
@@ -13,6 +14,7 @@ export const maxDuration = 120;
 export async function POST(req: Request) {
   const c = await getCtx();
   if (!c) return Response.json({ error: 'Não autorizado' }, { status: 401 });
+  if (!rateLimit(`ai:${c.userId}`, 100, 10 * 60_000)) return Response.json(TOO_MANY, { status: 429 });
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const icp = String(b?.icp ?? '').trim().slice(0, 4000);
   if (icp.length < 20) return Response.json({ error: 'Descreva o seu ICP com um pouco mais de detalhe (quem é, o que faz, o que busca).' }, { status: 400 });

@@ -43,6 +43,8 @@ export async function saveAsset(input: {
   const base = sharp(input.data, { failOn: 'none' }).rotate();
   const meta = await base.metadata().catch(() => null);
   if (!meta?.width || !meta.height) throw new Error('Arquivo de imagem inválido.');
+  // só formatos de foto: SVG e outros formatos que podem carregar scripts ou referências externas não entram
+  if (!['jpeg', 'png', 'webp', 'gif', 'heif', 'avif'].includes(meta.format ?? '')) throw new Error('Formato de imagem não aceito. Use JPG, PNG, WebP ou GIF.');
 
   const pipeline = base.clone().resize({ width: MAX_SIDE, height: MAX_SIDE, fit: 'inside', withoutEnlargement: true });
   const png = !!meta.hasAlpha;
