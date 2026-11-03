@@ -604,7 +604,7 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 /* ============ personas (pe-) ============ */
 .pe-icp { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding: 14px 18px; margin-bottom: 16px; flex-wrap: wrap; }
 .pe-icp b { font-family: var(--font-head); font-size: 13px; } .pe-icp p { color: var(--ink-2); font-size: 13.5px; margin-top: 3px; max-width: 760px; line-height: 1.5; }
-.pe-board { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 14px; align-items: flex-start; }
+.pe-board { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 14px; align-items: stretch; }
 .pe-col { flex: 0 0 292px; background: #EDE9E0; border: 2px solid transparent; border-radius: 16px; padding: 10px; transition: border-color .15s, background .15s; }
 .pe-col.over { border-color: var(--primary); background: #FBEBDF; }
 .pe-col header { padding: 4px 6px 10px; display: flex; flex-direction: column; gap: 4px; }
@@ -986,3 +986,10 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
   .content:has(.editor-wrap) { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
 }
 .vd-col-empty .pe-empty-ai { display: flex; margin: 10px auto 0; }
+
+/* Personas: as colunas dos grupos ocupam toda a altura do quadro, e a área vazia vira um alvo de soltar grande */
+.pe-board { min-height: max(320px, calc(100dvh - 330px)); }
+.pe-col { display: flex; flex-direction: column; }
+.pe-col .pe-col-body { flex: 1; min-height: 0; }
+.pe-col .vd-col-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 120px; }
+@media (max-width: 900px) { .pe-board { min-height: 320px; } }
