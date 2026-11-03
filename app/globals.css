@@ -1005,3 +1005,14 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 .tr-ptabs button i { font-style: normal; font-size: 11px; font-weight: 700; background: var(--surface-2); border: 1px solid var(--line-2); border-radius: 99px; padding: 0 6px; color: var(--ink-2); }
 .tr-hint { font-size: 12.5px; line-height: 1.45; }
 .tr-tools a { border: 0; background: transparent; color: #fff; font: inherit; font-size: 12px; font-weight: 600; padding: 5px 9px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; } .tr-tools a:hover { background: rgba(255,255,255,.18); }
+
+/* Ideias: quadro por estágio */
+.id-board { grid-template-columns: repeat(3, minmax(290px, 1fr)); }
+.id-kcard { background: var(--surface); border: 1px solid var(--line); border-radius: 13px; padding: 12px; display: flex; flex-direction: column; gap: 8px; cursor: grab; box-shadow: var(--shadow-sm); transition: box-shadow .15s; outline: none; }
+.id-kcard:hover, .id-kcard:focus-visible { box-shadow: var(--shadow-md); } .id-kcard:focus-visible { border-color: var(--primary); } .id-kcard.dragging { opacity: .45; transform: rotate(1.5deg); } .id-kcard:active { cursor: grabbing; }
+.id-kpain { font-size: 13.5px; font-weight: 600; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+.id-kcta { font-size: 12.5px; color: var(--ink-2); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; } .id-kcta b { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--primary); margin-right: 4px; }
+.id-kfoot { display: flex; align-items: center; justify-content: space-between; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; margin-top: 2px; }
+.id-ktools { display: inline-flex; gap: 0; margin-left: auto; } .id-ktools .btn { padding: 6px; } .id-ktools svg { width: 16px; height: 16px; }
+.id-kcard .id-ktools { opacity: .55; transition: opacity .15s; } .id-kcard:hover .id-ktools, .id-kcard:focus-within .id-ktools { opacity: 1; }
+@media (max-width: 900px) { .id-board { grid-template-columns: repeat(3, 280px); } .id-kcard .id-ktools { opacity: 1; } .id-kfoot .vd-kmove { display: block; } .id-kcard { cursor: pointer; } }

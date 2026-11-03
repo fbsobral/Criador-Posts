@@ -1,10 +1,10 @@
 /** Tipos e constantes das ideias de conteúdo (servidor e navegador). */
 
 export type IdeaStatus = 'idea' | 'approved' | 'used';
-export const IDEA_STATUS: { id: IdeaStatus; label: string }[] = [
-  { id: 'idea', label: 'Ideia' },
-  { id: 'approved', label: 'Aprovada' },
-  { id: 'used', label: 'Já usada' },
+export const IDEA_STATUS: { id: IdeaStatus; label: string; color: string; hint: string }[] = [
+  { id: 'idea', label: 'Ideia', color: '#8A857A', hint: 'Solte uma ideia aqui' },
+  { id: 'approved', label: 'Aprovada', color: '#1F9D63', hint: 'Solte aqui o que foi aprovado' },
+  { id: 'used', label: 'Já usada', color: '#1D9BF0', hint: 'Solte aqui o que já virou conteúdo' },
 ];
 
 /** Os campos de texto de uma ideia, na ordem da narrativa: dor → impacto → causa → guia → plano → ganho → desejo → CTA. */
