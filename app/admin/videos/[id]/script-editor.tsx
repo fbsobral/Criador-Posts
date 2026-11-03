@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { actionErrorMessage } from '@/lib/action-error';
 import { deleteScript, duplicateScript, saveScript } from '@/lib/video-actions';
 import { PART_COLORS, STAGES, countWords, fmtSecs, scriptToText, speakSeconds, stageOf, wordsFor, type ScriptData, type Stage } from '@/lib/video';
 import { IconCopy, IconPlay, IconSpark, IconTrash } from '../../../icons';
@@ -86,11 +87,28 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   const undoRefine = () => { if (!undo) return; setTitle(undo.title); setData(undo.data); setUndo(null); };
 
   const copy = async () => { try { await navigator.clipboard.writeText(scriptToText(title, data)); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* sem permissão de área de transferência */ } };
-  const dup = async () => { const r = await duplicateScript(id); if (r.id) router.push(`/admin/videos/${r.id}`); };
-  const del = async () => { if (!confirm('Excluir este roteiro?')) return; await deleteScript(id); router.push('/admin/videos'); router.refresh(); };
+  // duplicar e excluir mostram o que deu errado (antes, uma ação que falhava, por exemplo com a página aberta de antes de uma atualização do app, não fazia nada e não avisava)
+  const [busy, setBusy] = useState(false);
+  const [actErr, setActErr] = useState('');
+  const dup = async () => {
+    if (busy) return;
+    setBusy(true); setActErr('');
+    try { const r = await duplicateScript(id); if (r.id) router.push(`/admin/videos/${r.id}`); else { setActErr(r.error ?? 'Não foi possível duplicar o roteiro.'); setBusy(false); } }
+    catch (e) { setActErr(actionErrorMessage(e)); setBusy(false); }
+  };
+  const del = async () => {
+    if (busy || !confirm('Excluir este roteiro? Isso não pode ser desfeito.')) return;
+    setBusy(true); setActErr('');
+    try {
+      const r = await deleteScript(id);
+      if (r.error) { setActErr(r.error); setBusy(false); return; }
+      router.replace('/admin/videos'); // o roteiro não existe mais: sai da página
+    } catch (e) { setActErr(actionErrorMessage(e)); setBusy(false); }
+  };
 
   return (
     <div className="vd-script">
+      {actErr && <div className="notice err" role="alert" style={{ marginBottom: 12 }}>{actErr}</div>}
       <div className="vd-script-head">
         <input className="vd-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} aria-label="Título do roteiro" />
         <div className="vd-script-actions">
@@ -101,8 +119,8 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
           <button type="button" className="btn small" onClick={copy}><IconCopy /> {copied ? 'Copiado!' : 'Copiar'}</button>
           <button type="button" className="btn small" onClick={() => setRefine((o) => !o)} disabled={!hasKey} aria-expanded={refine}><IconSpark /> Refinar com IA</button>
           <button type="button" className="btn small" onClick={() => setPrompter(true)}><IconPlay /> Teleprompter</button>
-          <button type="button" className="btn small" onClick={dup}>Duplicar</button>
-          <button type="button" className="btn small ghost danger" onClick={del} aria-label="Excluir roteiro"><IconTrash /></button>
+          <button type="button" className="btn small" onClick={dup} disabled={busy}>Duplicar</button>
+          <button type="button" className="btn small ghost danger" onClick={del} disabled={busy} aria-label="Excluir roteiro" title="Excluir roteiro">{busy ? '…' : <IconTrash />}</button>
         </div>
       </div>
 
