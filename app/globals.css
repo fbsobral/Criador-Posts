@@ -1053,3 +1053,6 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 .id-fbox.k-pain .id-ftext { font-size: 17px; font-weight: 600; line-height: 1.5; }
 .id-fempty { text-align: left; padding: 10px 12px; border: 1.5px dashed var(--line-2); border-radius: 10px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; } .id-fempty:hover { border-color: var(--primary); color: var(--primary); }
 @media (max-width: 900px) { .id-fgrid { grid-template-columns: 1fr; } .id-fbox.k-pain .id-ftext { font-size: 16px; } .id-lightbox header .row-actions .btn:not([aria-label]) span { display: none; } }
+.id-fbtns { display: inline-flex; gap: 2px; } .id-fai { color: var(--primary); } .id-fai:disabled { color: var(--muted); }
+.id-fref { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1.5px dashed #F9D2B8; border-radius: 12px; background: #FFF8F4; }
+.id-fdiff { display: flex; flex-direction: column; gap: 8px; } .id-fdiff > div { display: flex; flex-direction: column; gap: 2px; } .id-fdiff span { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); } .id-fdiff s { color: var(--muted); font-size: 13.5px; line-height: 1.5; } .id-fdiff p { font-size: 14.5px; line-height: 1.55; margin: 0; white-space: pre-wrap; }

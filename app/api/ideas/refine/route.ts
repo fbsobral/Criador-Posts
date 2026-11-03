@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   const brand = await loadBrandProfile(c.brandId);
   try {
     const r = await refineIdea({
-      current, previous: b?.previous ? toFields(b.previous) : undefined, feedback,
+      current, previous: b?.previous ? toFields(b.previous) : undefined, feedback, field: IDEA_FIELDS.find((x) => x.key === b?.field)?.key,
       persona: persona ? { name: persona.name, tagline: persona.tagline, role: persona.data.role, data: persona.data } : null,
       territory: String(b?.territory ?? '').slice(0, 200), icp: persona ? '' : s?.icp || s?.aud || '', brand: persona ? { ...brand, audience: '' } : brand,
     });

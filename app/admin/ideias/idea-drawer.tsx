@@ -39,6 +39,21 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
       setSugg(j); setFb2('');
     } catch (e) { setRerr(e instanceof Error ? e.message : 'Erro inesperado.'); } finally { setRbusy(false); }
   }
+  // refinar com IA só um campo (botão em cada caixa): pede, compara antes/depois e aplica só aquele campo
+  type FieldRefine = { key: keyof IdeaFields; fb: string; busy: boolean; err: string; sugg: string | null; note: string };
+  const [fr, setFr] = useState<FieldRefine | null>(null);
+  const FCHIPS = ['Mais curto', 'Mais simples', 'Mais concreto', 'Outro ângulo'];
+  async function askField() {
+    if (!fr) return;
+    const key = fr.key, prevSugg = fr.sugg;
+    setFr({ ...fr, busy: true, err: '' });
+    try {
+      const r = await fetch('/api/ideas/refine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ personaId: persona, territory: territoryName, current: f, feedback: fr.fb, field: key, previous: prevSugg ? { ...f, [key]: prevSugg } : undefined }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'Não foi possível refinar este campo.');
+      setFr((s) => (s && s.key === key ? { ...s, busy: false, sugg: (j.fields as IdeaFields)[key] ?? '', note: j.note ?? '' } : s));
+    } catch (e) { setFr((s) => (s ? { ...s, busy: false, err: e instanceof Error ? e.message : 'Erro inesperado.' } : s)); }
+  }
   const changes = sugg ? IDEA_FIELDS.filter((x) => sugg.fields[x.key].trim() !== f[x.key].trim()).map((x) => ({ label: x.label.replace(/ \(.*\)/, ''), before: f[x.key], after: sugg.fields[x.key] })) : [];
   const applyRefined = () => { if (!sugg) return; setF(sugg.fields); setSugg(null); setRefine(false); setFb(''); setFirstFb(''); };
   const CHIPS = ['Dor mais de rua', 'Guia mais forte', 'Causa mais coletiva', 'Plano mais prático', 'Mais curto', 'CTA mais suave'];
@@ -143,8 +158,35 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
                 <div key={x.key} className={`id-fbox k-${x.key}${on ? ' editing' : ''}`}>
                   <div className="id-fhead">
                     <label htmlFor={`f-${x.key}`}>{x.label}</label>
-                    <button type="button" className="btn small ghost" onClick={() => toggle(x.key)}>{on ? 'Concluir' : <><IconEdit /> Editar</>}</button>
+                    <span className="id-fbtns">
+                      <button type="button" className="btn small ghost id-fai" onClick={() => setFr(fr?.key === x.key ? null : { key: x.key, fb: '', busy: false, err: '', sugg: null, note: '' })} disabled={!hasKey || !f.pain.trim()} aria-expanded={fr?.key === x.key} title={!hasKey ? 'A IA não está configurada neste servidor' : `Refinar “${x.label.replace(/ \(.*\)/, '')}” com IA`}><IconSpark /> Refinar</button>
+                      <button type="button" className="btn small ghost" onClick={() => toggle(x.key)}>{on ? 'Concluir' : <><IconEdit /> Editar</>}</button>
+                    </span>
                   </div>
+                  {fr?.key === x.key && (
+                    <div className="id-fref">
+                      {fr.sugg === null ? (
+                        <>
+                          <textarea rows={2} autoFocus value={fr.fb} onChange={(e) => setFr({ ...fr, fb: e.target.value })} maxLength={800} placeholder={`O que mudar em “${x.label.replace(/ \(.*\)/, '')}”? Ex.: mais curto, outra imagem, falar de outro jeito…`} />
+                          <div className="aim-chips pe-chips-row">{FCHIPS.map((c) => <button type="button" key={c} onClick={() => setFr({ ...fr, fb: (fr.fb.trim() ? `${fr.fb.trim()}; ` : '') + c.toLowerCase() })}>{c}</button>)}</div>
+                        </>
+                      ) : (
+                        <div className="id-fdiff">
+                          {fr.note && <p className="pe-note">{fr.note}</p>}
+                          {f[x.key].trim() && <div><span>Antes</span><s>{f[x.key]}</s></div>}
+                          <div><span>Sugestão</span><p>{fr.sugg || '(vazio)'}</p></div>
+                          <textarea rows={2} value={fr.fb} onChange={(e) => setFr({ ...fr, fb: e.target.value })} maxLength={800} placeholder="Não é bem isso? Peça outro ajuste sobre esta sugestão…" />
+                        </div>
+                      )}
+                      {fr.err && <div className="notice err">{fr.err}</div>}
+                      {fr.busy && <div className="notice info" role="status">Refinando… leva cerca de 10 a 25 segundos.</div>}
+                      <div className="row-actions">
+                        {fr.sugg !== null && <button type="button" className="btn small primary" onClick={() => { setF((v) => ({ ...v, [x.key]: fr.sugg ?? '' })); setFr(null); }} disabled={!fr.sugg}>✓ Aplicar neste campo</button>}
+                        <button type="button" className={`btn small${fr.sugg === null ? ' primary' : ''}`} onClick={askField} disabled={fr.busy || fr.fb.trim().length < 3}>{fr.busy ? 'Refinando…' : fr.sugg === null ? <><IconSpark /> Sugerir</> : 'Pedir outro ajuste'}</button>
+                        <button type="button" className="btn small ghost" onClick={() => setFr(null)}>{fr.sugg === null ? 'Cancelar' : 'Descartar'}</button>
+                      </div>
+                    </div>
+                  )}
                   {on ? (
                     <>
                       <textarea id={`f-${x.key}`} autoFocus={!!idea} rows={Math.min(14, Math.max(x.rows + 1, Math.ceil(f[x.key].length / 58) + 1))} value={f[x.key]} maxLength={x.max} placeholder={x.placeholder} onChange={(e) => setF((s) => ({ ...s, [x.key]: e.target.value }))} />

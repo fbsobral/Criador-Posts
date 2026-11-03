@@ -180,11 +180,14 @@ const REFINE_SCHEMA = {
 export async function refineIdea(a: {
   current: IdeaFields; previous?: IdeaFields; feedback: string; persona: { name: string; tagline: string; role: string; data: PersonaData } | null;
   territory: string; icp: string; brand: BrandProfile;
+  /** Refinar só este campo: os outros voltam exatamente como estavam. */
+  field?: (typeof KEYS)[number];
 }): Promise<{ fields: IdeaFields; note: string }> {
   const show = (f: IdeaFields) => KEYS.map((k) => `${k}: ${f[k] || '(vazio)'}`).join('\n');
   if (process.env.AI_MOCK === '1') {
     await new Promise((r) => setTimeout(r, 500));
-    return { fields: { ...a.current, pain: `${a.current.pain} (refinada: ${a.feedback.slice(0, 40)})` }, note: 'Versão simulada (AI_MOCK=1).' };
+    const k = a.field ?? 'pain';
+    return { fields: { ...a.current, [k]: `${a.current[k]} (refinado: ${a.feedback.slice(0, 40)})` }, note: 'Versão simulada (AI_MOCK=1).' };
   }
   if (!process.env.ANTHROPIC_API_KEY) throw new AiError('ANTHROPIC_API_KEY não configurada no servidor.');
   const user = [
@@ -192,6 +195,7 @@ export async function refineIdea(a: {
     a.territory ? `TERRITÓRIO: ${a.territory}` : '',
     `IDEIA ATUAL:\n${show(a.current)}`,
     a.previous ? `SUGESTÃO ANTERIOR (não aprovada):\n${show(a.previous)}` : '',
+    a.field ? `ESCOPO: refine SOMENTE o campo "${a.field}". Devolva todos os outros campos EXATAMENTE como estão em IDEIA ATUAL (copie sem mudar uma palavra) e aplique o pedido apenas neste campo, mantendo a coerência com os demais.` : '',
     `PEDIDO DO USUÁRIO:\n${a.feedback}`,
   ].filter(Boolean).join('\n\n');
   try {
@@ -206,6 +210,7 @@ export async function refineIdea(a: {
     const raw = JSON.parse(res.content.find((b): b is Anthropic.Beta.BetaTextBlock => b.type === 'text')?.text ?? '') as Partial<Record<(typeof KEYS)[number] | 'note', string>>;
     const fields = Object.fromEntries(KEYS.map((k) => [k, clean(raw[k], k === 'plan' ? 700 : k === 'guide' ? 600 : k === 'cta' ? 300 : 400)])) as IdeaFields;
     if (!fields.pain) throw new AiError('A IA devolveu uma ideia vazia. Tente de novo.', true);
+    if (a.field) { const only = fields[a.field]; Object.assign(fields, a.current, { [a.field]: only }); } // garantia no código: só o campo pedido muda
     return { fields, note: clean(raw.note, 300) };
   } catch (e) {
     if (e instanceof AiError) throw e;
