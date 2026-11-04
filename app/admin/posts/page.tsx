@@ -11,7 +11,7 @@ import { IconPlus } from '../../icons';
 import { PostPreview } from '../post-preview';
 import { TemplateArt } from '../template-art';
 import { PostActions, type Destination } from './post-actions';
-import { IconPosts } from '../../icons';
+import { IconPosts, IconSpark } from '../../icons';
 import { PageHead, EmptyState } from '../ui';
 import { ViewToggle, type PostsView } from './view-toggle';
 
@@ -51,7 +51,7 @@ export default async function PostsPage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="page">
-      <PageHead title="Posts" description={rows.length === 0 ? 'Crie o primeiro post da marca.' : `${rows.length} ${rows.length === 1 ? 'post' : 'posts'} em ${c.brandName}.`} actions={rows.length > 0 && <ViewToggle view={view} />} />
+      <PageHead title="Posts" description={rows.length === 0 ? 'Crie o primeiro post da marca.' : `${rows.length} ${rows.length === 1 ? 'post' : 'posts'} em ${c.brandName}.`} actions={<>{rows.length > 0 && <ViewToggle view={view} />}<Link href="/admin/gerar" className="btn primary"><IconSpark /> Gerar posts com IA</Link></>} />
 
       {moved && <div className="notice ok" style={{ marginBottom: 20 }} role="status">Post migrado para <b>{moved}</b>. Ele chegou lá como rascunho.</div>}
 

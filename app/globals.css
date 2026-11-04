@@ -1300,3 +1300,20 @@ ul.id-ftext { padding-left: 20px; white-space: normal; } ul.id-ftext li { margin
 }
 .sb-read h1, .sb-read-body h2, .sb-read-body h3 { font-family: Georgia, 'Times New Roman', serif; }
 .sb-title-in { font-size: clamp(26px, 4vw, 40px) !important; } .sb-sub-in { font-size: clamp(17px, 2.4vw, 21px) !important; }
+
+/* guia: telas do Substack */
+.gs-sb { display: flex; flex-direction: column; gap: 6px; } .gs-sb .gs-card { flex: none; }
+.gs-sbi { width: 18px; height: 18px; border-radius: 6px; background: #FFF1E8; display: grid; place-items: center; font-size: 10px; color: var(--primary); }
+.gs-ser { font-family: Georgia, serif; font-size: 10.5px; line-height: 1.25; } .gs-ser.big { font-size: 12px; font-weight: 700; }
+.gs-sbt { flex-direction: row; align-items: center; gap: 7px; } .gs-sbt.on { border-color: var(--primary); background: #FFF9F5; }
+.gs-rd { width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--line-2); flex: none; } .gs-rd.on { border-color: var(--primary); background: var(--primary); box-shadow: inset 0 0 0 2px #fff; }
+.gs-sbs { background: #FAF8F4; border: 1px solid var(--line); border-radius: 9px; padding: 5px 7px; } .gs-sbsx { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.gs-sbe { align-items: stretch; } .gs-sbp { flex: 1.5; } .gs-sbr { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; } .gs-sbr .gs-card { flex: none; }
+.gs-tb { padding: 3px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); } .gs-tb small { margin-left: auto; }
+.gs-mail { background: #FAF8F4; }
+.sb-kinds3 { grid-template-columns: repeat(3, 1fr); } .sb-titles1 { grid-template-columns: 1fr; } .sb-serif { font-family: Georgia, serif; font-weight: 600; font-size: 15px; }
+.sb-esb { margin-bottom: 14px; } .sb-atelier { gap: 8px; padding: 8px 0; } .sb-atelier .vd-progress-top { width: 100%; max-width: 360px; }
+@media (max-width: 700px) { .sb-kinds3 { grid-template-columns: 1fr; } }
+
+.sb-bar::before { content: ''; position: absolute; left: -24px; right: -24px; bottom: 100%; height: 80px; background: var(--bg); pointer-events: none; }
+.sb-bar { box-shadow: 0 1px 0 var(--line); }

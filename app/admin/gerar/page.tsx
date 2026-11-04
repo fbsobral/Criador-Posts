@@ -39,7 +39,7 @@ export default async function GeneratePage() {
 
   return (
     <div className="page">
-      <PageHead title="Gerar posts com IA" description={<>Crie vários posts de imagem (carrossel e Tweet Card) de uma vez. Eles chegam como <b>rascunhos</b> para você revisar e ajustar no editor.</>} />
+      <PageHead back={{ href: '/admin/posts', label: 'Posts' }} title="Gerar posts com IA" description={<>Crie vários posts de imagem (carrossel e Tweet Card) de uma vez. Eles chegam como <b>rascunhos</b> para você revisar e ajustar no editor.</>} />
 
       {profileEmpty && (
         <div className="notice info" style={{ marginBottom: 20 }}>

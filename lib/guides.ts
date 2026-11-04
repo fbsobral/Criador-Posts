@@ -10,6 +10,7 @@ export type ScreenKey =
   | 'gallery' | 'gallery-search' | 'templates'
   | 'video-gen' | 'script' | 'esteira' | 'video-format'
   | 'personas' | 'personas-ai' | 'map' | 'bridge' | 'matrix' | 'map-score'
+  | 'sb-start' | 'sb-outline' | 'sb-editor' | 'sb-publish'
   | 'idea-gen' | 'ideas-board' | 'idea-convert'
   | 'brand-profile' | 'users' | 'invite';
 
@@ -45,7 +46,7 @@ export const GUIDES: Record<string, Guide> = {
     cta: { label: 'Ir para as configurações da marca', href: '/admin/configuracoes' },
     steps: [
       { icon: 'spark', screen: 'flow', title: 'Da estratégia ao conteúdo pronto', text: 'Aqui você pensa o que dizer, para quem e por quê, e transforma isso em posts de imagem e roteiros de vídeo com a identidade da sua marca. A IA ajuda em cada etapa, mas nada é salvo ou publicado sem a sua aprovação.' },
-      { icon: 'map', screen: 'menu', title: 'O mapa do produto', text: 'O menu tem três áreas. No celular, o botão Menu, no rodapé, abre todas as seções.', bullets: ['Estratégia: Personas, Territórios e Ideias de conteúdo, para decidir o que falar e para quem.', 'Produção: Posts, Gerar posts, Galeria e Templates (imagem) e Roteiros e Esteira (vídeo).', 'Marca: Configurações (identidade e IA) e Usuários (equipe).'] },
+      { icon: 'map', screen: 'menu', title: 'O mapa do produto', text: 'O menu tem três áreas. No celular, o botão Menu, no rodapé, abre todas as seções.', bullets: ['Estratégia: Personas, Territórios e Ideias de conteúdo, para decidir o que falar e para quem.', 'Produção: Posts (com a geração em lote dentro dela) e Templates (imagem), e Roteiros e Esteira (vídeo).', 'Marca: Imagens (a biblioteca da marca), Configurações (identidade e IA) e Usuários (equipe).'] },
       { icon: 'settings', screen: 'brand', title: 'Comece pela marca', text: 'Em Configurações, descreva o que a sua organização faz, o tom de voz, as regras e o público ideal. É isso que deixa personas, ideias, textos e legendas com a cara da sua marca, e não genéricos.', tip: 'Se só der para preencher uma coisa agora, preencha “O que a organização faz”.' },
       { icon: 'target', screen: 'paths', title: 'Dois caminhos para chegar a uma ideia', text: 'Você escolhe por onde começar.', bullets: ['Persona → território → ideia: parta das dores de uma pessoa e veja que temas ela precisa ver.', 'Território → persona → ideia: parta de um tema maior, um debate coletivo, e traduza para o dia a dia de cada persona.'], tip: 'O segundo caminho é ótimo para assuntos coletivos, que não aparecem nas dores individuais.' },
       { icon: 'bulb', screen: 'idea', title: 'Da ideia ao conteúdo', text: 'Cada ideia conta uma história completa: dor, impacto, causa, guia, argumentos, ganho, desejo e CTA. Com ela pronta, um clique cria um roteiro de vídeo ou um post de imagem. Se preferir, gere posts em lote a partir de temas.' },
@@ -82,7 +83,7 @@ export const GUIDES: Record<string, Guide> = {
 
   galeria: {
     key: 'galeria',
-    title: 'Galeria',
+    title: 'Imagens',
     subtitle: 'As imagens da sua marca, para reaproveitar nos posts.',
     steps: [
       { icon: 'image', screen: 'gallery', title: 'Envie e reaproveite', text: 'Envie imagens da sua marca ou traga as que já estão nos posts. As imagens geradas pela IA também ficam aqui, com a etiqueta IA.' },
@@ -119,12 +120,12 @@ export const GUIDES: Record<string, Guide> = {
     key: 'substack',
     title: 'Substack',
     subtitle: 'Artigos de newsletter com a voz da sua marca, do esboço ao texto pronto.',
-    cta: { label: 'Escrever um artigo', href: '/admin/substack/novo' },
+    cta: { label: 'Gerar um artigo', href: '/admin/substack/novo' },
     steps: [
-      { icon: 'bulb', title: 'Comece por uma ideia', text: 'Escolha uma ideia de conteúdo (ou escreva um tema, ou cole um material). A IA usa a história inteira da ideia: dor, causa, argumentos, ganho, desejo e CTA, além da persona.', tip: 'Em Ideias de conteúdo, o botão “Criar artigo” já abre esta tela com a ideia escolhida.' },
-      { icon: 'check', title: 'Aprove o esboço', text: 'Antes de escrever, a IA propõe 3 títulos, o subtítulo, como o texto abre e as seções. Você escolhe o título, ajusta o caminho e só então ela escreve.', bullets: ['Tipos de texto: ensaio, história, guia prático, opinião ou carta.', 'Tamanho: curto (3 min), médio (6 min) ou longo (10 min).'] },
-      { icon: 'posts', title: 'Lapide no editor', text: 'Escreva em um editor limpo, com prévia no estilo do Substack e uma revisão do especialista (título, abertura, intertítulos, parágrafos e fechamento). Selecione um trecho e peça um ajuste à IA, sempre com antes e depois.' },
-      { icon: 'settings', title: 'Publique no Substack', text: 'Na aba Publicação ficam o assunto do e-mail, a linha de prévia, a descrição para busca, as tags e 3 Notes para divulgar. Use “Copiar para o Substack” e cole no editor de lá: a formatação vem junto.', tip: 'Cole o título e o subtítulo nos campos do Substack e o texto no corpo.' },
+      { icon: 'bulb', screen: 'sb-start', title: 'Comece por uma ideia', text: 'Escolha uma ideia de conteúdo (ou escreva um tema, ou cole um material). A IA usa a história inteira da ideia: dor, causa, argumentos, ganho, desejo e CTA, além da persona.', tip: 'Em Ideias de conteúdo, o botão “Criar artigo” já abre esta tela com a ideia escolhida.' },
+      { icon: 'check', screen: 'sb-outline', title: 'Aprove o esboço', text: 'Antes de escrever, a IA propõe 3 títulos, o subtítulo, como o texto abre e as seções. Você escolhe o título, ajusta o caminho e só então ela escreve.', bullets: ['Tipos de texto: ensaio, história, guia prático, opinião ou carta.', 'Tamanho: curto (3 min), médio (6 min) ou longo (10 min).'] },
+      { icon: 'posts', screen: 'sb-editor', title: 'Lapide no editor', text: 'Escreva em um editor limpo, com prévia no estilo do Substack e uma revisão do especialista (título, abertura, intertítulos, parágrafos e fechamento). Selecione um trecho e peça um ajuste à IA, sempre com antes e depois.' },
+      { icon: 'settings', screen: 'sb-publish', title: 'Publique no Substack', text: 'Na aba Publicação ficam o assunto do e-mail, a linha de prévia, a descrição para busca, as tags e 3 Notes para divulgar. Use “Copiar para o Substack” e cole no editor de lá: a formatação vem junto.', tip: 'Cole o título e o subtítulo nos campos do Substack e o texto no corpo.' },
     ],
   },
 

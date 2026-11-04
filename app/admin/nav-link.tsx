@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { isActive } from './nav-config';
 
-export function NavLink({ href, icon, children, exclude = [] }: { href: string; icon: React.ReactNode; children: React.ReactNode; exclude?: string[] }) {
+export function NavLink({ href, icon, children, exclude = [], also = [] }: { href: string; icon: React.ReactNode; children: React.ReactNode; exclude?: string[]; also?: string[] }) {
   const path = usePathname();
-  const active = path.startsWith(href) && !exclude.some((x) => path.startsWith(x));
+  const active = isActive(path, { href, exclude, also });
   return (
     <Link href={href} className={`nav${active ? ' active' : ''}`} aria-current={active ? 'page' : undefined}>
       {icon}

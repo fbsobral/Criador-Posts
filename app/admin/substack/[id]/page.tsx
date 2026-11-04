@@ -19,7 +19,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ id: st
   const settings = await getBrandSettings(c.brandId);
   return (
     <div className="page sb-page">
-      <Link href="/admin/substack" className="back"><IconBack /> Artigos</Link>
+      <Link href="/admin/substack" className="back"><IconBack /> Artigos do Substack</Link>
       <ArticleEditor
         id={a.id} brandName={settings?.displayName || c.brandName} hasKey={!!process.env.ANTHROPIC_API_KEY || process.env.AI_MOCK === '1'}
         initial={{ title: a.title, subtitle: a.subtitle, body: a.body, status: normStatus(a.status), meta: { ...EMPTY_META, ...a.meta } }}

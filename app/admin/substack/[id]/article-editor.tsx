@@ -102,7 +102,7 @@ export function ArticleEditor({ id, initial, brandName, hasKey }: { id: string; 
           ))}
         </div>
         <span className={`sb-saved ${saved}`} aria-live="polite">{saved === 'ok' ? '✓ Salvo' : saved === 'saving' ? 'Salvando…' : saved === 'err' ? 'Erro ao salvar' : 'Alterações…'}</span>
-        <select className="sb-status" value={s.status} style={{ borderColor: st.color, color: st.color }} onChange={(e) => change({ status: e.target.value as ArticleStatus })} aria-label="Etapa">
+        <select className="vd-stage-select" value={s.status} style={{ '--c': st.color } as React.CSSProperties} onChange={(e) => change({ status: e.target.value as ArticleStatus })} aria-label="Etapa">
           {ARTICLE_STATUS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
         </select>
         <button type="button" className="btn primary" onClick={copyBody}><IconCopy /> Copiar para o Substack</button>

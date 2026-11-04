@@ -51,7 +51,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           {NAV.map((g) => (
             <div key={g.label} style={{ display: 'contents' }}>
               <div className="nav-label">{g.label}</div>
-              {g.items.map((it) => <NavLink key={it.href} href={it.href} icon={it.icon} exclude={it.exclude}>{it.label}</NavLink>)}
+              {g.items.map((it) => <NavLink key={it.href} href={it.href} icon={it.icon} exclude={it.exclude} also={it.also}>{it.label}</NavLink>)}
             </div>
           ))}
         </nav>

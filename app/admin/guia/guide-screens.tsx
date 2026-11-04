@@ -17,8 +17,8 @@ const SCREENS: Record<ScreenKey, () => React.ReactElement> = {
     <Row>
       <div className="gs-side">
         <Tag>Estratégia</Tag><span>Personas</span><span className="on">Territórios</span><span>Ideias de conteúdo</span>
-        <Tag>Produção</Tag><span>Posts</span><span>Gerar posts</span><span>Galeria</span><span>Roteiros</span>
-        <Tag>Marca</Tag><span>Configurações</span>
+        <Tag>Produção</Tag><span>Posts</span><span>Templates</span><span>Roteiros</span>
+        <Tag>Marca</Tag><span>Imagens</span><span>Configurações</span>
       </div>
       <div className="gs-phone"><div className="gs-ph-top"><Ln w={50} d /><Ln w={80} /></div><div className="gs-ph-nav"><span>Posts</span><span>Roteiros</span><span>Territ.</span><span>Ideias</span><span className="on">Menu</span></div></div>
     </Row>
@@ -216,6 +216,38 @@ const SCREENS: Record<ScreenKey, () => React.ReactElement> = {
     <Row className="gs-kan three">
       <div className="gs-kc"><b>Ideia</b><Card><Ln w={90} d /><Ln w={60} /></Card><Card className="drag hl"><Ln w={85} d /><Ln w={50} /></Card></div><div className="gs-kc over"><b>Aprovada</b><Card><Ln w={80} d /><Ln w={55} /></Card></div><div className="gs-kc"><b>Já usada</b><Card><Ln w={75} d /><Ln w={60} /></Card></div>
     </Row>
+  ),
+  'sb-start': () => (
+    <div className="gs-sb">
+      <Row>{['De uma ideia', 'De um tema', 'De um material'].map((k, i) => <Card key={k} hl={i === 0}><span className="gs-sbi">{['💡', '✎', '≡'][i]}</span><b>{k}</b><Ln w={85} /></Card>)}</Row>
+      <Card hl><Ln w={90} d b /><small>Shelton, o recém-formado · Primeiro emprego</small></Card>
+      <Row><Chip>A IA escolhe</Chip><Chip on>Ensaio</Chip><Chip>História</Chip><Chip>Guia</Chip></Row>
+      <Row><Chip>Curto · 3 min</Chip><Chip on>Médio · 6 min</Chip><Chip>Longo · 10 min</Chip></Row>
+    </div>
+  ),
+  'sb-outline': () => (
+    <div className="gs-sb">
+      <Card className="gs-sbt on"><span className="gs-rd on" /><span className="gs-ser">Ninguém te contou o que a vaga pede</span></Card>
+      <Card className="gs-sbt"><span className="gs-rd" /><span className="gs-ser">O primeiro emprego não é falta de currículo</span></Card>
+      {[1, 2, 3].map((n) => <Row key={n} className="gs-sbs"><Pill c="dk">{String(n)}</Pill><div className="gs-sbsx"><Ln w={60} d /><Ln w={85} /></div><small>↑ ↓ ✕</small></Row>)}
+      <Row><Btn>Refazer</Btn><Btn p hl>✨ Aprovar e escrever</Btn></Row>
+    </div>
+  ),
+  'sb-editor': () => (
+    <Row className="gs-sbe">
+      <Card className="gs-sbp"><b className="gs-ser big">Ninguém te contou o que a vaga pede</b><Ln w={80} /><Row className="gs-tb"><Chip>H2</Chip><Chip>B</Chip><Chip>“ ”</Chip><small>1.240 palavras</small></Row><Ln /><Ln w={92} /><Ln w={75} /><Ln /><Ln w={55} /></Card>
+      <div className="gs-sbr">
+        <Card hl><Row><b>Revisão</b><Pill c="ok">7/7</Pill></Row><div className="gs-slider"><i className="p2" style={{ width: '100%' }} /></div><Ln w={80} /><Ln w={65} /></Card>
+        <Card><b>Refinar com IA</b><Row className="gs-wrap"><Chip>Encurtar</Chip><Chip>Mais direto</Chip></Row><Btn p>✨ Ajustar</Btn></Card>
+      </div>
+    </Row>
+  ),
+  'sb-publish': () => (
+    <div className="gs-sb">
+      <Card className="gs-mail"><Row><Av t="M" /><div><b>A vaga que pede o que ninguém teve chance de ter</b><Ln w={80} /></div></Row></Card>
+      <Card><Tag>Notes para divulgar</Tag><Ln w={90} /><Row><small>48/280</small><Btn>Copiar</Btn></Row></Card>
+      <Btn p hl>Copiar para o Substack</Btn>
+    </div>
   ),
   'idea-convert': () => (
     <div className="gs-conv">
