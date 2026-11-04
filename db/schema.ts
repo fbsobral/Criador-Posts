@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
 import type { ScriptData, VideoPart } from '../lib/video';
 import type { PersonaData } from '../lib/persona';
-import { type AnyPgColumn, boolean, customType, index, integer, jsonb, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { type AnyPgColumn, boolean, customType, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
 const tsvector = customType<{ data: string }>({ dataType: () => 'tsvector' });
@@ -320,6 +320,18 @@ export const territories = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (t) => [index('territories_persona_idx').on(t.brandId, t.personaId, t.parentId, t.position)],
+);
+
+/** Guias de ajuda (tour geral e guias por módulo) que cada usuário já viu. Por usuário, não por marca: quem entra em outra marca não vê o tour de novo. */
+export const onboardingSeen = pgTable(
+  'onboarding_seen',
+  {
+    userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+    /** 'geral' ou a chave do módulo (posts, personas, territorios…). */
+    key: text('key').notNull(),
+    seenAt: timestamp('seen_at').defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.key] })],
 );
 
 /** Ligação território × persona: a persona "enxerga" o tema, e a tradução diz como ele aparece no dia a dia dela. Vale também para os filhos do território (herança). */

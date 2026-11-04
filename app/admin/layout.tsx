@@ -1,9 +1,13 @@
 import { OrganizationList, OrganizationSwitcher, UserButton } from '@clerk/nextjs';
 import { auth } from '@clerk/nextjs/server';
+import { eq } from 'drizzle-orm';
+import { db } from '@/db';
+import { onboardingSeen } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { IconSpark } from '../icons';
 import { MobileNav } from './mobile-nav';
 import { NAV } from './nav-config';
+import { GuideProvider, HelpButton } from './guia/guide-provider';
 import { NavLink } from './nav-link';
 import { OrgSync } from './org-sync';
 
@@ -22,8 +26,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     );
   }
   const c = (await getCtx())!;
+  // guias que este usuário já viu; se a leitura falhar, não mostra nada (melhor que atrapalhar o uso)
+  const seen = await db.select({ key: onboardingSeen.key }).from(onboardingSeen).where(eq(onboardingSeen.userId, c.userId)).then((r) => r.map((x) => x.key)).catch(() => ['geral', 'posts', 'gerar', 'galeria', 'templates', 'roteiros', 'personas', 'territorios', 'ideias', 'configuracoes', 'usuarios']);
 
   return (
+    <GuideProvider seen={seen}>
     <div className="admin">
       <OrgSync serverOrgId={orgId} />
       <aside className="side">
@@ -48,10 +55,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             </div>
           ))}
         </nav>
-        <div className="side-bottom"><UserButton showName /></div>
+        <div className="side-bottom"><HelpButton /><UserButton showName /></div>
       </aside>
       <MobileNav brandName={c.brandName} role={c.isBrandAdmin ? 'Administrador' : 'Membro'} />
       <section className="content">{children}</section>
     </div>
+    </GuideProvider>
   );
 }

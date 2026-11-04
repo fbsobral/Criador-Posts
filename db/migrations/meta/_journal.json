@@ -176,6 +176,13 @@
       "when": 1793726240790,
       "tag": "0024_idea_args",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793792249366,
+      "tag": "0025_onboarding_seen",
+      "breakpoints": true
     }
   ]
 }

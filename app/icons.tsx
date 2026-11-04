@@ -26,3 +26,5 @@ export const IconTarget = () => (<svg {...base}><circle cx="12" cy="12" r="9" />
 export const IconMap = () => (<svg {...base}><circle cx="5" cy="12" r="2.2" /><circle cx="19" cy="5.5" r="2.2" /><circle cx="19" cy="12" r="2.2" /><circle cx="19" cy="18.5" r="2.2" /><path d="M7.2 12H11c2 0 2-6.5 4-6.5M11 12h6.8M7.2 12H11c2 0 2 6.5 4 6.5" /></svg>);
 export const IconBulb = () => (<svg {...base}><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z" /></svg>);
 export const IconMore = () => (<svg {...base}><circle cx="5.5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="18.5" cy="12" r="1.6" /></svg>);
+export const IconCheck = () => (<svg {...base}><path d="M5 12.5l4.5 4.5L19 7" /></svg>);
+export const IconHelp = () => (<svg {...base}><circle cx="12" cy="12" r="9" /><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2-2.4 3.6" /><circle cx="12" cy="17.2" r=".6" fill="currentColor" /></svg>);
