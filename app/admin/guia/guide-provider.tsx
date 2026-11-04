@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { GENERAL_KEY, GUIDES, guideKeyForPath, type GuideIcon } from '@/lib/guides';
 import { markGuideSeen, resetGuides } from '@/lib/onboarding-actions';
+import { GuideScreen } from './guide-screens';
 import { IconBoard, IconBulb, IconCheck, IconHelp, IconImage, IconMap, IconPosts, IconSettings, IconSpark, IconTarget, IconTemplates, IconUsers, IconVideo } from '../../icons';
 
 const ICONS: Record<GuideIcon, () => React.ReactElement> = {
@@ -86,7 +87,7 @@ function GuideModal({ guideKey, onClose }: { guideKey: string; onClose: () => vo
           {g.steps.map((_, k) => <button key={k} type="button" role="tab" aria-selected={k === i} aria-label={`Passo ${k + 1} de ${g.steps.length}`} className={k <= i ? 'on' : ''} onClick={() => setI(k)} />)}
         </div>
         <div className="gd-body" key={i}>
-          <span className="gd-ic"><Icon /></span>
+          {st.screen ? <div className="gd-screen"><GuideScreen name={st.screen} /></div> : <span className="gd-ic"><Icon /></span>}
           {i === 0 && guideKey !== GENERAL_KEY && <p className="gd-sub">{g.subtitle}</p>}
           <h2 id="gd-title">{st.title}</h2>
           <p className="gd-text">{st.text}</p>
