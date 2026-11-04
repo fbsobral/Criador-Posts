@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import type { ScriptData, VideoPart } from '../lib/video';
 import type { PersonaData } from '../lib/persona';
+import type { ArticleMeta } from '../lib/substack';
 import { type AnyPgColumn, boolean, customType, index, integer, jsonb, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
@@ -391,4 +392,26 @@ export const contentIdeas = pgTable(
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
   },
   (t) => [index('content_ideas_brand_idx').on(t.brandId, t.personaId, t.createdAt)],
+);
+
+/** Artigo para o Substack (texto em Markdown). Pode nascer de uma ideia de conteúdo. */
+export const substackPosts = pgTable(
+  'substack_posts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+    ideaId: uuid('idea_id').references(() => contentIdeas.id, { onDelete: 'set null' }),
+    title: text('title').notNull().default('Sem título'),
+    subtitle: text('subtitle').notNull().default(''),
+    body: text('body').notNull().default(''),
+    status: text('status').notNull().default('draft'), // 'draft' | 'reviewed' | 'published'
+    angle: text('angle').notNull().default(''),
+    meta: jsonb('meta').$type<ArticleMeta>().notNull(),
+    inputTokens: integer('input_tokens').notNull().default(0),
+    outputTokens: integer('output_tokens').notNull().default(0),
+    createdBy: text('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => [index('substack_posts_brand_idx').on(t.brandId, t.updatedAt)],
 );

@@ -52,7 +52,7 @@ SAÍDA
 - "angle": o ângulo narrativo escolhido (um dos ids permitidos).
 - "promise": a promessa do carrossel em uma frase: o que a persona leva ao terminar de ler.
 - "slides": um item por slide, na ordem. "role": a função do slide (ex.: "Capa", "Identificação", "Virada", "Prova 1", "Exemplo", "Futuro", "CTA"). "message": a mensagem do slide em UMA frase curta e concreta (até 18 palavras), já no tom final, que pode virar o título do slide. A mensagem do slide 1 é o título da capa.
-- "covers": 3 alternativas de título de capa, com abordagens diferentes (tensão/contradição, pergunta, promessa), até 10 palavras cada, diferentes da mensagem do slide 1.
+- "covers": 3 alternativas de título de capa, com abordagens diferentes (tensão/contradição, pergunta, promessa), até 10 palavras cada, diferentes da mensagem do slide 1 e ESPECÍFICAS (usam elementos concretos da ideia; nada genérico como "Por que tantos jovens…?").
 - A sequência precisa ter fio: cada mensagem puxa a seguinte. Nada de abstração; sem inventar números, datas nem nomes.`;
 
 /** Planeja o roteiro dos slides para o usuário aprovar antes da escrita. Não grava nada. */

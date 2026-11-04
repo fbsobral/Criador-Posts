@@ -27,7 +27,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   }
   const c = (await getCtx())!;
   // guias que este usuário já viu; se a leitura falhar, não mostra nada (melhor que atrapalhar o uso)
-  const seen = await db.select({ key: onboardingSeen.key }).from(onboardingSeen).where(eq(onboardingSeen.userId, c.userId)).then((r) => r.map((x) => x.key)).catch(() => ['geral', 'posts', 'gerar', 'galeria', 'templates', 'roteiros', 'personas', 'territorios', 'ideias', 'configuracoes', 'usuarios']);
+  const seen = await db.select({ key: onboardingSeen.key }).from(onboardingSeen).where(eq(onboardingSeen.userId, c.userId)).then((r) => r.map((x) => x.key)).catch(() => ['geral', 'posts', 'gerar', 'galeria', 'templates', 'roteiros', 'substack', 'personas', 'territorios', 'ideias', 'configuracoes', 'usuarios']);
 
   return (
     <GuideProvider seen={seen}>

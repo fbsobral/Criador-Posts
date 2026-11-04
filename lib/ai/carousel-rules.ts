@@ -19,15 +19,18 @@ export const isCarouselAngle = (v: unknown): v is CarouselAngleId => CAROUSEL_AN
 /** Regras de um diretor de conteúdo sênior para o carrossel. Valem para toda geração de carrossel. */
 export const CAROUSEL_CRAFT = `CRAFT DE CARROSSEL (siga como um diretor de conteúdo sênior)
 CAPA (slide 1)
-- A capa precisa parar o dedo no scroll: uma promessa específica, OU uma tensão/contradição, OU a pergunta que a persona já se faz. Título de até 10 palavras (de preferência 6 a 9), sem enfeite ("Descubra", "Você sabia?") e sem rótulo genérico ("Dicas sobre…").
-- Abaixo do título, no máximo uma linha de apoio (até 14 palavras) que aumenta a curiosidade sem entregar a resposta.
-- "cover_options": 3 alternativas de título de capa, com abordagens diferentes (uma tensão/contradição, uma pergunta, uma promessa), cada uma com até 10 palavras e diferentes do título que você usou.
+- A capa para o dedo no scroll porque é ESPECÍFICA: usa os elementos concretos da ideia (quem, o quê, a contradição). Ex. bom: "Dois anos de experiência para o primeiro emprego"; ex. ruim: "Por que tantos jovens largam o estágio?" (genérico, serve para qualquer post). Título de até 10 palavras (6 a 9 é o ideal): uma tensão/contradição, uma promessa específica ou a pergunta que a pessoa já se faz.
+- Proibido na capa e na linha de apoio: "A resposta não é a que todo mundo imagina", "Você sabia?", "Descubra", "O que ninguém conta" e qualquer frase que só anuncia que há uma resposta. A linha de apoio (até 14 palavras) ACRESCENTA um fato, um custo ou o ângulo do carrossel, em vez de provocar.
+- "cover_options": 3 alternativas de título de capa, com abordagens diferentes (uma tensão/contradição, uma pergunta, uma promessa), cada uma com até 10 palavras, específicas, e diferentes do título que você usou.
+ESTRUTURA (o carrossel é uma narrativa, não uma lista de dicas)
+- Arco: cena de identificação → o custo → a causa (coletiva, sem culpar a pessoa) → a virada (a nova forma de ver) → o que muda na prática, com exemplos → o resultado → a ação. Escolha de 2 a 3 argumentos e amarre-os à causa; NÃO transforme os argumentos em uma sequência de "dica 1, dica 2, dica 3".
+- Fale com quem a ideia quer mover: com persona definida, é ela; sem persona ("Público geral"), é quem a CTA da ideia convoca (uma empresa, um mentor, um doador, um jovem). Cada slide é escrito para essa pessoa.
 SLIDES
-- UMA ideia por slide. Texto curto: de 18 a 32 palavras (nunca mais de 40: a fonte é grande e ocupa a tela do celular). O título (<h2>) tem até 8 palavras e sozinho já conta o ponto.
+- UMA ideia por slide. Texto curto: de 18 a 32 palavras (nunca mais de 40: a fonte é grande e ocupa a tela do celular). O título (<h2>) tem até 8 palavras e já conta o ponto, com conteúdo (nada de rótulo como "O problema").
 - Frases curtas (até ~14 palavras). Em cada slide de texto, destaque com <b> a frase-chave (só uma).
-- Cada slide, menos o último, deixa um GANCHO para o próximo ("mas tem um detalhe", "e aqui está o problema", uma pergunta aberta). Sem caça-clique: o slide seguinte entrega o que o anterior promete.
-- Slide 2: identificação (a persona se reconhece). Penúltimo: o futuro (ganho e desejo, concretos). Último: a CTA com UMA única ação e o porquê.
-- Ritmo: alterne formatos e densidade. Use "destaque" (uma frase de impacto, até 14 palavras, sem corpo) em 1 ou 2 momentos de virada; use "pergunta" para espelhar a persona; listas (check ou arrow) só para enumerar 3 itens curtos; nunca dois slides densos (mais de 28 palavras) em sequência.
+- GANCHO: o que faz a pessoa virar o slide é o CONTEÚDO, não uma promessa vazia. Termine o slide com a frase que fecha a ideia dele; o gancho aparece só quando você tem uma pergunta ou contradição específica que o próximo slide responde. É PROIBIDO usar frases de tease vazias: "E aí tudo muda", "E ainda tem outro detalhe", "Mas tem um detalhe", "E aqui está o problema", "Mas e…?", "Parece X. Não é." e variações. Sem gancho é melhor do que gancho vazio.
+- Slide 2: identificação (a pessoa se reconhece numa cena). Penúltimo: o futuro (ganho e desejo, concretos). Último: a ação da CTA DA IDEIA, uma só, endereçada a quem deve agir e com o porquê. Não invente CTA genérica ("Siga a página", "Você vive esse desafio?") a menos que a CTA da ideia peça isso.
+- Ritmo: alterne formatos e densidade. Em carrosséis de 6 slides ou mais, use ao menos um "destaque" (uma frase de impacto, até 14 palavras, sem corpo) na virada e ao menos um "pergunta" ou uma lista curta; nunca dois slides densos (mais de 28 palavras) em sequência.
 - Nada de abstração: troque por cena, ação ou exemplo ("imagina um jovem que…", sem nomes reais, números nem datas inventados).
 - Linguagem do dia a dia da persona (ou do público em geral). Sem jargão, sem clichês de IA e sem emojis, a menos que o tom da marca peça.`;
 
@@ -38,7 +41,7 @@ export const slidesRule = (n: number) => (n > 0 ? `Use ${n} slides (pode variar 
 export const IDEA_TO_SLIDES = `COMO USAR A IDEIA NO CARROSSEL (a ideia vem estruturada; NÃO copie os campos, TRADUZA cada um em slides com função)
 - DOR → a capa (tensão ou contradição) e o slide de identificação.
 - IMPACTO → o que está em jogo; faz a pessoa sentir o custo.
-- CAUSA → a virada: "o que ninguém conta", sempre coletiva, nunca culpa da pessoa.
+- CAUSA → a virada: a causa por trás do problema, sempre coletiva, nunca culpa da pessoa.
 - GUIA → bússola de valores: escolhe o ponto de vista e as palavras. NÃO narre a metáfora do guia nem diga "valor" ou "enquadramento".
 - ARGUMENTOS → a prova. São razões independentes, não um passo a passo: use de 1 a 3 dos mais fortes (não precisa de todos), cada um desenvolvido com uma cena ou exemplo concreto.
 - GANHO e DESEJO → o futuro (o que melhora na prática e como a pessoa se sente).
@@ -59,6 +62,8 @@ const plain = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g,
 const words = (t: string) => (t ? t.split(/\s+/).filter(Boolean).length : 0);
 const ACTION = /\b(salv\w+|compartilh\w+|mand\w+|envi\w+|coment\w+|segu\w+|acess\w+|conhe[cç]\w+|clique\w*|fale\w*|chame\w*|inscrev\w+|doe\w*|apoi\w+|particip\w+|baix\w+|marque\w*|link|bio|responda\w*|conte\w*)\b/i;
 
+const TEASE = /(e a[ií] tudo muda|outro detalhe|tem um detalhe|aqui est[aá] o problema|n[aã]o [eé] a que todo mundo|voc[eê] sabia|descubra|parece \w+\.\s*n[aã]o [eé]\b)/i;
+
 /** Checagem de craft do carrossel (a mesma lógica roda no editor). */
 export function reviewCarousel(slides: { format?: string; html?: string }[]): ReviewItem[] {
   const texts = slides.map((s) => plain(String(s.html ?? '')));
@@ -67,11 +72,13 @@ export function reviewCarousel(slides: { format?: string; html?: string }[]): Re
   const over = wc.map((w, i) => (w > 40 && slides[i]?.format !== 'image' ? i : -1)).filter((i) => i >= 0);
   const dense = wc.map((w, i) => (i > 0 && w > 28 && wc[i - 1] > 28 ? i : -1)).filter((i) => i >= 0);
   const last = texts[texts.length - 1] ?? '';
+  const teases = texts.map((t, i) => (TEASE.test(t) ? i : -1)).filter((i) => i >= 0);
   return [
     { ok: !!coverTitle && words(coverTitle) <= 12, label: 'Capa curta e forte', detail: coverTitle ? `${words(coverTitle)} palavras no título (ideal: até 10)` : 'A capa não tem título', slides: [0] },
     { ok: over.length === 0, label: 'Texto enxuto em cada slide', detail: over.length ? `Passa de 40 palavras: slide${over.length > 1 ? 's' : ''} ${over.map((i) => i + 1).join(', ')}` : 'Nenhum slide passa de 40 palavras', slides: over },
     { ok: dense.length === 0, label: 'Ritmo (sem slides densos em sequência)', detail: dense.length ? `Slides ${dense.map((i) => `${i}–${i + 1}`).join(', ')} seguidos e densos` : 'Alterna bem a densidade', slides: dense },
     { ok: slides.length >= 5 && slides.length <= 10, label: 'Quantidade de slides', detail: `${slides.length} slides (ideal: de 6 a 9)`, slides: [] },
+    { ok: teases.length === 0, label: 'Ganchos com conteúdo', detail: teases.length ? `Frase de tease vazia: slide${teases.length > 1 ? 's' : ''} ${teases.map((i) => i + 1).join(', ')}` : 'Sem ganchos vazios', slides: teases },
     { ok: ACTION.test(last), label: 'Fechamento com uma ação', detail: ACTION.test(last) ? 'O último slide convida a uma ação' : 'O último slide não parece pedir uma ação', slides: [slides.length - 1] },
   ];
 }

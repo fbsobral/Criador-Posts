@@ -7,7 +7,8 @@ import { IDEA_STATUS, territoryOptions, type Idea, type IdeaStatus } from '@/lib
 import { deleteIdea, setIdeaStatus } from '@/lib/idea-actions';
 import { PUBLICO_ID, type TNode } from '@/lib/territory';
 import { TerritorySelect } from './territory-select';
-import { IconBoard, IconEdit, IconGrid, IconPlus, IconPosts, IconSpark, IconTrash, IconVideo } from '../../icons';
+import Link from 'next/link';
+import { IconBoard, IconEdit, IconGrid, IconPlus, IconNewsletter, IconPosts, IconSpark, IconTrash, IconVideo } from '../../icons';
 import { usePan } from '../use-pan';
 import { EmptyState } from '../ui';
 import { IdeaBody, ideaText } from './idea-body';
@@ -135,6 +136,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
                           </select>
                           <span className="id-ktools">
                             <button type="button" className="btn small ghost" onClick={() => setConvert({ idea: i, mode: 'script' })} title="Criar roteiro de vídeo" aria-label="Criar roteiro de vídeo"><IconVideo /></button>
+                            <Link href={`/admin/substack/novo?ideia=${i.id}`} className="btn small ghost" title="Criar artigo para o Substack" aria-label="Criar artigo para o Substack"><IconNewsletter /></Link>
                             <button type="button" className="btn small ghost" onClick={() => setConvert({ idea: i, mode: 'post' })} title="Criar post de imagem" aria-label="Criar post de imagem"><IconPosts /></button>
                             <button type="button" className="btn small ghost" onClick={() => { setRefining(true); setEdit(i); }} title="Refinar com IA" aria-label="Refinar com IA"><IconSpark /></button>
                             <button type="button" className="btn small ghost danger" onClick={() => remove(i)} title="Excluir" aria-label="Excluir ideia"><IconTrash /></button>
@@ -168,6 +170,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
                 <IdeaBody f={i} />
                 <div className="id-make">
                   <button type="button" className="btn small primary" onClick={() => setConvert({ idea: i, mode: 'script' })} title="Gera um roteiro de vídeo a partir desta ideia"><IconVideo /> Criar roteiro</button>
+                  <Link href={`/admin/substack/novo?ideia=${i.id}`} className="btn small primary" title="Gera um artigo de newsletter para o Substack"><IconNewsletter /> Criar artigo</Link>
                   <button type="button" className="btn small primary" onClick={() => setConvert({ idea: i, mode: 'post' })} title="Gera um post de imagem a partir desta ideia"><IconPosts /> Criar post</button>
                 </div>
                 <footer>

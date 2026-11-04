@@ -115,6 +115,19 @@ export const GUIDES: Record<string, Guide> = {
     ],
   },
 
+  substack: {
+    key: 'substack',
+    title: 'Substack',
+    subtitle: 'Artigos de newsletter com a voz da sua marca, do esboço ao texto pronto.',
+    cta: { label: 'Escrever um artigo', href: '/admin/substack/novo' },
+    steps: [
+      { icon: 'bulb', title: 'Comece por uma ideia', text: 'Escolha uma ideia de conteúdo (ou escreva um tema, ou cole um material). A IA usa a história inteira da ideia: dor, causa, argumentos, ganho, desejo e CTA, além da persona.', tip: 'Em Ideias de conteúdo, o botão “Criar artigo” já abre esta tela com a ideia escolhida.' },
+      { icon: 'check', title: 'Aprove o esboço', text: 'Antes de escrever, a IA propõe 3 títulos, o subtítulo, como o texto abre e as seções. Você escolhe o título, ajusta o caminho e só então ela escreve.', bullets: ['Tipos de texto: ensaio, história, guia prático, opinião ou carta.', 'Tamanho: curto (3 min), médio (6 min) ou longo (10 min).'] },
+      { icon: 'posts', title: 'Lapide no editor', text: 'Escreva em um editor limpo, com prévia no estilo do Substack e uma revisão do especialista (título, abertura, intertítulos, parágrafos e fechamento). Selecione um trecho e peça um ajuste à IA, sempre com antes e depois.' },
+      { icon: 'settings', title: 'Publique no Substack', text: 'Na aba Publicação ficam o assunto do e-mail, a linha de prévia, a descrição para busca, as tags e 3 Notes para divulgar. Use “Copiar para o Substack” e cole no editor de lá: a formatação vem junto.', tip: 'Cole o título e o subtítulo nos campos do Substack e o texto no corpo.' },
+    ],
+  },
+
   personas: {
     key: 'personas',
     title: 'Personas',
@@ -184,6 +197,7 @@ export function guideKeyForPath(path: string): string | null {
   if (p === '/admin/galeria') return 'galeria';
   if (p === '/admin/templates') return 'templates';
   if (p === '/admin/videos' || p === '/admin/videos/esteira' || p === '/admin/videos/quadro' || p === '/admin/videos/formatos' || p === '/admin/videos/gerar') return 'roteiros';
+  if (p === '/admin/substack' || p === '/admin/substack/novo') return 'substack';
   if (p === '/admin/personas') return 'personas';
   if (p === '/admin/territorios') return 'territorios';
   if (p === '/admin/ideias') return 'ideias';

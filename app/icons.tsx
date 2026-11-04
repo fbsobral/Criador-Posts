@@ -28,3 +28,6 @@ export const IconBulb = () => (<svg {...base}><path d="M9 18h6M10 21h4" /><path 
 export const IconMore = () => (<svg {...base}><circle cx="5.5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="18.5" cy="12" r="1.6" /></svg>);
 export const IconCheck = () => (<svg {...base}><path d="M5 12.5l4.5 4.5L19 7" /></svg>);
 export const IconHelp = () => (<svg {...base}><circle cx="12" cy="12" r="9" /><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2-2.4 3.6" /><circle cx="12" cy="17.2" r=".6" fill="currentColor" /></svg>);
+
+export const IconNewsletter = () => (<svg {...base}><rect x="3" y="5" width="18" height="14" rx="3" /><path d="M3.5 7.5l8.5 6 8.5-6" /></svg>);
+export const IconPen = () => (<svg {...base}><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>);

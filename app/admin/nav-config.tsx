@@ -1,4 +1,4 @@
-import { IconBoard, IconBulb, IconImage, IconMap, IconPosts, IconSettings, IconSpark, IconTarget, IconTemplates, IconUsers, IconVideo } from '../icons';
+import { IconBoard, IconBulb, IconImage, IconMap, IconNewsletter, IconPosts, IconSettings, IconSpark, IconTarget, IconTemplates, IconUsers, IconVideo } from '../icons';
 
 export type NavItem = { href: string; label: string; icon: React.ReactNode; exclude?: string[]; /** aparece na barra fixa do celular */ primary?: boolean; /** rótulo curto da barra do celular */ short?: string };
 export type NavGroup = { label: string; items: NavItem[] };
@@ -14,6 +14,9 @@ export const NAV: NavGroup[] = [
   { label: 'Roteiros de vídeo', items: [
     { href: '/admin/videos', label: 'Roteiros', icon: <IconVideo />, exclude: ['/admin/videos/esteira'], primary: true },
     { href: '/admin/videos/esteira', label: 'Esteira de produção', icon: <IconBoard /> },
+  ] },
+  { label: 'Substack', items: [
+    { href: '/admin/substack', label: 'Artigos', icon: <IconNewsletter /> },
   ] },
   { label: 'Estratégia', items: [
     { href: '/admin/personas', label: 'Personas', icon: <IconTarget /> },
