@@ -1,15 +1,20 @@
 'use server';
 
-import { and, eq } from 'drizzle-orm';
+import { and, count, eq, gte, isNull, or } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { db } from '@/db';
-import { contentIdeas, personas } from '@/db/schema';
+import { contentIdeas, generationBatches, generationItems, personas, templates } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { pathOf, PUBLICO_ID } from '@/lib/territory';
 import { ensureLink, loadTerritoryNodes } from '@/lib/territory-server';
-import { IDEA_INSTRUCTIONS, ideaBrief, type Idea, type IdeaFields, type IdeaInput, type IdeaStatus } from '@/lib/idea';
-import { createBatch } from '@/lib/actions';
-import { personaBlock } from '@/lib/ai/idea';
+import { IDEA_INSTRUCTIONS, type Idea, type IdeaFields, type IdeaInput, type IdeaStatus } from '@/lib/idea';
+import { MAX_SLIDES } from '@/lib/ai/constants';
+import { ideaBlockFor } from '@/lib/ai/carousel';
+import { isCarouselAngle } from '@/lib/ai/carousel-rules';
+import { supportsAi } from '@/lib/ai/generate';
+import { imageEnabled } from '@/lib/ai/image';
+import { kickBatch } from '@/lib/ai/worker';
 
 async function ctx() {
   const c = await getCtx();
@@ -96,30 +101,48 @@ export async function addSuggestedIdeas(personaId: string | null, territoryId: s
   return { added: rows.length };
 }
 
-/** Transforma uma ideia em post: cria um lote de 1 item com a história da ideia e abre o acompanhamento. Marca a ideia como "usada". */
-export async function createPostFromIdea(ideaId: string, templateId: string, slides: number, withImages: boolean): Promise<{ error?: string }> {
+export type CarouselPlanInput = { angle?: string; promise?: string; slides: { role: string; message: string }[] };
+
+/**
+ * Transforma uma ideia em post (carrossel, Tweet Card ou Capa de Notícia): cria um lote de 1 item com a ideia ESTRUTURADA (cada campo no seu lugar),
+ * o ângulo narrativo e, se o usuário aprovou, o roteiro dos slides. Marca a ideia como "usada" e abre o acompanhamento.
+ */
+export async function createPostFromIdea(ideaId: string, templateId: string, opts: { slides?: number; angle?: string; plan?: CarouselPlanInput | null; extra?: string; withImages?: boolean } = {}): Promise<{ error?: string }> {
   const c = await ctx();
   const [row] = await db.select().from(contentIdeas).where(and(eq(contentIdeas.id, ideaId), eq(contentIdeas.brandId, c.brandId)));
   if (!row) return { error: 'Ideia não encontrada.' };
-  let perfil = '';
+  if (!process.env.ANTHROPIC_API_KEY) return { error: 'A chave da IA ainda não foi configurada no servidor (ANTHROPIC_API_KEY).' };
+  const withImages = !!opts.withImages;
+  if (withImages && !imageEnabled()) return { error: 'A geração de imagens ainda não foi configurada no servidor (GEMINI_API_KEY).' };
+  const [tpl] = await db.select().from(templates).where(and(eq(templates.id, templateId), or(isNull(templates.brandId), eq(templates.brandId, c.brandId))));
+  if (!tpl || !supportsAi(tpl.editor)) return { error: 'Escolha um formato que suporte geração com IA.' };
+
+  const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+  const [{ n: today }] = await db.select({ n: count() }).from(generationItems).where(and(eq(generationItems.brandId, c.brandId), gte(generationItems.createdAt, startOfDay)));
+  const limit = Number(process.env.AI_DAILY_LIMIT) || 100;
+  if (today + 1 > limit) return { error: `Limite diário da marca: ${limit} posts (já foram ${today} hoje).` };
+
+  let persona: { name: string; tagline: string; role: string; data: import('@/lib/persona').PersonaData } | null = null;
   if (row.personaId) {
     const [p] = await db.select().from(personas).where(and(eq(personas.id, row.personaId), eq(personas.brandId, c.brandId)));
-    if (p) perfil = ` | PERFIL DA PERSONA: ${personaBlock({ name: p.name, tagline: p.tagline, role: p.data.role, data: p.data }).replace(/\s*\n\s*/g, ' | ')}${p.data.quote ? ` | Frase típica: ${p.data.quote}` : ''}`;
+    if (p) persona = { name: p.name, tagline: p.tagline, role: p.data.role, data: p.data };
   }
-  const fd = new FormData();
-  fd.set('mode', 'tema'); // a IA escreve o post; o texto vai numa linha só (no modo tema cada linha seria um post)
-  fd.set('briefs', `${ideaBrief(row, row.personaName, row.territory).replace(/\s*\n\s*/g, ' | ')}${perfil}`.slice(0, 5800));
-  fd.set('templateId', templateId); fd.set('slides', String(slides)); fd.set('instructions', IDEA_INSTRUCTIONS);
-  if (withImages) fd.set('withImages', 'on');
-  const prev = row.status;
+  // o roteiro aprovado manda no número de slides; sem ele, o usuário escolhe ou a IA decide (0)
+  const plan = opts.plan && Array.isArray(opts.plan.slides)
+    ? { angle: str(opts.plan.angle, 30), promise: str(opts.plan.promise, 240), slides: opts.plan.slides.map((x) => ({ role: str(x.role, 40), message: str(x.message, 220) })).filter((x) => x.message).slice(0, 10) }
+    : null;
+  const okPlan = plan && plan.slides.length >= 3 ? plan : null;
+  const slidesTarget = okPlan ? okPlan.slides.length : opts.slides && opts.slides > 0 ? Math.min(MAX_SLIDES, Math.max(3, Math.round(opts.slides))) : 0;
+  const angle = isCarouselAngle(opts.angle) && opts.angle !== 'auto' ? opts.angle : (okPlan?.angle && isCarouselAngle(okPlan.angle) ? okPlan.angle : '');
+  // o carrossel já traz as regras de craft e o mapa ideia → slides; os demais formatos usam as orientações gerais da ideia
+  const instructions = [tpl.editor === 'carrossel' ? '' : IDEA_INSTRUCTIONS, str(opts.extra, 1200)].filter(Boolean).join('\n').slice(0, 2000);
+
+  const [batch] = await db.insert(generationBatches).values({
+    brandId: c.brandId, templateId: tpl.id, mode: 'ideia', slidesTarget, angle, ideaId, plan: okPlan, withImages, instructions, createdBy: c.userId,
+  }).returning({ id: generationBatches.id });
+  await db.insert(generationItems).values({ batchId: batch.id, brandId: c.brandId, brief: ideaBlockFor(row, persona, row.personaName, row.territory) });
   await db.update(contentIdeas).set({ status: 'used', updatedAt: new Date() }).where(and(eq(contentIdeas.id, ideaId), eq(contentIdeas.brandId, c.brandId)));
-  try {
-    const r = await createBatch(null, fd); // em caso de sucesso redireciona (lança NEXT_REDIRECT)
-    if (r?.error) { await db.update(contentIdeas).set({ status: prev }).where(and(eq(contentIdeas.id, ideaId), eq(contentIdeas.brandId, c.brandId))); return { error: r.error }; }
-    return {};
-  } catch (e) {
-    if (e instanceof Error && 'digest' in e && String((e as { digest?: string }).digest).startsWith('NEXT_REDIRECT')) { done(); throw e; }
-    await db.update(contentIdeas).set({ status: prev }).where(and(eq(contentIdeas.id, ideaId), eq(contentIdeas.brandId, c.brandId)));
-    return { error: 'Não foi possível criar o post.' };
-  }
+  kickBatch(batch.id);
+  done(); revalidatePath('/admin/gerar');
+  redirect(`/admin/gerar/${batch.id}`);
 }

@@ -74,7 +74,9 @@ async function processItem(itemId: string) {
   try {
     const result = await generatePost({
       editor: row.editor,
-      mode: batch.mode === 'roteiro' ? 'roteiro' : 'tema',
+      mode: batch.mode === 'roteiro' ? 'roteiro' : batch.mode === 'ideia' ? 'ideia' : 'tema',
+      angle: batch.angle,
+      plan: batch.plan,
       brief: item.brief,
       slidesTarget: batch.slidesTarget,
       facts: batch.facts,
@@ -101,6 +103,7 @@ async function processItem(itemId: string) {
     const data = initialPostData(settings, result.slides);
     if (batch.imageBrief.trim()) data.g.imageBrief = batch.imageBrief.trim();
     if (row.editor === 'carrossel' && result.topic) data.g.topic = result.topic;
+    if (row.editor === 'carrossel' && result.coverOptions.length) data.g.coverOptions = result.coverOptions; // o editor oferece "trocar de capa"
 
     const [post] = await db
       .insert(posts)

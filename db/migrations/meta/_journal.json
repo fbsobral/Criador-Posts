@@ -183,6 +183,13 @@
       "when": 1793792249366,
       "tag": "0025_onboarding_seen",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793809908882,
+      "tag": "0026_carousel_angle_plan",
+      "breakpoints": true
     }
   ]
 }

@@ -134,9 +134,16 @@ export const generationBatches = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
     templateId: uuid('template_id').references(() => templates.id, { onDelete: 'set null' }),
-    /** 'tema' = a IA escreve; 'roteiro' = a IA só estrutura o texto enviado. */
+    /** 'tema' = a IA escreve; 'roteiro' = a IA só estrutura o texto enviado; 'ideia' = nasce de uma ideia de conteúdo estruturada. */
     mode: text('mode').notNull().default('tema'),
+    /** Quantidade de slides; 0 = a IA decide pelo conteúdo. */
     slidesTarget: integer('slides_target').notNull().default(7),
+    /** Ângulo narrativo do carrossel (id de CAROUSEL_ANGLES); vazio = a IA escolhe. */
+    angle: text('angle').notNull().default(''),
+    /** Ideia de conteúdo de origem (para o lote que nasce de uma ideia). */
+    ideaId: uuid('idea_id'),
+    /** Roteiro dos slides aprovado pelo usuário antes da escrita (opcional). */
+    plan: jsonb('plan').$type<{ angle?: string; promise?: string; slides: { role: string; message: string }[] } | null>(),
     /** Gerar também as imagens (Nano Banana) dos slides. */
     withImages: boolean('with_images').notNull().default(false),
     /** Briefing de imagens deste lote (somado ao da marca; vai para cada post gerado). */

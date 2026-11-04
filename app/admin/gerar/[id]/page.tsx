@@ -48,7 +48,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
     <div className="page">
       <PageHead
         back={{ href: '/admin/gerar', label: 'Gerar posts com IA' }}
-        title={`${batch.mode === 'roteiro' ? 'Textos prontos' : 'Temas'} · ${tpl?.name ?? 'Lote'}`}
+        title={`${batch.mode === 'roteiro' ? 'Textos prontos' : batch.mode === 'ideia' ? 'Ideia de conteúdo' : 'Temas'} · ${tpl?.name ?? 'Lote'}`}
         description={<>{done} de {items.length} prontos{batch.withImages ? ` · ${imgs} ${imgs === 1 ? 'imagem' : 'imagens'}` : ''} · custo {fmtUsd(cost)} <AutoRefresh batchId={id} active={pending} /></>}
         actions={<>
           {failed > 0 && !pending && (
@@ -76,7 +76,7 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
               {it.status === 'done' && title ? <b className="gen-title">{title}</b> : null}
               {it.status === 'done' && caption && <CopyCaption text={caption} />}
               {it.status === 'done' && !it.postId && <p className="muted">Este post foi migrado para outra marca ou excluído.</p>}
-              <p className="gen-brief">{it.brief}</p>
+              <p className="gen-brief">{briefLabel(it.brief)}</p>
               {it.status === 'error' && <p className="gen-err">{it.error}</p>}
               {it.notes && it.notes.length > 0 && (
                 <ul className="gen-notes">{it.notes.map((n, i) => <li key={i} className={n.startsWith('Conferir') || n.includes('não gerada') ? 'check' : ''}>{n}</li>)}</ul>
@@ -93,4 +93,11 @@ export default async function BatchPage({ params }: { params: Promise<{ id: stri
       </div>
     </div>
   );
+}
+
+/** O brief de uma ideia é um bloco estruturado: mostra só a dor (a cena). */
+function briefLabel(b: string) {
+  if (!b.startsWith('IDEIA DE CONTEÚDO')) return b;
+  const m = b.match(/^DOR[^:\n]*: (.+)$/m);
+  return m ? m[1] : 'Ideia de conteúdo';
 }

@@ -28,7 +28,7 @@ export default async function GeneratePage() {
       inTok: sql<number>`coalesce(sum(${generationItems.inputTokens}), 0)::int`,
       imgs: sql<number>`coalesce(sum(${generationItems.imageCount}), 0)::int`,
       outTok: sql<number>`coalesce(sum(${generationItems.outputTokens}), 0)::int`,
-      first: sql<string>`min(left(${generationItems.brief}, 90))`,
+      first: sql<string>`min(left(coalesce(substring(${generationItems.brief} from 'DOR[^:\n]*: ([^\n]+)'), ${generationItems.brief}), 90))`,
     })
     .from(generationBatches)
     .leftJoin(generationItems, eq(generationItems.batchId, generationBatches.id))
@@ -63,7 +63,7 @@ export default async function GeneratePage() {
                 {batches.map(({ b, total, done, failed, inTok, outTok, imgs, first }) => (
                   <tr key={b.id}>
                     <td><Link href={`/admin/gerar/${b.id}`}><b>{first || 'Lote'}</b>{total > 1 && <span className="muted"> + {total - 1}</span>}</Link></td>
-                    <td className="hide-s muted">{b.mode === 'roteiro' ? 'Textos prontos' : 'Temas'}</td>
+                    <td className="hide-s muted">{b.mode === 'roteiro' ? 'Textos prontos' : b.mode === 'ideia' ? 'Ideia de conteúdo' : 'Temas'}</td>
                     <td>
                       <span className={`pill ${done === total ? 'published' : 'draft'}`}>{done}/{total}</span>
                       {failed > 0 && <span className="pill" style={{ marginLeft: 6, background: '#fdecea', color: 'var(--danger)' }}>{failed} com erro</span>}

@@ -37,7 +37,7 @@ REGRAS
 - "note": uma frase curta dizendo o que você mudou (ex.: "Encurtei o título e troquei o exemplo por um mais concreto").`;
 
 const CARROSSEL = `FORMATO DO TEXTO (carrossel)
-"text" é HTML e aceita somente: <h2> título, <p> parágrafo, <ul class="check"> lista com ✔, <ul class="arrow"> lista com →, <ul class="dot"> lista com marcadores, <li>, <b>, <i>, <u>, <br>. Nenhum outro atributo. Slide "cover" (capa): título forte + gancho curto. O texto deve caber no slide: no máximo ~50 palavras (~30 em "text-image").`;
+"text" é HTML e aceita somente: <h2> título, <p> parágrafo, <ul class="check"> lista com ✔, <ul class="arrow"> lista com →, <ul class="dot"> lista com marcadores, <li>, <b>, <i>, <u>, <br>. Nenhum outro atributo. Slides "destaque" e "pergunta": só um <h2> com uma frase (até 14 palavras), sem <p>; "pergunta" é uma pergunta direta à persona. Tamanho dos demais: de 18 a 32 palavras (nunca mais de 40), uma ideia por slide, com a frase-chave em <b>. Slide "cover" (capa): título forte + gancho curto. O texto deve caber no slide: no máximo ~50 palavras (~30 em "text-image").`;
 
 const TWEET = `FORMATO DO TEXTO (Tweet Card)
 "text" é texto puro (sem HTML nem markdown), como um post de rede social. O card tem espaço limitado: no máximo ~38 palavras (~22 quando o slide tem imagem ou botão).`;

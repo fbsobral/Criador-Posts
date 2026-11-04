@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { MAX_SLIDES } from './constants';
+import { CAROUSEL_ANGLES, CAROUSEL_CRAFT, IDEA_TO_SLIDES, planBlock, reviewCarousel, slidesRule } from './carousel-rules';
 
 /** Modelo escolhido para a geração (maior qualidade de copy). */
 export const AI_MODEL = 'claude-opus-5-5';
@@ -29,13 +30,17 @@ export type BrandProfile = {
 
 export type GenerateInput = {
   editor: 'carrossel' | 'tweet' | 'noticia';
-  mode: 'tema' | 'roteiro';
+  mode: 'tema' | 'roteiro' | 'ideia';
   brief: string;
   slidesTarget: number;
   facts: string;
   instructions: string;
   /** O usuário vai gerar as imagens dos slides (Nano Banana). */
   withImages?: boolean;
+  /** Ângulo narrativo do carrossel (id de CAROUSEL_ANGLES); vazio ou "auto" = a IA escolhe. */
+  angle?: string;
+  /** Roteiro dos slides aprovado pelo usuário (a escrita segue fielmente). */
+  plan?: { angle?: string; promise?: string; slides: { role: string; message: string }[] } | null;
   brand: BrandProfile;
 };
 
@@ -44,6 +49,8 @@ export type GenerateResult = {
   topic: string;
   /** Legenda pronta para publicar junto com o post. */
   caption: string;
+  /** Alternativas de título de capa (carrossel). */
+  coverOptions: string[];
   slides: Record<string, unknown>[];
   /** Linhas para o revisor: sugestões de imagem e dados a conferir. */
   notes: string[];
@@ -85,10 +92,18 @@ export function brandBlock(b: BrandProfile): string {
   return out ? `IDENTIDADE DA MARCA\n${out}` : '';
 }
 
-const CAPTION_RULES = `LEGENDA ("caption")
+const CAPTION_BASE = `LEGENDA ("caption")
 Escreva também a legenda para publicar junto com o post (padrão: Instagram):
 - 1ª linha: um gancho curto que mostra o que a pessoa ganha ao ler.
 - 2 a 4 parágrafos curtos que COMPLEMENTAM os slides (não os repita), terminando com a chamada para ação da marca, se houver.
+- Hashtags no fim: siga as "Regras das legendas" da marca; se não houver, use 3 a 5 relevantes.
+- No máximo ~900 caracteres. Não invente fatos, números ou fontes.`;
+
+const CAPTION_CARROSSEL = `LEGENDA ("caption")
+Escreva também a legenda para publicar junto com o carrossel (padrão: Instagram):
+- Ela COMPLEMENTA os slides, não os repete. 1ª linha: um gancho DIFERENTE do título da capa (outro ângulo da mesma promessa) que, sozinho, já justifica abrir o "ver mais".
+- 2 ou 3 parágrafos curtos (uma ou duas frases cada) com uma ideia nova ou um exemplo que não está nos slides.
+- Fecho: UMA chamada à ação com a mecânica do carrossel (ex.: "Salve para rever depois", "Mande para quem…"; "Comente a palavra X" só se a marca faz isso), coerente com a CTA do último slide e só com o que a organização realmente oferece.
 - Hashtags no fim: siga as "Regras das legendas" da marca; se não houver, use 3 a 5 relevantes.
 - No máximo ~900 caracteres. Não invente fatos, números ou fontes.`;
 
@@ -100,13 +115,23 @@ const COMMON_RULES = `REGRAS GERAIS
 - "title" é um nome interno curto para o post (até 60 caracteres), não um slide.
 - Máximo de ${MAX_SLIDES} slides.`;
 
-function modeBlock(mode: 'tema' | 'roteiro', slides: number): string {
+function modeBlock(mode: 'tema' | 'roteiro' | 'ideia', slides: number, editor: 'carrossel' | 'tweet' | 'noticia', angle?: string): string {
   if (mode === 'roteiro') {
     return `MODO: ESTRUTURAR ROTEIRO
 O briefing é um roteiro já escrito. Preserve o texto e o tom dele; apenas organize em slides. Só reescreva se o roteiro for um esboço em tópicos. Se ele separar os slides (ex.: "Slide 1", "---"), respeite a divisão; senão divida pela ordem natural das ideias.`;
   }
+  if (mode === 'ideia') {
+    const ang = CAROUSEL_ANGLES.find((a) => a.id === angle && a.id !== 'auto');
+    const angleText = editor !== 'carrossel' ? '' : ang
+      ? `\n\nÂNGULO NARRATIVO ESCOLHIDO (siga):\n${ang.guide}`
+      : `\n\nÂNGULO NARRATIVO: escolha o que melhor serve a esta ideia e registre em "strategy.angle". Opções: ${CAROUSEL_ANGLES.filter((a) => a.id !== 'auto').map((a) => `${a.id} (${a.label})`).join(', ')}.`;
+    return `MODO: CRIAR A PARTIR DE UMA IDEIA ESTRUTURADA
+O briefing é uma ideia de conteúdo com campos (dor, impacto, causa, guia, argumentos, ganho, desejo e CTA). Crie o post inteiro a partir dela. ${slidesRule(slides)}
+
+${IDEA_TO_SLIDES}${angleText}`;
+  }
   return `MODO: ESCREVER A PARTIR DE UM TEMA
-O briefing é um tema. Escreva o post inteiro com ${slides} slides (pode variar em 1).
+O briefing é um tema. Escreva o post inteiro. ${slidesRule(slides)}
 - Slide 1: gancho forte (promessa, pergunta ou contradição). Curto.
 - Slides do meio: uma ideia por slide, com progressão lógica (do problema à explicação e à solução).
 - Último slide: fechamento com a chamada para ação da marca, se houver; senão, uma síntese.
@@ -115,16 +140,19 @@ O briefing é um tema. Escreva o post inteiro com ${slides} slides (pode variar 
 
 const CARROSSEL_FORMAT = `FORMATO: CARROSSEL DE INSTAGRAM
 Cada slide tem um "format":
-- "cover": capa (sempre o 1º): título forte + gancho curto.
+- "cover": capa (sempre o 1º): título forte + uma linha de apoio curta.
 - "text": só texto.
 - "text-image": texto curto + uma imagem (gráfico, foto, print).
 - "image": só imagem, sem texto.
+- "destaque": UMA frase de impacto em fonte grande, em <h2> (até 14 palavras), sem <p>. Para os momentos de virada.
+- "pergunta": uma pergunta direta à persona, em <h2> (até 14 palavras), sem <p>. Para espelhar quem lê.
 
 "html" aceita somente estas tags: <h2> título, <p> parágrafo, <ul class="check"> lista com ✔, <ul class="arrow"> lista com →, <ul class="dot"> lista com marcadores, <li>, <b>, <i>, <u>, <br>. Nenhum outro atributo. Em "image" use html vazio.
-Cada slide deve caber na tela: no máximo ~50 palavras (~30 quando for "text-image"). Use <h2> em quase todo slide de texto e listas quando enumerar itens.
+Tamanho: de 18 a 32 palavras por slide de texto (nunca mais de 40; ~20 quando for "text-image"). Use <h2> em quase todo slide de texto e listas só para enumerar 3 itens curtos.
 "show_more": true em todos os slides, exceto no último (false).
 Use "text-image"/"image" só quando um dado, gráfico ou foto ajudar de verdade, e descreva o que entra em "image_note". Caso contrário "image_note" é "".
-"topic": o assunto curto do carrossel em caixa normal (ex.: "Dívida pública"), até 40 caracteres.`;
+"topic": o assunto curto do carrossel em caixa normal (ex.: "Dívida pública"), até 40 caracteres.
+"strategy": ANTES de escrever os slides, defina o ângulo, a promessa (o que a pessoa leva ao terminar), a tensão (o que mantém a pessoa virando os slides) e a estrutura (uma linha por slide: função e mensagem). Os slides seguem essa estrutura.`;
 
 const TWEET_FORMAT = `FORMATO: TWEET CARD
 Cada slide é um card branco, estilo post de rede social, com o texto do post (como uma thread).
@@ -163,15 +191,17 @@ function systemPrompt(i: GenerateInput): string {
     'Você é um redator sênior de conteúdo para redes sociais. Você produz posts prontos para um editor de slides, em JSON estrito.',
     brandBlock(i.brand),
     i.editor === 'carrossel' ? CARROSSEL_FORMAT : i.editor === 'noticia' ? NOTICIA_FORMAT : TWEET_FORMAT,
-    modeBlock(i.mode, i.slidesTarget),
+    i.editor === 'carrossel' ? CAROUSEL_CRAFT : '',
+    modeBlock(i.mode, i.slidesTarget, i.editor, i.angle),
     i.withImages ? (i.editor === 'carrossel' ? IMAGES_CARROSSEL : i.editor === 'noticia' ? IMAGES_NOTICIA : IMAGES_TWEET) : '',
-    CAPTION_RULES,
+    i.editor === 'carrossel' ? CAPTION_CARROSSEL : CAPTION_BASE,
     COMMON_RULES,
   ].filter(Boolean).join('\n\n');
 }
 
 function userPrompt(i: GenerateInput): string {
-  const parts = [i.mode === 'roteiro' ? `ROTEIRO:\n${i.brief.trim()}` : `TEMA:\n${i.brief.trim()}`];
+  const parts = [i.mode === 'roteiro' ? `ROTEIRO:\n${i.brief.trim()}` : i.mode === 'ideia' ? `IDEIA:\n${i.brief.trim()}` : `TEMA:\n${i.brief.trim()}`];
+  if (i.plan?.slides?.length) parts.push(planBlock(i.plan));
   if (i.facts.trim()) parts.push(`FATOS PERMITIDOS (use somente estes dados):\n${i.facts.trim()}`);
   if (i.instructions.trim()) parts.push(`INSTRUÇÕES EXTRAS:\n${i.instructions.trim()}`);
   return parts.join('\n\n');
@@ -179,15 +209,21 @@ function userPrompt(i: GenerateInput): string {
 
 /* ---------- esquemas de saída (JSON estruturado) ---------- */
 const STR = { type: 'string' } as const;
+const CAROUSEL_FORMATS = ['cover', 'text', 'text-image', 'image', 'destaque', 'pergunta'] as const;
 const CARROSSEL_SCHEMA = {
-  type: 'object', additionalProperties: false, required: ['title', 'topic', 'slides', 'to_verify', 'caption'],
+  type: 'object', additionalProperties: false, required: ['strategy', 'title', 'topic', 'slides', 'cover_options', 'to_verify', 'caption'],
   properties: {
-    title: STR, topic: STR, caption: STR, to_verify: { type: 'array', items: STR },
+    // a estratégia vem primeiro: a IA planeja o fio do carrossel antes de escrever os slides
+    strategy: {
+      type: 'object', additionalProperties: false, required: ['angle', 'promise', 'tension', 'structure'],
+      properties: { angle: STR, promise: STR, tension: STR, structure: { type: 'array', items: STR } },
+    },
+    title: STR, topic: STR, caption: STR, cover_options: { type: 'array', items: STR }, to_verify: { type: 'array', items: STR },
     slides: {
       type: 'array',
       items: {
-        type: 'object', additionalProperties: false, required: ['format', 'html', 'show_more', 'image_note'],
-        properties: { format: { type: 'string', enum: ['cover', 'text', 'text-image', 'image'] }, html: STR, show_more: { type: 'boolean' }, image_note: STR },
+        type: 'object', additionalProperties: false, required: ['role', 'format', 'html', 'show_more', 'image_note'],
+        properties: { role: STR, format: { type: 'string', enum: [...CAROUSEL_FORMATS] }, html: STR, show_more: { type: 'boolean' }, image_note: STR },
       },
     },
   },
@@ -219,7 +255,7 @@ const NOTICIA_SCHEMA = {
 };
 
 /* ---------- mapeamento para o formato nativo de cada editor ---------- */
-type Mapped = { title: string; topic: string; caption: string; slides: Record<string, unknown>[]; notes: string[] };
+type Mapped = { title: string; topic: string; caption: string; slides: Record<string, unknown>[]; notes: string[]; coverOptions?: string[] };
 
 function notesFor(list: any[], toVerify: unknown, imageSlide: (s: any, i: number) => string): string[] {
   const notes: string[] = [];
@@ -232,15 +268,21 @@ function notesFor(list: any[], toVerify: unknown, imageSlide: (s: any, i: number
 }
 
 function mapCarrossel(data: any): Mapped {
-  const formats = new Set(['cover', 'text', 'text-image', 'image']);
+  const formats = new Set<string>(CAROUSEL_FORMATS);
   const list = (Array.isArray(data?.slides) ? data.slides : []).slice(0, MAX_SLIDES);
   const slides = list.map((s: any) => {
     const format = formats.has(s?.format) ? s.format : 'text';
     return { format, html: format === 'image' ? '' : sanitizeHtml(String(s?.html ?? '')), image: null, imagePrompt: clean(s?.image_note), fit: 'cover', showProfile: true, showMore: s?.show_more !== false };
   });
+  const notes = notesFor(list, data?.to_verify, (s, i) => (slides[i].format.includes('image') ? 'insira a imagem deste slide' : ''));
+  const st = data?.strategy;
+  if (clean(st?.angle, 60)) notes.unshift(`Ângulo: ${clean(st.angle, 60)}${clean(st?.promise, 200) ? ` · promessa: ${clean(st.promise, 200)}` : ''}`);
+  // checagem de craft: avisa o que passou do ponto (o editor mostra a revisão completa)
+  const warn = reviewCarousel(slides.map((s: any) => ({ format: s.format, html: s.html }))).filter((r) => !r.ok && r.slides.length);
+  warn.forEach((r) => notes.push(`Revisão: ${r.label.toLowerCase()} (${r.detail.toLowerCase()})`));
   return {
-    title: clean(data?.title, 80), topic: clean(data?.topic, 60), caption: clean(data?.caption, 2200), slides,
-    notes: notesFor(list, data?.to_verify, (s, i) => (slides[i].format.includes('image') ? 'insira a imagem deste slide' : '')),
+    title: clean(data?.title, 80), topic: clean(data?.topic, 60), caption: clean(data?.caption, 2200), slides, notes,
+    coverOptions: (Array.isArray(data?.cover_options) ? data.cover_options : []).map((c: unknown) => clean(c, 120)).filter(Boolean).slice(0, 3),
   };
 }
 
@@ -325,7 +367,7 @@ export async function generatePost(input: GenerateInput): Promise<GenerateResult
 
   const mapped = cfg.map(data);
   if (!mapped.slides.length) throw new AiError('A IA não devolveu nenhum slide.', true);
-  return { ...mapped, ...usage };
+  return { ...mapped, coverOptions: mapped.coverOptions ?? [], ...usage };
 }
 
 
@@ -337,13 +379,15 @@ async function mockPost(i: GenerateInput): Promise<GenerateResult> {
   const topic = i.brief.split('\n')[0].slice(0, 40);
   const raw = {
     title: i.brief.slice(0, 50), topic, caption: `Legenda de exemplo sobre ${topic}.\n\nSiga para mais. #exemplo`, to_verify: ['Confira os dados citados antes de publicar.'],
+    strategy: { angle: i.angle && i.angle !== 'auto' ? i.angle : 'crenca', promise: 'Promessa de exemplo', tension: 'Tensão de exemplo', structure: [] },
+    cover_options: ['Capa alternativa em tensão', 'Capa alternativa em pergunta?', 'Capa alternativa em promessa'],
     slides: Array.from({ length: n }, (_, k) =>
       i.editor === 'noticia'
         ? { format: k === 0 ? 'capa' : k === n - 1 ? 'cta' : k === 2 ? 'foto-texto' : 'texto', tag: 'ECONOMIA', title: k === 0 ? topic.toUpperCase() : `Ponto ${k}`, text: `Texto de exemplo do slide ${k + 1}.`, image_note: k === 0 || k === 2 ? 'foto de apoio' : '' }
         : i.editor === 'carrossel'
-        ? { format: k === 0 ? 'cover' : k === 2 ? 'text-image' : 'text', html: `<h2>${k === 0 ? topic : `Ponto ${k}`}</h2><p>Texto de exemplo do slide ${k + 1}.</p><script>x</script>`, show_more: k < n - 1, image_note: k === 2 ? 'gráfico comparando os dois cenários' : '' }
+        ? { format: k === 0 ? 'cover' : k === 2 ? 'text-image' : k === 1 ? 'destaque' : 'text', html: `<h2>${k === 0 ? topic : `Ponto ${k}`}</h2><p>Texto de exemplo do slide ${k + 1}.</p><script>x</script>`, show_more: k < n - 1, image_note: k === 2 ? 'gráfico comparando os dois cenários' : '' }
         : { text: `Slide ${k + 1} sobre ${topic}.`, button: k === n - 1 ? 'Quero saber mais' : '', image_note: '' }),
   };
   const mapped = EDITORS[i.editor].map(raw);
-  return { ...mapped, inputTokens: 1800, outputTokens: 2400 };
+  return { ...mapped, coverOptions: mapped.coverOptions ?? [], inputTokens: 1800, outputTokens: 2400 };
 }
