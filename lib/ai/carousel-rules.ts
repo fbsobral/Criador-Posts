@@ -28,7 +28,8 @@ ESTRUTURA (o carrossel é uma HISTÓRIA com argumento, não uma lista de dicas)
 - Prova: no máximo 2 ou 3 slides de argumento, cada um mostrando o que ACONTECE (quem faz o quê e o que muda), ligado à causa. Proibido virar sequência de dicas: título de argumento NÃO começa com verbo no imperativo ou infinitivo ("Comece cedo", "Conecte-se", "Acompanhar…") e não há "Dica 1, 2, 3". Ruim: "Comece cedo: encontros práticos no ensino médio". Bom: "Quem treinou a reunião antes não trava na primeira".
 - Fale com quem a ideia quer mover: com persona definida, é ela (segunda pessoa, no jeito dela); sem persona ("Público geral"), a cena é contada em terceira pessoa ("um jovem que…") e os slides finais falam diretamente com quem a CTA da ideia convoca (uma empresa, um mentor, um doador, um jovem).
 SLIDES
-- UMA ideia por slide. Texto curto: de 18 a 32 palavras (nunca mais de 40: a fonte é grande e ocupa a tela do celular). O título (<h2>) tem até 8 palavras e já conta o ponto, com conteúdo (nada de rótulo como "O problema" ou "A solução").
+- UMA ideia por slide. Texto curto: de 15 a 28 palavras contando o título (nunca mais de 35: a fonte é grande e ocupa a tela do celular). O título (<h2>) tem até 8 palavras e já conta o ponto, com conteúdo (nada de rótulo como "O problema" ou "A solução").
+- O corpo PROVA o título: se o título diz "Quem treinou a reunião antes não trava", o corpo mostra essa pessoa na reunião, não uma lista de recursos. Lista só quando o título anuncia itens ("Três perguntas que travam o primeiro dia").
 - Frases curtas (até ~14 palavras). Em cada slide de texto, destaque com <b> a frase-chave (só uma).
 - GANCHO: o que faz a pessoa virar o slide é o CONTEÚDO. Termine cada slide com a frase que fecha a ideia dele, de preferência a mais forte ou a mais concreta. O próximo título avança a história. Ex. bom: slide termina em "Ninguém tinha ensinado ele a pedir ajuda." e o próximo título é "A escola ensina matéria, não reunião". É PROIBIDO usar frases de tease vazias: "E aí tudo muda", "E ainda tem outro detalhe", "Mas tem um detalhe", "E aqui está o problema", "Mas e…?", "Parece X. Não é.", "Spoiler:", "Mas tem mais" e variações. Sem gancho é melhor do que gancho vazio.
 - Slide 2: identificação (a pessoa se reconhece numa cena concreta: onde, quando, o que ela ouve ou faz). Penúltimo: o futuro (ganho e desejo, concretos). Último: a CTA (regra abaixo).
@@ -63,7 +64,7 @@ export type ReviewItem = { ok: boolean; label: string; detail: string; slides: n
 
 const plain = (html: string) => html.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
 const words = (t: string) => (t ? t.split(/\s+/).filter(Boolean).length : 0);
-const ACTION = /\b(salv\w+|compartilh\w+|mand\w+|envi\w+|coment\w+|segu\w+|acess\w+|conhe[cç]\w+|clique\w*|fale\w*|chame\w*|inscrev\w+|doe\w*|apoi\w+|particip\w+|baix\w+|marque\w*|link|bio|responda\w*|conte\w*)\b/i;
+const ACTION = /\b(salv\w+|compartilh\w+|mand\w+|envi\w+|coment\w+|segu\w+|acess\w+|conhe[cç]\w+|clique\w*|fale\w*|chame\w*|convers\w+|escrev\w+|mensagem|inscrev\w+|doe\w*|apoi\w+|particip\w+|baix\w+|marque\w*|link|bio|responda\w*|conte\w*)\b/i;
 
 const TEASE = /(e a[ií] tudo muda|outro detalhe|tem um detalhe|aqui est[aá] o problema|n[aã]o [eé] a que todo mundo|voc[eê] sabia|descubra|parece \w+\.\s*n[aã]o [eé]\b)/i;
 

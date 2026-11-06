@@ -112,6 +112,9 @@ export const STYLE_TICS = `VÍCIOS DE TEXTO DE IA (evite; o leitor percebe na ho
 - "Não é X, é Y" e variações ("O problema não é X, é Y", "Não é falta de X. É falta de Y", "não foi X, foi Y"): no máximo UMA vez na peça inteira (corpo e legenda juntos), no momento da virada. Nas outras vezes, afirme o Y direto.
 - Frases feitas: "muda tudo", "mudou tudo", "faz toda a diferença", "a boa notícia é que", "ninguém nasce sabendo", "o empurrão que faltava", "encurtar o caminho/a estrada", "sair da zona de conforto", "e aqui está o nó", "no fim das contas", "mais do que nunca".
 - Não fale sobre o próprio texto nem sobre a estrutura dele ("são três razões", "cada uma de pé sozinha", "este post vai mostrar", "neste carrossel"). Mostre.
+- Isso inclui descrever as partes da solução como "peças", "frentes", "pilares" ou dizer que elas são independentes ou que "cada uma faz sentido sozinha".
+- Personagem: o mesmo do começo ao fim (mesmo gênero, mesma idade, mesma situação). Se abriu com "uma jovem", não vira "ele" depois.
+- O QUE A ORGANIZAÇÃO FAZ: só afirme que a marca faz algo se isso estiver em "O que a organização faz" ou no material-fonte. Os argumentos de uma ideia são a PROPOSTA (o que funciona), não um relatório do que a organização já faz: mostre-os como o que acontece quando existe aquele apoio ("quando o jovem tem um mentor de fora, ele liga antes de desistir"), sem "Na [marca], o jovem faz X" com detalhes que não foram confirmados (série escolar, frequência, formato).
 - Não use os nomes internos do briefing: o nome da persona é um perfil de planejamento, não uma pessoa real nem um personagem (nunca escreva "Shelton" ou o nome que vier no perfil; fale com "você" ou crie um personagem genérico). Também não escreva "dor", "ganho", "desejo", "argumento", "guia" ou "enquadramento" como rótulos.`;
 
 const COMMON_RULES = `REGRAS GERAIS
@@ -155,7 +158,7 @@ Cada slide tem um "format":
 - "pergunta": uma pergunta direta à persona, em <h2> (até 14 palavras), sem <p>. Para espelhar quem lê.
 
 "html" aceita somente estas tags: <h2> título, <p> parágrafo, <ul class="check"> lista com ✔, <ul class="arrow"> lista com →, <ul class="dot"> lista com marcadores, <li>, <b>, <i>, <u>, <br>. Nenhum outro atributo. Em "image" use html vazio.
-Tamanho: de 18 a 32 palavras por slide de texto (nunca mais de 40; ~20 quando for "text-image"). Use <h2> em quase todo slide de texto e listas só para enumerar 3 itens curtos.
+Tamanho: de 15 a 28 palavras por slide de texto (nunca mais de 35; ~20 quando for "text-image"). Use <h2> em quase todo slide de texto e listas só para enumerar 3 itens curtos.
 "show_more": true em todos os slides, exceto no último (false).
 Use "text-image"/"image" só quando um dado, gráfico ou foto ajudar de verdade, e descreva o que entra em "image_note". Caso contrário "image_note" é "".
 "topic": o assunto curto do carrossel em caixa normal (ex.: "Dívida pública"), até 40 caracteres.
