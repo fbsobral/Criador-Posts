@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { Fragment, useState, useTransition } from 'react';
 import { fmtUsd } from '@/lib/ai/constants';
 import type { SuggestedIdea } from '@/lib/ai/idea';
 import { ESTIMATED_COST_IDEA_BASE, ESTIMATED_COST_PER_IDEA, IDEA_OBJECTIVES, type IdeaObjective, type TerritoryOption } from '@/lib/idea';
@@ -11,7 +11,7 @@ import { PUBLICO_ID } from '@/lib/territory';
 import { IdeaBody } from './idea-body';
 import { IconSpark } from '../../icons';
 import { TerritorySelect, pairStatus } from './territory-select';
-import { PersonaOptions, type PersonaOpt } from './persona-options';
+import { ExtraPersonas, PersonaOptions, personaList, type PersonaOpt } from './persona-options';
 
 /** Gera ideias com IA em 2 passos: 1) persona, território e quantidade; 2) revisar o que entra. */
 export function IdeaModal({ personas, options, initialPersona, initialTerritory, hasKey, hasAbout, onClose }: {
@@ -21,6 +21,8 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
   const [pending, start] = useTransition();
   const all = [...personas, { id: PUBLICO_ID, name: 'Público geral' }];
   const [persona, setPersona] = useState(initialPersona || all[0]?.id || PUBLICO_ID);
+  const [extra, setExtra] = useState<string[]>([]);
+  const who = personaList(persona, extra);
   const [territory, setTerritory] = useState(initialTerritory);
   const [count, setCount] = useState(3);
   const [objective, setObjective] = useState<IdeaObjective>('auto');
@@ -38,14 +40,14 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
   async function suggest() {
     setBusy(true); setErr('');
     try {
-      const r = await fetch('/api/ideas/suggest', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ personaId: persona, territoryId: territory || null, count, instructions, objective }) });
+      const r = await fetch('/api/ideas/suggest', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ personaIds: who, territoryId: territory || null, count, instructions, objective }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Não foi possível sugerir ideias.');
       setIdeas(j.ideas); setOff(new Set()); setStep('review');
     } catch (e) { setErr(e instanceof Error ? e.message : 'Erro inesperado.'); } finally { setBusy(false); }
   }
   const add = () => start(async () => {
-    const r = await addSuggestedIdeas(persona, territory || null, ideas.filter((_, i) => !off.has(i)));
+    const r = await addSuggestedIdeas(who, territory || null, ideas.filter((_, i) => !off.has(i)));
     if (r.error) { setErr(r.error); return; }
     router.refresh(); onClose();
   });
@@ -68,7 +70,8 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
                 </div>
               </div>
               {(from === 'persona' ? ['persona', 'territory'] : ['territory', 'persona']).map((k) => k === 'persona' ? (
-                <div className="field" key="p">
+                <Fragment key="p">
+                <div className="field">
                   <label htmlFor="ip">Persona</label>
                   <select id="ip" value={persona} onChange={(e) => setPersona(e.target.value)}>
                     {from === 'territory' && cur && personas.some((p) => cur.personaIds.includes(p.id)) ? (
@@ -80,6 +83,8 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
                   </select>
                   {persona === PUBLICO_ID && <small className="muted">Sem persona, a dor sai como <b>afirmação sobre o tema</b> (um fato do mercado ou do território), não como fala em primeira pessoa.</small>}
                 </div>
+                <ExtraPersonas personas={personas} primary={persona} value={extra} onChange={setExtra} />
+                </Fragment>
               ) : (
                 <div className="field" key="t">
                   <label htmlFor="it">Território {from === 'persona' && <span className="muted">(opcional)</span>}</label>

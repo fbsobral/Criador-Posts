@@ -8,13 +8,14 @@ import { contentIdeas, generationBatches, generationItems, personas, templates }
 import { getCtx } from '@/lib/ctx';
 import { pathOf, PUBLICO_ID } from '@/lib/territory';
 import { ensureLink, loadTerritoryNodes } from '@/lib/territory-server';
-import { IDEA_INSTRUCTIONS, type Idea, type IdeaFields, type IdeaInput, type IdeaStatus } from '@/lib/idea';
+import { IDEA_INSTRUCTIONS, personaIdsOf, type Idea, type IdeaFields, type IdeaInput, type IdeaStatus } from '@/lib/idea';
 import { MAX_SLIDES } from '@/lib/ai/constants';
 import { ideaBlockFor } from '@/lib/ai/carousel';
 import { isCarouselAngle } from '@/lib/ai/carousel-rules';
 import { supportsAi } from '@/lib/ai/generate';
 import { imageEnabled } from '@/lib/ai/image';
 import { kickBatch } from '@/lib/ai/worker';
+import { loadIdeaPersonas, loadPersonas } from '@/lib/idea-server';
 
 async function ctx() {
   const c = await getCtx();
@@ -25,14 +26,14 @@ const str = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n);
 const done = () => revalidatePath('/admin/ideias');
 const STATUSES = ['idea', 'approved', 'used'];
 
-/** Valida a persona/território do usuário (qualquer combinação) e devolve os nomes (guardados como texto na ideia). */
-async function resolve(brandId: string, i: { personaId: string | null; territoryId: string | null; territory: string }) {
-  let personaId: string | null = null, personaName = '';
-  if (i.personaId && i.personaId !== PUBLICO_ID) {
-    const [p] = await db.select({ id: personas.id, name: personas.name }).from(personas).where(and(eq(personas.id, i.personaId), eq(personas.brandId, brandId)));
-    if (!p) return { error: 'Persona não encontrada.' as const };
-    personaId = p.id; personaName = p.name;
-  } else personaName = 'Público geral';
+/** Valida as personas/território do usuário (qualquer combinação) e devolve os nomes (guardados como texto na ideia). Duas ou mais personas = público amplo. */
+async function resolve(brandId: string, i: { personaId: string | null; personaIds?: string[]; territoryId: string | null; territory: string }) {
+  const wanted = (i.personaIds?.length ? i.personaIds : i.personaId ? [i.personaId] : []).filter((x) => x && x !== PUBLICO_ID);
+  const found = await loadPersonas(brandId, wanted);
+  if (found.length < new Set(wanted).size) return { error: 'Persona não encontrada.' as const };
+  const personaIds = found.map((p) => p.id);
+  const personaId = personaIds[0] ?? null;
+  const personaName = found.length ? found.map((p) => p.name).join(', ') : 'Público geral';
   let territoryId: string | null = null, territory = str(i.territory, 200);
   if (i.territoryId) {
     const all = await loadTerritoryNodes(brandId);
@@ -40,14 +41,14 @@ async function resolve(brandId: string, i: { personaId: string | null; territory
     if (!me) return { error: 'Território não encontrado.' as const };
     territoryId = me.id; territory = pathOf(all, me.id).join(' › ');
     // a dupla persona × território passou a existir: garante a ligação (aparece na matriz do mapa)
-    if (personaId) { await ensureLink(brandId, all, me.id, personaId); revalidatePath('/admin/territorios'); }
+    if (personaIds.length) { for (const pid of personaIds) await ensureLink(brandId, all, me.id, pid); revalidatePath('/admin/territorios'); }
   }
-  return { personaId, personaName, territoryId, territory };
+  return { personaId, personaIds, personaName, territoryId, territory };
 }
 const fields = (i: IdeaFields) => ({ pain: str(i.pain, 400), impact: str(i.impact, 400), cause: str(i.cause, 400), guide: str(i.guide, 600), args: str(i.args, 700), gain: str(i.gain, 400), desire: str(i.desire, 400), cta: str(i.cta, 300) });
 
 const toIdea = (r: typeof contentIdeas.$inferSelect): Idea => ({
-  id: r.id, personaId: r.personaId, personaName: r.personaName, territoryId: r.territoryId, territory: r.territory,
+  id: r.id, personaId: r.personaId, personaIds: personaIdsOf(r), personaName: r.personaName, territoryId: r.territoryId, territory: r.territory,
   pain: r.pain, impact: r.impact, cause: r.cause, guide: r.guide, args: r.args, gain: r.gain, desire: r.desire, cta: r.cta, status: r.status as IdeaStatus, source: r.source, createdAt: r.createdAt.toISOString(),
 });
 
@@ -90,9 +91,10 @@ export async function deleteIdea(id: string): Promise<{ error?: string }> {
 }
 
 /** Grava as ideias que o usuário aprovou na revisão da IA. */
-export async function addSuggestedIdeas(personaId: string | null, territoryId: string | null, items: IdeaFields[]): Promise<{ added?: number; error?: string }> {
+export async function addSuggestedIdeas(who: string | string[] | null, territoryId: string | null, items: IdeaFields[]): Promise<{ added?: number; error?: string }> {
   const c = await ctx();
-  const r = await resolve(c.brandId, { personaId, territoryId, territory: '' });
+  const personaIds = Array.isArray(who) ? who : who ? [who] : [];
+  const r = await resolve(c.brandId, { personaId: personaIds[0] ?? null, personaIds, territoryId, territory: '' });
   if ('error' in r) return { error: r.error };
   const rows = items.map((x) => ({ brandId: c.brandId, ...r, ...fields(x), source: 'ai', createdBy: c.userId })).filter((x) => x.pain);
   if (!rows.length) return { error: 'Nenhuma ideia para adicionar.' };
@@ -122,11 +124,7 @@ export async function createPostFromIdea(ideaId: string, templateId: string, opt
   const limit = Number(process.env.AI_DAILY_LIMIT) || 100;
   if (today + 1 > limit) return { error: `Limite diário da marca: ${limit} posts (já foram ${today} hoje).` };
 
-  let persona: { name: string; tagline: string; role: string; data: import('@/lib/persona').PersonaData } | null = null;
-  if (row.personaId) {
-    const [p] = await db.select().from(personas).where(and(eq(personas.id, row.personaId), eq(personas.brandId, c.brandId)));
-    if (p) persona = { name: p.name, tagline: p.tagline, role: p.data.role, data: p.data };
-  }
+  const persons = await loadIdeaPersonas(c.brandId, row);
   // o roteiro aprovado manda no número de slides; sem ele, o usuário escolhe ou a IA decide (0)
   const plan = opts.plan && Array.isArray(opts.plan.slides)
     ? { angle: str(opts.plan.angle, 30), promise: str(opts.plan.promise, 240), slides: opts.plan.slides.map((x) => ({ role: str(x.role, 40), message: str(x.message, 220) })).filter((x) => x.message).slice(0, 10) }
@@ -140,7 +138,7 @@ export async function createPostFromIdea(ideaId: string, templateId: string, opt
   const [batch] = await db.insert(generationBatches).values({
     brandId: c.brandId, templateId: tpl.id, mode: 'ideia', slidesTarget, angle, ideaId, plan: okPlan, withImages, instructions, createdBy: c.userId,
   }).returning({ id: generationBatches.id });
-  await db.insert(generationItems).values({ batchId: batch.id, brandId: c.brandId, brief: ideaBlockFor(row, persona, row.personaName, row.territory) });
+  await db.insert(generationItems).values({ batchId: batch.id, brandId: c.brandId, brief: ideaBlockFor(row, persons, row.personaName, row.territory) });
   await db.update(contentIdeas).set({ status: 'used', updatedAt: new Date() }).where(and(eq(contentIdeas.id, ideaId), eq(contentIdeas.brandId, c.brandId)));
   kickBatch(batch.id);
   done(); revalidatePath('/admin/gerar');

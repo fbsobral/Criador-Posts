@@ -365,7 +365,11 @@ export const contentIdeas = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     brandId: uuid('brand_id').notNull().references(() => brands.id, { onDelete: 'cascade' }),
+    /** A persona principal (a primeira da lista). Nulo = público geral. */
     personaId: uuid('persona_id').references(() => personas.id, { onDelete: 'set null' }),
+    /** Todas as personas da ideia, na ordem (a primeira é a principal). Duas ou mais = público amplo: o conteúdo fala com o grupo. */
+    personaIds: uuid('persona_ids').array().notNull().default(sql`'{}'::uuid[]`),
+    /** Nome(s) da(s) persona(s), separados por vírgula. */
     personaName: text('persona_name').notNull().default(''),
     territoryId: uuid('territory_id').references(() => territories.id, { onDelete: 'set null' }),
     /** Caminho do território (ex.: "Moradia › Aluguel"). */

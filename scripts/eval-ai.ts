@@ -5,7 +5,8 @@
  *
  *   ANTHROPIC_API_KEY=... (ou EVAL_ANTHROPIC_API_KEY=...) npx tsx scripts/eval-ai.ts [carrossel|video|artigo|all] [--case N]
  *
- * Casos (--case N): 0 ideia sem persona, 1 ideia com persona jovem, 2 tema livre, 3 material colado, 4 ideia com persona de empresa (RH);
+ * Casos (--case N): 0 ideia sem persona, 1 ideia com persona jovem, 2 tema livre, 3 material colado, 4 ideia com persona de empresa (RH),
+ * 5 público amplo do mesmo lado (Shelton + Bia) e 6 público amplo em lados diferentes (Shelton + Marta); nos casos 5 e 6 a ideia é gerada pela IA;
  * e o roteiro alterna entre um formato de 3 partes e outro de 5. As entradas imitam o que o app envia.
  *
  * Os resultados ficam em eval-out/<alvo>-<caso>.md (fora do git).
@@ -14,6 +15,7 @@ import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { generatePost } from '../lib/ai/generate';
 import type { BrandProfile } from '../lib/ai/generate';
 import { generateVideoScript } from '../lib/ai/video';
+import { suggestIdeas } from '../lib/ai/idea';
 import { writeArticle } from '../lib/ai/substack';
 import { ideaBlockFor } from '../lib/ai/carousel';
 import { reviewCarousel } from '../lib/ai/carousel-rules';
@@ -42,7 +44,8 @@ type Persona = { name: string; tagline: string; role: string; data: PersonaData 
 type VideoFormat = { name: string; parts: { id: string; name: string; instruction: string; percent: number }[] };
 /** kind: de onde o conteúdo parte, como no app (ideia de conteúdo, tema livre ou material colado). */
 /** channels: a CTA padrão com canais por público, como a organização preencheria; expect: o canal que o texto deve citar. Sem channels, o texto não pode citar canal nenhum. */
-type Case = { name: string; kind: 'ideia' | 'tema' | 'material'; persona: Persona | null; territory: string; idea?: IdeaFields; text?: string; videoFormat: 'curto' | 'longo'; seconds: number; channels?: string; expect?: RegExp };
+/** personas: público amplo (2+). gen: a ideia é gerada pela IA (como em "Gerar ideias com IA"), com este objetivo e território. */
+type Case = { name: string; kind: 'ideia' | 'tema' | 'material'; persona: Persona | null; personas?: Persona[]; gen?: { objective: string; territory: string; instructions: string }; territory: string; idea?: IdeaFields; text?: string; videoFormat: 'curto' | 'longo'; seconds: number; channels?: string; expect?: RegExp };
 
 const SHELTON: Persona = {
   name: 'Shelton', tagline: 'Recém-formado que manda currículo todo dia e ouve que falta experiência', role: 'Jovem em busca do primeiro emprego',
@@ -76,6 +79,19 @@ const MARTA: Persona = {
     objections: ['Não tenho gente para ficar acompanhando estagiário', 'Já tentei e não deu certo'],
     triggers: ['Casos de empresas parecidas', 'Algo que não dê trabalho extra para a equipe'],
     channels: ['LinkedIn', 'Instagram', 'eventos de RH'], quote: 'Eu até quero dar a chance, mas não posso recomeçar a seleção a cada dois meses.',
+  },
+};
+
+const BIA: Persona = {
+  name: 'Bia', tagline: 'Estudante do ensino médio que quer o primeiro estágio para ajudar em casa', role: 'Estudante buscando estágio ou jovem aprendiz',
+  data: {
+    age: '17', role: 'Estudante do 3º ano do ensino médio em escola pública', location: 'Bairro da periferia',
+    bio: 'Estuda de manhã, cuida do irmão mais novo à tarde e quer um estágio ou vaga de jovem aprendiz para ajudar a mãe nas contas. Nunca fez uma entrevista.',
+    goals: ['Conseguir o primeiro estágio', 'Ter o próprio dinheiro', 'Saber o que fazer depois da escola'],
+    pains: ['Não sabe montar currículo sem experiência', 'Tem medo da primeira entrevista', 'Ninguém da família trabalhou em escritório'],
+    objections: ['Isso não é para gente como eu', 'Não tenho roupa nem jeito para entrevista'],
+    triggers: ['Ver alguém da idade dela que conseguiu', 'Passo a passo simples'],
+    channels: ['TikTok', 'Instagram', 'grupo da escola no WhatsApp'], quote: 'Todo mundo pede experiência, mas como eu começo se nunca trabalhei?',
   },
 };
 
@@ -134,9 +150,19 @@ const CASES: Case[] = [
       cta: 'Converse com a gente para receber jovens da próxima turma na sua empresa.',
     },
   },
+  {
+    name: 'multi-mesmo-lado', kind: 'ideia', persona: SHELTON, personas: [SHELTON, BIA], territory: 'Primeiro emprego', videoFormat: 'curto', seconds: 45,
+    gen: { objective: 'conscientizar', territory: 'Primeiro emprego', instructions: '' },
+  },
+  {
+    name: 'multi-ponte', kind: 'ideia', persona: SHELTON, personas: [SHELTON, MARTA], territory: 'Empresas parceiras', videoFormat: 'longo', seconds: 60,
+    channels: 'Empresas parceiras: WhatsApp (11) 4000-0000. Quem quer ser mentor voluntário: formulário no link da bio. Jovens: mensagem no direct.', expect: /whats/i,
+    gen: { objective: 'aproximar', territory: 'Primeiro emprego e empresas parceiras', instructions: '' },
+  },
 ];
 
-const ideaOf = (c: Case) => (c.idea ? ideaBlockFor(c.idea, c.persona, c.persona?.name ?? '', c.territory) : '');
+const whoOf = (c: Case) => (c.personas?.length ? c.personas : c.persona ? [c.persona] : []);
+const ideaOf = (c: Case) => (c.idea ? ideaBlockFor(c.idea, whoOf(c), whoOf(c).map((p) => p.name).join(', '), c.territory) : '');
 const personaBriefOf = (p: Persona | null) => (p ? `${personaBlock(p)}${p.data.quote ? `\nFrase típica: ${p.data.quote}` : ''}${p.data.channels.length ? `\nOnde está: ${p.data.channels.join('; ')}` : ''}` : undefined);
 let spent = 0;
 const track = (label: string, i: number, o: number) => { const v = costUsd(i, o); spent += v; return `Tokens: ${i} entrada / ${o} saída · ~US$ ${v.toFixed(3)} (${label})`; };
@@ -145,16 +171,16 @@ const CLICHES = /(no mundo de hoje|mergulh\w+|jornada|em suma|vale ressaltar|é 
 const TEASE = /(e a[ií] tudo muda|outro detalhe|tem um detalhe|aqui est[aá] o problema|n[aã]o [eé] a que todo mundo|mas tem mais|o que ningu[eé]m conta|spoiler)/i;
 const NOT_X_IS_Y = /(?<![\wà-ú])n[ãa]o (?:[ée]|foi|era)(?![\wà-ú])[^.!?;:]{1,70}[.,;]\s+(?:[ée]|foi|era)(?![\wà-ú])/gi;
 const tics = (t: string) => (t.match(NOT_X_IS_Y) ?? []).length;
-const personaLeak = (c: Case, t: string) => !!c.persona && new RegExp(`\\b${c.persona.name}\\b`).test(t);
+const personaLeak = (c: Case, t: string) => whoOf(c).some((p) => new RegExp(`\\b${p.name}\\b`).test(t));
 const CTA_END = /\b(mand\w*|fal\w*|convers[ae] com|cham\w*|envi\w*|compartilh\w*|marc\w*|escrev\w*|respond\w*|ser mentor)\b/i;
-const brandOf = (c: Case): BrandProfile => ({ ...brand, cta: c.channels ?? brand.cta, audience: c.persona ? '' : brand.audience });
+const brandOf = (c: Case): BrandProfile => ({ ...brand, cta: c.channels ?? brand.cta, audience: whoOf(c).length ? '' : brand.audience });
 const CHANNEL = /\b(direct|dm|whats\w*|link na bio|na bio|formul[áa]rio|telefone|site)\b/i;
 const channelCheck = (c: Case, t: string) => (c.expect ? flag(c.expect.test(t), 'Canal certo para o público', (t.match(CHANNEL) ?? ['nenhum'])[0]) : flag(!CHANNEL.test(t), 'Sem canal inventado', (t.match(CHANNEL) ?? ['nenhum'])[0]));
 /** Números e horas que não estão na fonte (idade, horário, prazo inventados). */
 const HOURS = /\b(?:seis|sete|oito|nove|dez|onze|meio-dia)(?: e (?:meia|quinze|vinte|quarenta))?(?: da (?:manh[ãa]|noite|tarde))\b|\b\d{1,2}h\d{0,2}\b/gi;
 const invented = (c: Case, t: string) => {
   t = t.replace(/^\s*\d+[.)]\s/gm, ''); // numeração de lista não é dado
-  const src = `${c.text ?? ''} ${JSON.stringify(c.idea ?? {})} ${JSON.stringify(c.persona ?? {})} ${c.channels ?? ''}`;
+  const src = `${c.text ?? ''} ${JSON.stringify(c.idea ?? {})} ${JSON.stringify(whoOf(c))} ${c.channels ?? ''}`;
   const nums = [...new Set(t.match(/\b\d+\b/g) ?? [])].filter((n) => !src.includes(n));
   return [...nums, ...(t.match(HOURS) ?? [])];
 };
@@ -162,6 +188,20 @@ const GENERIC_CTA = /(siga a p[aá]gina|siga (o perfil|a gente|n[oó]s)|ative o 
 
 function report(file: string, md: string) { mkdirSync('eval-out', { recursive: true }); writeFileSync(`eval-out/${file}.md`, md); console.log(`\n=== ${file} ===\n${md}`); }
 const flag = (ok: boolean, label: string, detail = '') => `${ok ? '✅' : '❌'} ${label}${detail ? ` — ${detail}` : ''}`;
+
+/** Gera a ideia com a IA (como "Gerar ideias com IA"), para testar o fluxo inteiro: ideia → carrossel, roteiro e artigo. */
+async function gerarIdeia(c: Case) {
+  const who = whoOf(c);
+  const r = await suggestIdeas({
+    persona: who[0] ?? null, personas: who.length > 1 ? who : undefined, icp: '', brand: brandOf(c),
+    territory: { path: c.gen!.territory.split(' › '), description: '', children: [], translation: '' }, existingPains: [], existing: [],
+    count: 1, instructions: c.gen!.instructions, objective: c.gen!.objective,
+  });
+  c.idea = r.ideas[0];
+  const f = c.idea;
+  const leak = personaLeak(c, Object.values(f).join(' '));
+  report(`ideia-${c.name}`, `# Ideia gerada · ${c.name} (${who.map((p) => p.name).join(' + ')}, objetivo: ${c.gen!.objective})\n\n- **Dor:** ${f.pain}\n- **Impacto:** ${f.impact}\n- **Causa:** ${f.cause}\n- **Guia:** ${f.guide}\n- **Argumentos:**\n${f.args.split('\n').map((a) => `  - ${a}`).join('\n')}\n- **Ganho:** ${f.gain}\n- **Desejo:** ${f.desire}\n- **CTA:** ${f.cta}\n\n## Checagens\n${flag(!leak, 'Sem o nome interno das personas')}\n\n${track('ideia', r.inputTokens, r.outputTokens)}\n`);
+}
 
 async function carrossel(c: Case) {
   // como no app: ideia → modo "ideia" (com a persona no bloco e o público da marca omitido); tema → modo "tema"; material → tema + fatos permitidos
@@ -181,11 +221,11 @@ async function video(c: Case) {
   const format = c.videoFormat === 'longo' ? LONG : SHORT;
   const seconds = c.seconds, secs = allocate(format.parts, seconds);
   // como no app: a ideia vira ideaBrief + IDEA_INSTRUCTIONS + persona; tema e material passam pelo plano de ideias, aqui simplificado em uma ideia direta
-  const content = c.kind === 'ideia' ? ideaBrief(c.idea!, c.persona?.name ?? '', c.territory) : c.text!;
+  const content = c.kind === 'ideia' ? ideaBrief(c.idea!, whoOf(c).map((p) => p.name).join(', '), c.territory) : c.text!;
   const idea = c.kind === 'ideia'
     ? { title: ideaTitle(c.idea!.pain), angle: ideaAngle(c.idea!), points: ideaPoints(c.idea!) }
     : { title: c.kind === 'tema' ? c.text!.slice(0, 120) : 'O que os mentores aprenderam com a primeira semana de trabalho dos jovens', angle: c.kind === 'tema' ? 'Mostrar que pedir ajuda bem feito é sinal de profissionalismo, não de fraqueza.' : 'A maior dúvida do jovem no primeiro emprego não é técnica; uma mensagem do mentor na hora certa muda o desfecho.', points: [] as string[] };
-  const r = await generateVideoScript({ content, format, seconds, platform: 'all', instructions: c.kind === 'ideia' ? IDEA_INSTRUCTIONS : '', brand: brandOf(c), idea, personaBrief: personaBriefOf(c.persona) });
+  const r = await generateVideoScript({ content, format, seconds, platform: 'all', instructions: c.kind === 'ideia' ? IDEA_INSTRUCTIONS : '', brand: brandOf(c), idea, personaBrief: whoOf(c).map((p) => personaBriefOf(p)).join('\n\n') || undefined, multiPersona: whoOf(c).length > 1 });
   const body = r.data.parts.map((p, i) => `**${p.name}** (${secs[i]}s, máx ~${wordsFor(secs[i])} palavras · fala tem ${countWords(p.speech)})\n- Fala: ${p.speech}\n- Tela: ${p.onScreen}\n- Visual: ${p.visual}`).join('\n\n');
   const all = r.data.parts.map((p) => p.speech).join(' ');
   const checks = [...r.data.parts.map((p, i) => flag(countWords(p.speech) <= wordsFor(secs[i]) + 3, `${p.name} cabe no tempo`, `${countWords(p.speech)}/${wordsFor(secs[i])} palavras`)), flag(!CLICHES.test(all), 'Sem clichês'), flag(!TEASE.test(all), 'Sem ganchos vazios'), flag(!GENERIC_CTA.test(all), 'Sem CTA genérica'), flag(!CLICHES.test(r.data.caption), 'Legenda sem clichês'), flag(CTA_END.test(r.data.caption.trim().split('\n').filter(Boolean).pop() ?? ''), 'Legenda termina com a ação'), flag(tics(`${all} ${r.data.caption}`) <= 1, '"Não é X, é Y" no máximo 1x', `${tics(`${all} ${r.data.caption}`)}x`), flag(!personaLeak(c, `${all} ${r.data.caption}`), 'Sem o nome interno da persona'), channelCheck(c, `${all} ${r.data.caption}`), flag(!invented(c, `${all} ${r.data.caption}`).length, 'Sem número/horário inventado', invented(c, `${all} ${r.data.caption}`).join(', '))];
@@ -212,6 +252,7 @@ async function artigo(c: Case) {
   const ci = process.argv.indexOf('--case'); const only = ci > 0 ? Number(process.argv[ci + 1]) : null;
   const cases = CASES.filter((_, i) => only === null || i === only);
   for (const c of cases) {
+    if (c.gen && !c.idea) { try { await gerarIdeia(c); } catch (e) { console.error('ideia falhou:', (e as Error).message); continue; } }
     if (what === 'all' || what === 'carrossel') await carrossel(c).catch((e) => console.error('carrossel falhou:', e.message));
     if (what === 'all' || what === 'video') await video(c).catch((e) => console.error('vídeo falhou:', e.message));
     if (what === 'all' || what === 'artigo') await artigo(c).catch((e) => console.error('artigo falhou:', e.message));

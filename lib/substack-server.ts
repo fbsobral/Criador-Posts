@@ -1,6 +1,7 @@
 import { and, count, eq, gte } from 'drizzle-orm';
 import { db } from '@/db';
-import { contentIdeas, personas, substackPosts } from '@/db/schema';
+import { contentIdeas, substackPosts } from '@/db/schema';
+import { loadIdeaPersonas } from '@/lib/idea-server';
 import { ideaBlockFor } from '@/lib/ai/carousel';
 import type { ArticleSource } from '@/lib/ai/substack';
 import { ARTICLE_LENGTHS, MAX_SOURCE_CHARS, isArticleAngle, type ArticleAngleId } from '@/lib/substack';
@@ -25,13 +26,9 @@ export async function readRequest(brandId: string, b: Record<string, unknown> | 
     if (!isUuid(b?.ideaId)) return { error: 'Escolha uma ideia de conteúdo.' };
     const [row] = await db.select().from(contentIdeas).where(and(eq(contentIdeas.id, b.ideaId), eq(contentIdeas.brandId, brandId)));
     if (!row) return { error: 'Ideia não encontrada.' };
-    let persona: { name: string; tagline: string; role: string; data: import('@/lib/persona').PersonaData } | null = null;
-    if (row.personaId) {
-      const [p] = await db.select().from(personas).where(and(eq(personas.id, row.personaId), eq(personas.brandId, brandId)));
-      if (p) persona = { name: p.name, tagline: p.tagline, role: p.data.role, data: p.data };
-    }
+    const persons = await loadIdeaPersonas(brandId, row);
     ideaId = row.id;
-    source = { label: 'IDEIA DE CONTEÚDO (a base do artigo: transforme esta história em um texto de newsletter, não repita os campos como lista)', text: ideaBlockFor(row, persona, row.personaName, row.territory) };
+    source = { label: 'IDEIA DE CONTEÚDO (a base do artigo: transforme esta história em um texto de newsletter, não repita os campos como lista)', text: ideaBlockFor(row, persons, row.personaName, row.territory) };
   } else if (kind === 'tema') {
     const t = str(b?.text, 1500);
     if (t.length < 8) return { error: 'Conte o tema do artigo em uma ou duas frases.' };

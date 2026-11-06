@@ -47,7 +47,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
   usePan(boardRef, view === 'board');
 
   const shown = ideas.filter((i) => {
-    if (persona && (persona === PUBLICO_ID ? i.personaId !== null : i.personaId !== persona)) return false;
+    if (persona && (persona === PUBLICO_ID ? i.personaId !== null : !i.personaIds.includes(persona))) return false;
     if (territory && i.territoryId !== territory) return false;
     if (status && (local[i.id] ?? i.status) !== status) return false;
     if (q.trim() && !`${i.pain} ${i.impact} ${i.cause} ${i.guide} ${i.args} ${i.gain} ${i.desire} ${i.cta} ${i.territory}`.toLowerCase().includes(q.trim().toLowerCase())) return false;

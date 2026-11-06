@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODEL, AiError, STYLE_TICS, brandBlock, type BrandProfile } from './generate';
+import { MULTI_AUDIENCE } from './carousel';
 import { MAX_CONTENT_CHARS, PLATFORMS, allocate, wordsFor, type Platform, type ScriptData, type VideoIdea, type VideoPart } from '../video';
 
 const PLATFORM_GUIDE: Record<Platform, string> = {
@@ -107,7 +108,7 @@ TAREFA: PLANEJAR ${n} IDEIA(S)
 }
 
 /** Passo 2: escreve o roteiro de UMA ideia, parte por parte, seguindo as instruções de cada parte do formato. */
-export async function generateVideoScript(i: VideoCommon & { idea: VideoIdea; /** Perfil da persona (texto) quando o roteiro nasce de uma ideia de conteúdo. */ personaBrief?: string }): Promise<{ title: string; data: ScriptData; inputTokens: number; outputTokens: number }> {
+export async function generateVideoScript(i: VideoCommon & { idea: VideoIdea; /** Perfil da persona (texto) quando o roteiro nasce de uma ideia de conteúdo. */ personaBrief?: string; /** A ideia é para várias personas (público amplo): personaBrief traz todos os perfis. */ multiPersona?: boolean }): Promise<{ title: string; data: ScriptData; inputTokens: number; outputTokens: number }> {
   const secs = allocate(i.format.parts, i.seconds);
   const toData = (parts: { speech: string; on_screen: string; visual: string }[], caption: string, hashtags: string[], notes: string[]): ScriptData => ({
     parts: i.format.parts.map((fp, k) => ({ name: fp.name, seconds: secs[k], speech: clean(parts[k]?.speech, 1200), onScreen: clean(parts[k]?.on_screen, 160), visual: clean(parts[k]?.visual, 400) })),
@@ -149,7 +150,12 @@ COMO USAR A IDEIA DE CONTEÚDO (o conteúdo-fonte é uma ideia estruturada: dor,
 - CONCRETO: nada de abstrações soltas (transparência, repasse, sistema, equidade). Mostre ações e situações do dia a dia de quem assiste, com as palavras que essa pessoa usa.
 - QUEM ASSISTE: com persona, fale com ela em segunda pessoa do começo ao fim ("você manda currículo toda manhã…"): a cena é a vida dela, não a de "um cara" ou "um jovem" que ela assiste de fora (o nome do perfil nunca aparece). Um exemplo em terceira pessoa só na prova, apresentado como exemplo. Sem persona ("público geral"), conte a cena em terceira pessoa ("um jovem que…") e, na parte final, fale direto com quem a CTA da ideia convoca (ex.: quem tem ou trabalha numa empresa).
 - O GUIA é só bússola: não narre a metáfora do guia nem diga "valor" ou "enquadramento". Só use imagem que seja do universo de quem assiste.
-- NÃO invente números, valores nem datas: use só os que estão na ideia; sem dado, fale em termos qualitativos.` : ''}${i.personaBrief ? `
+- NÃO invente números, valores nem datas: use só os que estão na ideia; sem dado, fale em termos qualitativos.` : ''}${i.personaBrief && i.multiPersona ? `
+
+${MULTI_AUDIENCE}
+
+PERFIS DAS PERSONAS QUE VÃO ASSISTIR (o público é o conjunto; use-os como referência, não fale com uma só):
+${i.personaBrief}` : i.personaBrief ? `
 
 PERSONA QUE VAI ASSISTIR (fale com ela, no jeito dela):
 ${i.personaBrief}` : ''}`;

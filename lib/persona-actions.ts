@@ -3,7 +3,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
-import { brandSettings, personaGroups, personas } from '@/db/schema';
+import { brandSettings, contentIdeas, personaGroups, personas } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { emptyPersonaData, normName, type PersonaData } from '@/lib/persona';
 import type { SuggestedGroup } from '@/lib/ai/persona';
@@ -114,9 +114,19 @@ export async function movePersona(id: string, groupId: string | null): Promise<{
   return {};
 }
 
+/** Tira as personas excluídas da lista das ideias de público amplo (o banco já zera persona_id); a próxima da lista vira a principal. */
+async function dropFromIdeas(brandId: string, ids: string[]) {
+  for (const id of ids) {
+    await db.update(contentIdeas)
+      .set({ personaIds: sql`array_remove(${contentIdeas.personaIds}, ${id}::uuid)`, personaId: sql`(array_remove(${contentIdeas.personaIds}, ${id}::uuid))[1]` })
+      .where(and(eq(contentIdeas.brandId, brandId), sql`${id}::uuid = any(${contentIdeas.personaIds})`));
+  }
+}
+
 export async function deletePersona(id: string): Promise<{ error?: string }> {
   const c = await ctx();
   const gone = await db.delete(personas).where(and(eq(personas.id, id), eq(personas.brandId, c.brandId))).returning({ id: personas.id });
+  await dropFromIdeas(c.brandId, gone.map((g) => g.id));
   done();
   return gone.length ? {} : { error: 'Persona não encontrada (talvez já tenha sido excluída).' };
 }
@@ -138,6 +148,7 @@ export async function deletePersonas(ids: string[]): Promise<{ error?: string }>
   const c = await ctx();
   if (!ids.length) return {};
   const gone = await db.delete(personas).where(and(inArray(personas.id, ids.slice(0, 200)), eq(personas.brandId, c.brandId))).returning({ id: personas.id });
+  await dropFromIdeas(c.brandId, gone.map((g) => g.id));
   done();
   return gone.length ? {} : { error: 'Nenhuma persona foi excluída. Recarregue a página e tente de novo.' };
 }

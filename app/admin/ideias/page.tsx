@@ -5,6 +5,7 @@ import { supportsAi } from '@/lib/ai/generate';
 import { getCtx } from '@/lib/ctx';
 import { brandSettings } from '@/db/schema';
 import type { Idea, IdeaStatus } from '@/lib/idea';
+import { personaIdsOf } from '@/lib/idea';
 import { loadTerritoryNodes } from '@/lib/territory-server';
 import { OrgPill } from '../org-pill';
 import { PageHead } from '../ui';
@@ -26,7 +27,7 @@ export default async function IdeiasPage({ searchParams }: { searchParams: Promi
   const groups = await db.select({ id: personaGroups.id, name: personaGroups.name }).from(personaGroups).where(eq(personaGroups.brandId, c.brandId));
   const gname = new Map(groups.map((g) => [g.id, g.name]));
   const ideas: Idea[] = rows.map((r) => ({
-    id: r.id, personaId: r.personaId, personaName: r.personaName, territoryId: r.territoryId, territory: r.territory,
+    id: r.id, personaId: r.personaId, personaIds: personaIdsOf(r), personaName: r.personaName, territoryId: r.territoryId, territory: r.territory,
     pain: r.pain, impact: r.impact, cause: r.cause, guide: r.guide, args: r.args, gain: r.gain, desire: r.desire, cta: r.cta, status: r.status as IdeaStatus, source: r.source, createdAt: r.createdAt.toISOString(),
   }));
   const tnodes = nodes;

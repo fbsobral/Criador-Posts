@@ -10,11 +10,14 @@ export const IDEA_STATUS: { id: IdeaStatus; label: string; color: string; hint: 
 /** Os campos de texto de uma ideia, na ordem da narrativa: dor → impacto → causa → guia → argumentos → ganho → desejo → CTA. */
 export type IdeaFields = { pain: string; impact: string; cause: string; guide: string; args: string; gain: string; desire: string; cta: string };
 export type Idea = IdeaFields & {
-  id: string; personaId: string | null; personaName: string; territoryId: string | null; territory: string;
+  /** personaId = a principal (a primeira de personaIds). Duas ou mais personas = público amplo. */
+  id: string; personaId: string | null; personaIds: string[]; personaName: string; territoryId: string | null; territory: string;
   status: IdeaStatus; source: string; createdAt: string;
 };
-/** O que o usuário preenche (ou a IA sugere) numa ideia. */
-export type IdeaInput = IdeaFields & { personaId: string | null; territoryId: string | null; territory: string };
+/** O que o usuário preenche (ou a IA sugere) numa ideia. `personaIds` (várias) tem prioridade sobre `personaId` (uma). */
+export type IdeaInput = IdeaFields & { personaId: string | null; personaIds?: string[]; territoryId: string | null; territory: string };
+/** As personas de uma ideia, na ordem (ideias antigas só têm personaId). */
+export const personaIdsOf = (r: { personaId: string | null; personaIds?: string[] | null }) => (r.personaIds?.length ? r.personaIds : r.personaId ? [r.personaId] : []);
 
 export const IDEA_FIELDS: { key: keyof IdeaFields; label: string; rows: number; max: number; placeholder: string; help: string }[] = [
   { key: 'pain', label: 'Dor (linguagem de rua)', rows: 3, max: 400, placeholder: '“Todo mês eu pago o aluguel e não sobra nada pra mim.”', help: 'Como a pessoa fala de boca, sem jargão e sem "marketês". Sem persona: uma afirmação sobre o fato ou o território, nunca uma fala em primeira pessoa.' },

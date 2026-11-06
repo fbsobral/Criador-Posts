@@ -10,12 +10,22 @@ import { CAROUSEL_ANGLES, IDEA_TO_SLIDES, slidesRule, type CarouselAngleId } fro
 /* ---------------- bloco estruturado da ideia ---------------- */
 type PersonaIn = { name: string; tagline: string; role: string; data: PersonaData };
 
-/** A ideia como texto estruturado, com cada campo no seu lugar (antes era achatada em uma linha). */
-export function ideaBlockFor(f: IdeaFields, persona: PersonaIn | null, personaName: string, territory: string): string {
+/** Regra de público amplo: a ideia é para duas ou mais personas ao mesmo tempo. Entra no bloco da ideia, então vale para carrossel, artigo e planejamento. */
+export const MULTI_AUDIENCE = `PÚBLICO AMPLO (esta ideia é para VÁRIAS personas ao mesmo tempo; esta regra vale no lugar de "fale com a persona")
+- Fale com o GRUPO pelo que ele tem em comum e chame-o de forma ampla e concreta ("quem está procurando o primeiro emprego", "quem contrata jovens"), nunca pelo nome de um perfil e sem escolher uma persona só.
+- Parta do que é COMUM entre os perfis (a situação, a dor, a pergunta que todos se fazem). Use os perfis como reservatório: cenas, objeções e palavras de cada um podem aparecer, cada uma reconhecível por quem a vive, mas o texto não vira de uma persona só.
+- Se as personas estão em LADOS diferentes do problema (ex.: quem procura vaga e quem contrata), use o ângulo de PONTE: o mesmo problema visto dos dois lados, cada lado reconhece a sua perda e o seu ganho, e a solução serve aos dois.
+- "Você" só quando a frase serve a todos; quando for de um lado só, diga de quem é ("quem contrata sabe…", "para quem está começando…").
+- UMA CTA só, para quem a CTA da ideia convoca (o grupo todo ou um dos lados).`;
+
+/** A ideia como texto estruturado, com cada campo no seu lugar. Aceita uma persona ou várias (público amplo). */
+export function ideaBlockFor(f: IdeaFields, persona: PersonaIn | PersonaIn[] | null, personaName: string, territory: string): string {
+  const list = Array.isArray(persona) ? persona : persona ? [persona] : [];
   const lines = (t: string) => t.split('\n').map((l) => l.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, '').trim()).filter(Boolean);
+  const profile = (p: PersonaIn) => `${personaBlock(p).replace(/^PERSONA: /, '')}${p.data.quote ? `\nFrase típica: ${p.data.quote}` : ''}`;
   const out = [
     'IDEIA DE CONTEÚDO (estruturada)',
-    `Persona: ${persona ? persona.name : personaName || 'público geral (sem persona)'}`,
+    list.length > 1 ? `Público: várias personas (público amplo): ${list.map((p) => p.name).join('; ')}` : `Persona: ${list[0] ? list[0].name : personaName || 'público geral (sem persona)'}`,
     territory ? `Território: ${territory}` : '',
     f.pain && `DOR (a cena que a pessoa reconhece): ${f.pain}`,
     f.impact && `IMPACTO (o que a dor custa): ${f.impact}`,
@@ -25,9 +35,10 @@ export function ideaBlockFor(f: IdeaFields, persona: PersonaIn | null, personaNa
     f.gain && `GANHO (resultado racional): ${f.gain}`,
     f.desire && `DESEJO (resultado emocional): ${f.desire}`,
     f.cta && `CTA da ideia (a ação desejada, sem canal): ${f.cta}`,
-    persona ? `\nPERFIL DA PERSONA\n${personaBlock(persona).replace(/^PERSONA: /, '')}${persona.data.quote ? `\nFrase típica: ${persona.data.quote}` : ''}` : '',
+    list.length === 1 ? `\nPERFIL DA PERSONA\n${profile(list[0])}` : '',
+    list.length > 1 ? `\nPERFIS DAS PERSONAS (o público é o conjunto; use-os como referência, não fale com uma só)\n${list.map((p, i) => `${i + 1}. ${profile(p)}`).join('\n\n')}\n\n${MULTI_AUDIENCE}` : '',
   ].filter(Boolean);
-  return out.join('\n').slice(0, 7000);
+  return out.join('\n').slice(0, 14000);
 }
 
 /* ---------------- planejamento (roteiro dos slides) ---------------- */

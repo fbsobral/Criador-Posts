@@ -1,11 +1,11 @@
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { brandSettings, personas } from '@/db/schema';
+import { brandSettings } from '@/db/schema';
+import { loadPersonas, personaIdsFromBody } from '@/lib/idea-server';
 import { getCtx } from '@/lib/ctx';
 import { AiError } from '@/lib/ai/generate';
 import { refineIdea } from '@/lib/ai/idea';
 import { EMPTY_FIELDS, IDEA_FIELDS, type IdeaFields } from '@/lib/idea';
-import { PUBLICO_ID } from '@/lib/territory';
 import { loadBrandProfile } from '@/lib/video-server';
 import { TOO_MANY, rateLimit } from '@/lib/rate-limit';
 
@@ -26,14 +26,14 @@ export async function POST(req: Request) {
   if (feedback.length < 3) return Response.json({ error: 'Diga o que você quer mudar nesta ideia.' }, { status: 400 });
   const current = toFields(b?.current);
   if (!current.pain) return Response.json({ error: 'Escreva ao menos a dor antes de refinar.' }, { status: 400 });
-  const personaId = typeof b?.personaId === 'string' && b.personaId !== PUBLICO_ID ? b.personaId : null;
-  const [persona] = personaId ? await db.select().from(personas).where(and(eq(personas.id, personaId), eq(personas.brandId, c.brandId))) : [null];
+  const persons = await loadPersonas(c.brandId, personaIdsFromBody(b));
+  const persona = persons[0] ?? null;
   const [s] = await db.select({ icp: brandSettings.personaIcp, aud: brandSettings.aiAudience }).from(brandSettings).where(eq(brandSettings.brandId, c.brandId));
   const brand = await loadBrandProfile(c.brandId);
   try {
     const r = await refineIdea({
       current, previous: b?.previous ? toFields(b.previous) : undefined, feedback, field: IDEA_FIELDS.find((x) => x.key === b?.field)?.key,
-      persona: persona ? { name: persona.name, tagline: persona.tagline, role: persona.data.role, data: persona.data } : null,
+      persona, personas: persons.length > 1 ? persons : undefined,
       territory: String(b?.territory ?? '').slice(0, 200), icp: persona ? '' : s?.icp || s?.aud || '', brand: persona ? { ...brand, audience: '' } : brand,
     });
     return Response.json({ fields: r.fields, note: r.note });

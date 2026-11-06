@@ -67,6 +67,17 @@ IDEIA SEM PERSONA (esta regra SUBSTITUI a da "dor em linguagem de rua" e qualque
 - "impact", "cause", "gain" e "desire" também ficam impessoais ou falam de "quem...", "as famílias...", "os jovens..." (nunca "eu" ou "minha"). O "desire" é o sentimento de quem passa por isso quando o problema acaba, descrito de fora.
 - "guide" e "args" seguem as regras normais. A "cta" convida o público em geral (ex.: "Compartilhe com quem precisa saber disso", "Conheça o caminho"), sem supor uma persona.`;
 
+/** Ideia para várias personas ao mesmo tempo (público amplo). */
+const MULTI_PERSONA_RULES = `
+
+IDEIA PARA VÁRIAS PERSONAS (público amplo; esta regra ajusta a "dor em linguagem de rua" e o foco numa persona só)
+- A ideia serve ao CONJUNTO das personas abaixo. Parta do que elas têm em COMUM: a mesma situação, a mesma pergunta, o mesmo problema.
+- "pain": a situação comum em linguagem simples e concreta, que qualquer uma delas reconheceria. Pode ser uma fala que todas diriam, sem marcas da vida de uma só (nada de detalhe que só uma tem). Se as personas estão em LADOS diferentes do problema (ex.: quem procura vaga e quem contrata), a dor nomeia o problema compartilhado visto dos dois lados ("o jovem entra no estágio e sai em poucos meses, e a vaga volta para o mural").
+- "impact", "gain" e "desire": o que muda para cada lado ou para o grupo, sem escolher um perfil só.
+- "args": razões que funcionam para todo o grupo (ou para os dois lados, no caso da ponte).
+- "cta": UMA ação, para o grupo ou para o lado que a ideia quer mover.
+- Nunca use o nome dos perfis no texto: eles são referência de planejamento.`;
+
 export function personaBlock(p: { name: string; tagline: string; role: string; data: PersonaData }) {
   const L = (t: string, a: string[]) => (a.length ? `\n- ${t}: ${a.join('; ')}` : '');
   return `PERSONA: ${p.name}${p.role ? ` (${p.role})` : ''}\nResumo: ${p.tagline}\nContexto: ${p.data.bio}${L('Objetivos', p.data.goals)}${L('Dores', p.data.pains)}${L('Objeções', p.data.objections)}${L('Gatilhos', p.data.triggers)}`;
@@ -96,6 +107,8 @@ export function existingBlock(list: ExistingIdea[], hasPersona: boolean, hasTerr
 export type SuggestIdeasArgs = {
   /** Nulo = público geral (sem persona). */
   persona: { name: string; tagline: string; role: string; data: PersonaData } | null;
+  /** Duas ou mais personas = público amplo (a primeira é a principal e também vem em "persona"). */
+  personas?: { name: string; tagline: string; role: string; data: PersonaData }[];
   icp: string;
   brand: BrandProfile;
   /** Território de origem: caminho até ele e o que há dentro dele. */
@@ -119,10 +132,11 @@ export async function suggestIdeas(a: SuggestIdeasArgs): Promise<{ ideas: Sugges
   }
   if (!process.env.ANTHROPIC_API_KEY) throw new AiError('ANTHROPIC_API_KEY não configurada no servidor.');
 
+  const multi = (a.personas?.length ?? 0) > 1;
   const user = [
-    a.persona ? personaBlock(a.persona) : `PÚBLICO GERAL (sem persona específica).\nICP DA MARCA:\n${a.icp.trim() || '(não informado)'}`,
+    multi ? `PÚBLICO AMPLO: ${a.personas!.length} PERSONAS\n\n${a.personas!.map(personaBlock).join('\n\n')}` : a.persona ? personaBlock(a.persona) : `PÚBLICO GERAL (sem persona específica).\nICP DA MARCA:\n${a.icp.trim() || '(não informado)'}`,
     a.territory
-      ? `TERRITÓRIO: ${a.territory.path.join(' › ')}${a.territory.description ? `\nO que entra aqui: ${a.territory.description}` : ''}${a.territory.children.length ? `\nSubtemas (use como ângulos, sem esgotar): ${a.territory.children.join('; ')}` : ''}${a.territory.translation ? `\nTRADUÇÃO DO TEMA PARA ESTA PERSONA (como ele aparece no dia a dia dela; use como ponte entre o debate coletivo e a dor em linguagem de rua):\n${a.territory.translation}` : ''}`
+      ? `TERRITÓRIO: ${a.territory.path.join(' › ')}${a.territory.description ? `\nO que entra aqui: ${a.territory.description}` : ''}${a.territory.children.length ? `\nSubtemas (use como ângulos, sem esgotar): ${a.territory.children.join('; ')}` : ''}${a.territory.translation ? `\nTRADUÇÃO DO TEMA ${multi ? 'PARA AS PERSONAS' : 'PARA ESTA PERSONA'} (como ele aparece no dia a dia ${multi ? 'delas' : 'dela'}; use como ponte entre o debate coletivo e a dor em linguagem de rua):\n${a.territory.translation}` : ''}`
       : 'TERRITÓRIO: nenhum específico. Escolha ângulos relevantes para esta persona e para o que a organização faz.',
     a.existing?.length ? existingBlock(a.existing, !!a.persona, !!a.territory) : a.existingPains.length ? `IDEIAS QUE JÁ EXISTEM (não repita as dores nem os ângulos):\n${a.existingPains.map((p) => `- ${p}`).join('\n')}` : '',
     !a.persona ? 'ATENÇÃO: sem persona. A "pain" é uma afirmação sobre o fato ou o território (nunca uma fala em primeira pessoa).' : '',
@@ -134,7 +148,7 @@ export async function suggestIdeas(a: SuggestIdeasArgs): Promise<{ ideas: Sugges
   try {
     const res = await new Anthropic().beta.messages.create({
       model: AI_MODEL, max_tokens: 12000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
-      system: [SYSTEM + (a.persona ? '' : NO_PERSONA_RULES), brandBlock(a.brand)].filter(Boolean).join('\n\n'),
+      system: [SYSTEM + (multi ? MULTI_PERSONA_RULES : a.persona ? '' : NO_PERSONA_RULES), brandBlock(a.brand)].filter(Boolean).join('\n\n'),
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCHEMA } },
       messages: [{ role: 'user', content: user }],
     });
@@ -179,6 +193,8 @@ const REFINE_SCHEMA = {
 /** Refina uma ideia (a versão da tela) a partir de um feedback. Não grava: o usuário aprova antes. */
 export async function refineIdea(a: {
   current: IdeaFields; previous?: IdeaFields; feedback: string; persona: { name: string; tagline: string; role: string; data: PersonaData } | null;
+  /** Duas ou mais = público amplo. */
+  personas?: { name: string; tagline: string; role: string; data: PersonaData }[];
   territory: string; icp: string; brand: BrandProfile;
   /** Refinar só este campo: os outros voltam exatamente como estavam. */
   field?: (typeof KEYS)[number];
@@ -190,8 +206,9 @@ export async function refineIdea(a: {
     return { fields: { ...a.current, [k]: `${a.current[k]} (refinado: ${a.feedback.slice(0, 40)})` }, note: 'Versão simulada (AI_MOCK=1).' };
   }
   if (!process.env.ANTHROPIC_API_KEY) throw new AiError('ANTHROPIC_API_KEY não configurada no servidor.');
+  const multi = (a.personas?.length ?? 0) > 1;
   const user = [
-    a.persona ? personaBlock(a.persona) : `PÚBLICO GERAL (sem persona específica).${a.icp.trim() ? `\nICP:\n${a.icp.trim()}` : ''}`,
+    multi ? `PÚBLICO AMPLO: ${a.personas!.length} PERSONAS\n\n${a.personas!.map(personaBlock).join('\n\n')}` : a.persona ? personaBlock(a.persona) : `PÚBLICO GERAL (sem persona específica).${a.icp.trim() ? `\nICP:\n${a.icp.trim()}` : ''}`,
     a.territory ? `TERRITÓRIO: ${a.territory}` : '',
     `IDEIA ATUAL:\n${show(a.current)}`,
     a.previous ? `SUGESTÃO ANTERIOR (não aprovada):\n${show(a.previous)}` : '',
@@ -201,7 +218,7 @@ export async function refineIdea(a: {
   try {
     const res = await new Anthropic().beta.messages.create({
       model: AI_MODEL, max_tokens: 6000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
-      system: [SYSTEM + (a.persona ? '' : NO_PERSONA_RULES) + REFINE_RULES, brandBlock(a.brand)].filter(Boolean).join('\n\n'),
+      system: [SYSTEM + (multi ? MULTI_PERSONA_RULES : a.persona ? '' : NO_PERSONA_RULES) + REFINE_RULES, brandBlock(a.brand)].filter(Boolean).join('\n\n'),
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: REFINE_SCHEMA } },
       messages: [{ role: 'user', content: user }],
     });

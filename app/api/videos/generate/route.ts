@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { contentIdeas, personas, videoScripts } from '@/db/schema';
+import { contentIdeas, videoScripts } from '@/db/schema';
+import { loadPersonas, personaIdsFromBody } from '@/lib/idea-server';
 import { personaBlock } from '@/lib/ai/idea';
 import { getCtx } from '@/lib/ctx';
 import { AiError } from '@/lib/ai/generate';
@@ -25,17 +26,14 @@ export async function POST(req: Request) {
   if ((await scriptsToday(c.brandId)) + 1 > VIDEO_DAILY_LIMIT) return Response.json({ error: `Limite diário da marca: ${VIDEO_DAILY_LIMIT} roteiros.` }, { status: 429 });
   const seconds = cleanSeconds(b?.seconds), platform = cleanPlatform(b?.platform);
   const ideaClean = { title: String(idea.title).trim().slice(0, 140), angle: String(idea.angle ?? '').trim().slice(0, 500), points: (Array.isArray(idea.points) ? idea.points : []).map((p) => String(p).trim().slice(0, 240)).filter(Boolean).slice(0, 6) };
-  // roteiro nascido de uma ideia de conteúdo: a IA recebe o perfil da persona
-  let personaBrief = '';
-  const personaId = typeof b?.personaId === 'string' ? b.personaId : '';
-  if (personaId) {
-    const [p] = await db.select().from(personas).where(and(eq(personas.id, personaId), eq(personas.brandId, c.brandId)));
-    if (p) personaBrief = `${personaBlock({ name: p.name, tagline: p.tagline, role: p.data.role, data: p.data })}${p.data.quote ? `\nFrase típica: ${p.data.quote}` : ''}${p.data.channels.length ? `\nOnde está: ${p.data.channels.join('; ')}` : ''}`;
-  }
+  // roteiro nascido de uma ideia de conteúdo: a IA recebe o perfil da persona (ou de todas, quando a ideia é para um público amplo)
+  const persons = await loadPersonas(c.brandId, personaIdsFromBody(b));
+  const profile = (p: (typeof persons)[number]) => `${personaBlock(p)}${p.data.quote ? `\nFrase típica: ${p.data.quote}` : ''}${p.data.channels.length ? `\nOnde está: ${p.data.channels.join('; ')}` : ''}`;
+  const personaBrief = persons.map(profile).join('\n\n');
   try {
     const r = await generateVideoScript({
       content: content.slice(0, MAX_CONTENT_CHARS), format: { name: format.name, parts: format.parts }, seconds, platform,
-      instructions: String(b?.instructions ?? '').slice(0, 1500), brand: await loadBrandProfile(c.brandId), idea: ideaClean, personaBrief: personaBrief || undefined,
+      instructions: String(b?.instructions ?? '').slice(0, 1500), brand: await loadBrandProfile(c.brandId), idea: ideaClean, personaBrief: personaBrief || undefined, multiPersona: persons.length > 1,
     });
     const batchId = /^[0-9a-f-]{36}$/i.test(String(b?.batchId ?? '')) ? String(b?.batchId) : null;
     const [row] = await db.insert(videoScripts).values({

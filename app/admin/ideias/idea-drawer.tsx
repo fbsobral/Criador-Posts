@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { IconEdit, IconSpark } from '../../icons';
-import { PersonaOptions, type PersonaOpt } from './persona-options';
+import { ExtraPersonas, PersonaOptions, personaList, type PersonaOpt } from './persona-options';
 import { EMPTY_FIELDS, IDEA_FIELDS, type Idea, type IdeaFields, type TerritoryOption } from '@/lib/idea';
 import { actionErrorMessage } from '@/lib/action-error';
 import { createIdea, updateIdea } from '@/lib/idea-actions';
@@ -17,6 +17,8 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
   const router = useRouter();
   const [pending, start] = useTransition();
   const [persona, setPersona] = useState(idea ? idea.personaId ?? PUBLICO_ID : defaults.persona || personas[0]?.id || PUBLICO_ID);
+  const [extra, setExtra] = useState<string[]>(idea ? idea.personaIds.slice(1) : []);
+  const who = personaList(persona, extra);
   const [territory, setTerritory] = useState(idea ? idea.territoryId ?? '' : defaults.territory);
   const [territoryText, setTerritoryText] = useState(idea?.territoryId ? '' : idea?.territory ?? '');
   const [f, setF] = useState<IdeaFields>(() => (idea ? { pain: idea.pain, impact: idea.impact, cause: idea.cause, guide: idea.guide, args: idea.args, gain: idea.gain, desire: idea.desire, cta: idea.cta } : EMPTY_FIELDS));
@@ -34,7 +36,7 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
   async function askRefine(feedback: string, previous?: IdeaFields) {
     setRbusy(true); setRerr('');
     try {
-      const r = await fetch('/api/ideas/refine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ personaId: persona, territory: territoryName, current: f, feedback, previous }) });
+      const r = await fetch('/api/ideas/refine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ personaIds: who, territory: territoryName, current: f, feedback, previous }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Não foi possível refinar a ideia.');
       setSugg(j); setFb2('');
@@ -49,7 +51,7 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
     const key = fr.key, prevSugg = fr.sugg;
     setFr({ ...fr, busy: true, err: '' });
     try {
-      const r = await fetch('/api/ideas/refine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ personaId: persona, territory: territoryName, current: f, feedback: fr.fb, field: key, previous: prevSugg ? { ...f, [key]: prevSugg } : undefined }) });
+      const r = await fetch('/api/ideas/refine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ personaIds: who, territory: territoryName, current: f, feedback: fr.fb, field: key, previous: prevSugg ? { ...f, [key]: prevSugg } : undefined }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Não foi possível refinar este campo.');
       setFr((s) => (s && s.key === key ? { ...s, busy: false, sugg: (j.fields as IdeaFields)[key] ?? '', note: j.note ?? '' } : s));
@@ -71,25 +73,25 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
     if (!nf.pain.trim()) { setErr('Escreva a dor antes de salvar.'); setSaveState('error'); return; }
     setSaveState('saving'); setErr('');
     try {
-      const r = await updateIdea(idea.id, { personaId: np === PUBLICO_ID ? null : np, territoryId: nt || null, territory: ntx, ...nf });
+      const r = await updateIdea(idea.id, { personaId: np === PUBLICO_ID ? null : np, personaIds: personaList(np, extra), territoryId: nt || null, territory: ntx, ...nf });
       if (r.error) { setErr(r.error); setSaveState('error'); return; }
       snap.current = JSON.stringify([np, nt, ntx, nf]); setSaveState('saved'); router.refresh();
     } catch (e) { setErr(actionErrorMessage(e)); setSaveState('error'); }
   }
   const finish = (k: string) => { toggle(k); persist(); };
   const allOn = ALL.every((k) => editing.has(k));
-  const snap = useRef(JSON.stringify([persona, territory, territoryText, f]));
-  const dirty = JSON.stringify([persona, territory, territoryText, f]) !== snap.current;
+  const snap = useRef(JSON.stringify([persona, extra, territory, territoryText, f]));
+  const dirty = JSON.stringify([persona, extra, territory, territoryText, f]) !== snap.current;
   const tryClose = () => { if (dirty && !confirm('Descartar as alterações desta ideia?')) return; onClose(); };
   useEffect(() => {
     const key = (e: KeyboardEvent) => { if (e.key === 'Escape') tryClose(); };
     document.addEventListener('keydown', key); return () => document.removeEventListener('keydown', key);
   });
-  const personaName = persona === PUBLICO_ID ? 'Público geral' : personas.find((x) => x.id === persona)?.name ?? '—';
+  const personaName = who.length ? who.map((id) => personas.find((x) => x.id === id)?.name ?? '—').join(', ') : 'Público geral';
   const argItems = f.args.split('\n').map((l) => l.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, '').trim()).filter(Boolean);
 
   const save = () => start(async () => {
-    const input = { personaId: persona === PUBLICO_ID ? null : persona, territoryId: territory || null, territory: territoryText, ...f };
+    const input = { personaId: persona === PUBLICO_ID ? null : persona, personaIds: who, territoryId: territory || null, territory: territoryText, ...f };
     const r = idea ? await updateIdea(idea.id, input) : await createIdea(input);
     if (r.error) { setErr(r.error); return; }
     router.refresh(); onClose();
@@ -149,6 +151,7 @@ export function IdeaDrawer({ idea, personas, options, defaults, startRefine = fa
                 <select id="dp" value={persona} onChange={(e) => setPersona(e.target.value)}><PersonaOptions personas={personas} /></select>
                 <small className="muted">Quem vai se reconhecer nesta ideia. Sem persona, a dor é uma afirmação sobre o tema.</small>
               </div>
+              <ExtraPersonas personas={personas} primary={persona} value={extra} onChange={setExtra} />
               <div className="field">
                 <label htmlFor="dt">Território</label>
                 <TerritorySelect id="dt" options={options} persona={persona} value={territory} onChange={setTerritory} empty="Sem território do mapa" />
