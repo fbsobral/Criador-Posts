@@ -103,7 +103,7 @@ const CAPTION_CARROSSEL = `LEGENDA ("caption")
 Escreva também a legenda para publicar junto com o carrossel (padrão: Instagram):
 - Ela COMPLEMENTA os slides, não os repete. 1ª linha: um gancho DIFERENTE do título da capa (outro ângulo da mesma promessa) que, sozinho, já justifica abrir o "ver mais".
 - 2 ou 3 parágrafos curtos (uma ou duas frases cada) com uma ideia nova ou um exemplo que não está nos slides.
-- Fecho: UMA chamada à ação com a mecânica do carrossel (ex.: "Salve para rever depois", "Mande para quem…"; "Comente a palavra X" só se a marca faz isso), coerente com a CTA do último slide e só com o que a organização realmente oferece.
+- Fecho: UMA chamada à ação, a mesma do último slide (quando o post nasce de uma ideia, a CTA da ideia, com o mesmo destinatário), dita de outro jeito e só com o que a organização realmente oferece. "Salve" ou "mande para quem…" só se combinarem com essa ação; nada de "siga a página" se a ideia não pediu.
 - Hashtags no fim: siga as "Regras das legendas" da marca; se não houver, use 3 a 5 relevantes.
 - No máximo ~900 caracteres. Não invente fatos, números ou fontes.`;
 
@@ -152,7 +152,8 @@ Tamanho: de 18 a 32 palavras por slide de texto (nunca mais de 40; ~20 quando fo
 "show_more": true em todos os slides, exceto no último (false).
 Use "text-image"/"image" só quando um dado, gráfico ou foto ajudar de verdade, e descreva o que entra em "image_note". Caso contrário "image_note" é "".
 "topic": o assunto curto do carrossel em caixa normal (ex.: "Dívida pública"), até 40 caracteres.
-"strategy": ANTES de escrever os slides, defina o ângulo, a promessa (o que a pessoa leva ao terminar), a tensão (o que mantém a pessoa virando os slides) e a estrutura (uma linha por slide: função e mensagem). Os slides seguem essa estrutura.`;
+"strategy": ANTES de escrever os slides, defina: o ângulo; o leitor ("reader": com quem os slides falam e o que essa pessoa precisa sentir ou fazer); a promessa (o que a pessoa leva ao terminar); a tensão (a pergunta CONCRETA que mantém a pessoa virando os slides, não um tease); a ação final ("cta": a ação do último slide, tirada da CTA da ideia quando houver); e a estrutura (uma linha por slide: "formato · função · mensagem"). Os slides seguem essa estrutura.
+Ordem de escrita: estratégia, slides, depois as capas alternativas e a legenda (que complementam os slides prontos).`;
 
 const TWEET_FORMAT = `FORMATO: TWEET CARD
 Cada slide é um card branco, estilo post de rede social, com o texto do post (como uma thread).
@@ -211,14 +212,15 @@ function userPrompt(i: GenerateInput): string {
 const STR = { type: 'string' } as const;
 const CAROUSEL_FORMATS = ['cover', 'text', 'text-image', 'image', 'destaque', 'pergunta'] as const;
 const CARROSSEL_SCHEMA = {
-  type: 'object', additionalProperties: false, required: ['strategy', 'title', 'topic', 'slides', 'cover_options', 'to_verify', 'caption'],
+  type: 'object', additionalProperties: false, required: ['strategy', 'title', 'topic', 'slides', 'cover_options', 'caption', 'to_verify'],
   properties: {
     // a estratégia vem primeiro: a IA planeja o fio do carrossel antes de escrever os slides
     strategy: {
-      type: 'object', additionalProperties: false, required: ['angle', 'promise', 'tension', 'structure'],
-      properties: { angle: STR, promise: STR, tension: STR, structure: { type: 'array', items: STR } },
+      type: 'object', additionalProperties: false, required: ['angle', 'reader', 'promise', 'tension', 'cta', 'structure'],
+      properties: { angle: STR, reader: STR, promise: STR, tension: STR, cta: STR, structure: { type: 'array', items: STR } },
     },
-    title: STR, topic: STR, caption: STR, cover_options: { type: 'array', items: STR }, to_verify: { type: 'array', items: STR },
+    title: STR, topic: STR,
+    // os slides vêm antes das capas alternativas e da legenda: elas são escritas olhando os slides prontos
     slides: {
       type: 'array',
       items: {
@@ -226,6 +228,7 @@ const CARROSSEL_SCHEMA = {
         properties: { role: STR, format: { type: 'string', enum: [...CAROUSEL_FORMATS] }, html: STR, show_more: { type: 'boolean' }, image_note: STR },
       },
     },
+    cover_options: { type: 'array', items: STR }, caption: STR, to_verify: { type: 'array', items: STR },
   },
 };
 const TWEET_SCHEMA = {

@@ -120,6 +120,8 @@ export async function generateVideoScript(i: VideoCommon & { idea: VideoIdea; /*
   }
   if (!process.env.ANTHROPIC_API_KEY) throw new AiError('ANTHROPIC_API_KEY não configurada no servidor.');
   const role = 'Você é um roteirista sênior de vídeos curtos (Reels, TikTok e Shorts). Você escreve roteiros prontos para gravar, parte por parte, em JSON estrito.';
+  // conteúdo que nasce de uma ideia de conteúdo (com ou sem persona): a IA recebe o mapa dos campos da ideia
+  const isIdea = !!i.personaBrief || /^IDEIA DE CONTE[ÚU]DO/i.test(i.content.trim());
   const extra = `${RULES}
 
 TAREFA: ESCREVER O ROTEIRO
@@ -127,18 +129,23 @@ TAREFA: ESCREVER O ROTEIRO
 - "speech": a fala daquela parte, dentro do limite de palavras indicado (não ultrapasse: o vídeo tem de caber em ${i.seconds} s). Se a parte for o gancho, a primeira frase precisa prender em até 3 segundos.
 - "on_screen": texto curto na tela (até 6 palavras, em caixa normal), ou "" se não houver.
 - "visual": o que aparece/acontece na tela naquele trecho (enquadramento, b-roll, gráfico, ação), concreto e fácil de gravar, em uma frase.
-- "title": título interno do vídeo (até 70 caracteres). "caption": legenda para publicar. "hashtags": sem o "#".${i.personaBrief ? `
-
-PERSONA QUE VAI ASSISTIR (fale com ela, no jeito dela):
-${i.personaBrief}
+- "title": título interno do vídeo (até 70 caracteres). "caption": legenda para publicar, que complementa a fala (não a repete) e fecha com a mesma ação do vídeo. "hashtags": sem o "#".
+- FALA DE VERDADE: escreva como a pessoa fala olhando para a câmera, em português do Brasil do dia a dia: "a gente", "pra", "tá", frases de 4 a 12 palavras, uma ideia por frase, sem ponto e vírgula, sem parênteses e sem palavras de texto escrito ("ademais", "contudo", "visto que", "nesse sentido"). Leia em voz alta mentalmente: se travar, reescreva.
+- GANCHO: a primeira frase já é a cena ou a contradição (quem, onde, o que aconteceu). Nada de "Você sabia…?", "Deixa eu te contar", "Presta atenção", "E aí tudo muda" nem pergunta genérica.
+- CTA: a parte final pede UMA ação só. Se o conteúdo traz uma CTA (ex.: a CTA da ideia ou um pedido do material), use essa ação e esse destinatário, em fala natural; não troque por "me segue", "deixa o like" ou "comenta aí".
+- "on_screen" reforça a fala com outra informação curta (a palavra-chave, a contradição, o passo), não a mesma frase.${isIdea ? `
 
 COMO USAR A IDEIA DE CONTEÚDO (o conteúdo-fonte é uma ideia estruturada: dor, impacto, causa, guia, argumentos, ganho, desejo, CTA)
 - Distribua a história pelas partes do formato, com começo, meio e fim claros. Ex.: abertura = a dor em cena; partes do meio = o impacto, a causa explicada passo a passo e os argumentos (só os mais fortes, desenvolvidos; veja a regra abaixo); parte final = ganho, desejo e CTA. Se o formato tem poucas partes, comprima, mas preserve esse arco.
 - DIDÁTICO: explique como para um amigo que não entende do assunto. Cada frase leva à próxima (porque, por isso, aí, então). Termo difícil: explique na hora ou troque.
-- OS ARGUMENTOS NO MEIO: os argumentos da ideia NÃO são um passo a passo: são razões que sustentam a solução da dor. Você NÃO precisa usar todos. Escolha o argumento (ou, no máximo, dois ou três) mais forte e mais fácil de entender para quem assiste e DESENVOLVA-O como uma pequena história ligada à causa que acabou de explicar: mostre POR QUE ele sustenta a solução, com uma situação concreta (uma pessoa, um momento, o que ela faz e o que muda na prática), ligando as frases (por isso, então, assim, aí). NÃO enumere os argumentos em fila nem os transforme em lista de ações no infinitivo ("Começar…, ligar…, aproximar…"). Evite verbos vagos (aproximar, acompanhar, fortalecer, conectar, engajar) sem dizer o que acontece de verdade. Se der um exemplo que não está na ideia, apresente-o como exemplo ("imagina um jovem que…"), sem nomes reais, números nem datas.
-- CONCRETO: nada de abstrações soltas (transparência, repasse, sistema, equidade). Mostre ações e situações do dia a dia desta persona, com as palavras que ela usa.
-- O GUIA é só bússola: não narre a metáfora do guia nem diga "valor" ou "enquadramento". Só use imagem que seja do universo da persona.
-- NÃO invente números, valores nem datas: use só os que estão na ideia; sem dado, fale em termos qualitativos.` : ''}`;
+- OS ARGUMENTOS NO MEIO: os argumentos da ideia NÃO são um passo a passo: são razões que sustentam a solução da dor. Você NÃO precisa usar todos. Escolha o argumento (ou, no máximo, dois) mais forte e mais fácil de entender para quem assiste e DESENVOLVA-O como uma pequena história ligada à causa que acabou de explicar: mostre POR QUE ele sustenta a solução, com uma situação concreta (uma pessoa, um momento, o que ela faz e o que muda na prática), ligando as frases (por isso, então, assim, aí). NÃO enumere os argumentos em fila nem os transforme em lista de ações no infinitivo ("Começar…, ligar…, aproximar…"). Evite verbos vagos (aproximar, acompanhar, fortalecer, conectar, engajar) sem dizer o que acontece de verdade. Se der um exemplo que não está na ideia, apresente-o como exemplo ("imagina um jovem que…"), sem nomes reais, números nem datas.
+- CONCRETO: nada de abstrações soltas (transparência, repasse, sistema, equidade). Mostre ações e situações do dia a dia de quem assiste, com as palavras que essa pessoa usa.
+- QUEM ASSISTE: com persona, fale com ela. Sem persona ("público geral"), conte a cena em terceira pessoa ("um jovem que…") e, na parte final, fale direto com quem a CTA da ideia convoca (ex.: quem tem ou trabalha numa empresa).
+- O GUIA é só bússola: não narre a metáfora do guia nem diga "valor" ou "enquadramento". Só use imagem que seja do universo de quem assiste.
+- NÃO invente números, valores nem datas: use só os que estão na ideia; sem dado, fale em termos qualitativos.` : ''}${i.personaBrief ? `
+
+PERSONA QUE VAI ASSISTIR (fale com ela, no jeito dela):
+${i.personaBrief}` : ''}`;
   const ideaText = `IDEIA DESTE VÍDEO\nTítulo: ${i.idea.title}\nÂngulo: ${i.idea.angle}${i.idea.points.length ? `\nPontos a usar:\n${i.idea.points.map((p) => `- ${p}`).join('\n')}` : ''}`;
   try {
     const res = await new Anthropic().beta.messages.create({
