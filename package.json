@@ -8,6 +8,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx db/seed.ts",
     "org:create": "tsx scripts/create-org.ts",
+    "ai:eval": "tsx scripts/eval-ai.ts",
     "start": "next start"
   },
   "dependencies": {
