@@ -60,11 +60,13 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
         {step === 'ask' ? (
           <>
             <div className="pe-modal-body">
-              <div className="vd-segmented" role="radiogroup" aria-label="Por onde começar" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
-                <button type="button" role="radio" aria-checked={from === 'persona'} className={from === 'persona' ? 'on' : ''} onClick={() => setFrom('persona')}>Partir da persona</button>
-                <button type="button" role="radio" aria-checked={from === 'territory'} className={from === 'territory' ? 'on' : ''} onClick={() => setFrom('territory')}>Partir do território</button>
+              <div className="field">
+                <label>Por onde começar?</label>
+                <div className="tr-choices" role="radiogroup" aria-label="Por onde começar">
+                  <button type="button" role="radio" aria-checked={from === 'persona'} className={`tr-choice${from === 'persona' ? ' on' : ''}`} onClick={() => setFrom('persona')}><b>Por quem vai ler</b><small>Você já sabe com quem quer falar. Escolha a persona; o tema é opcional. Bom para criar ideias variadas para o mesmo público.</small></button>
+                  <button type="button" role="radio" aria-checked={from === 'territory'} className={`tr-choice${from === 'territory' ? ' on' : ''}`} onClick={() => setFrom('territory')}><b>Por um tema do mapa</b><small>Você tem um assunto (até um debate amplo, como desemprego jovem). Escolha o tema e depois a persona para quem a IA vai traduzi-lo no dia a dia.</small></button>
+                </div>
               </div>
-              <p className="muted" style={{ margin: '-4px 0 0' }}>{from === 'persona' ? 'Escolha a pessoa e o tema que ela já enxerga (ou qualquer outro do mapa).' : 'Escolha o tema (por exemplo, um debate macro) e depois a persona para quem vamos traduzi-lo.'}</p>
               {(from === 'persona' ? ['persona', 'territory'] : ['territory', 'persona']).map((k) => k === 'persona' ? (
                 <div className="field" key="p">
                   <label htmlFor="ip">Persona</label>
@@ -94,10 +96,10 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
               </div>
               <div className="field">
                 <label>{count === 1 ? 'Objetivo desta ideia' : 'Objetivo destas ideias'}</label>
-                <div className="vd-chips" role="radiogroup" aria-label={count === 1 ? 'Objetivo desta ideia' : 'Objetivo destas ideias'}>
-                  {IDEA_OBJECTIVES.map((o) => <button key={o.id} type="button" role="radio" aria-checked={objective === o.id} className={`vd-chip${objective === o.id ? ' on' : ''}`} onClick={() => setObjective(o.id)} title={o.hint}>{o.label}</button>)}
+                <div className="tr-choices" role="radiogroup" aria-label={count === 1 ? 'Objetivo desta ideia' : 'Objetivo destas ideias'}>
+                  {IDEA_OBJECTIVES.map((o) => <button key={o.id} type="button" role="radio" aria-checked={objective === o.id} className={`tr-choice${objective === o.id ? ' on' : ''}`} onClick={() => setObjective(o.id)}><b>{o.label}</b><small>{o.desc}</small></button>)}
                 </div>
-                <small className="muted">{IDEA_OBJECTIVES.find((o) => o.id === objective)?.hint}. É o que a CTA vai pedir {count === 1 ? 'à pessoa' : 'às pessoas'}.</small>
+                <small className="muted">É o que a CTA da ideia vai pedir {count === 1 ? 'à pessoa' : 'às pessoas'}.</small>
               </div>
               <details className="vd-more">
                 <summary>Instruções extras <span className="muted">(opcional)</span></summary>
