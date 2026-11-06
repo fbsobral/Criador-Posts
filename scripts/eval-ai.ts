@@ -3,7 +3,7 @@
  * Gera carrossel, roteiro de vídeo e artigo a partir de ideias de exemplo, mostra o resultado
  * e aplica checagens automáticas de craft. Serve para afinar os prompts em ciclos: rodar, ler, ajustar, rodar de novo.
  *
- *   ANTHROPIC_API_KEY=... npx tsx scripts/eval-ai.ts [carrossel|video|artigo|all] [--case N]
+ *   ANTHROPIC_API_KEY=... (ou EVAL_ANTHROPIC_API_KEY=...) npx tsx scripts/eval-ai.ts [carrossel|video|artigo|all] [--case N]
  *
  * Os casos cobrem ideia sem persona, ideia com persona e território, tema livre e material colado,
  * e o roteiro alterna entre um formato de 3 partes e outro de 5. As entradas imitam o que o app envia.
@@ -23,6 +23,14 @@ import { countWords, plainText, reviewArticle } from '../lib/substack';
 import { allocate, wordsFor } from '../lib/video';
 import { IDEA_INSTRUCTIONS, ideaAngle, ideaBrief, ideaPoints, ideaTitle, type IdeaFields } from '../lib/idea';
 import type { PersonaData } from '../lib/persona';
+
+// Em sessões do Claude Code, ANTHROPIC_API_KEY é retirada dos comandos (é o nome que o próprio Claude Code usa).
+// Para testar, salve a chave do app como EVAL_ANTHROPIC_API_KEY. Ela vira a chave do SDK aqui, e o
+// ANTHROPIC_BASE_URL da sessão é ignorado, para as chamadas irem direto à API com a chave do app.
+if (process.env.EVAL_ANTHROPIC_API_KEY) {
+  process.env.ANTHROPIC_API_KEY = process.env.EVAL_ANTHROPIC_API_KEY;
+  delete process.env.ANTHROPIC_BASE_URL;
+}
 
 const brand: BrandProfile = {
   brandName: 'D.C.T-Youths', niche: 'Mentoria e primeiro emprego para jovens de bairros com poucas oportunidades', audience: 'Jovens de 16 a 24 anos, empresas parceiras e mentores voluntários',
@@ -155,7 +163,7 @@ async function artigo(c: Case) {
 }
 
 (async () => {
-  if (!process.env.ANTHROPIC_API_KEY) { console.error('Defina ANTHROPIC_API_KEY (este script faz chamadas reais).'); process.exit(1); }
+  if (!process.env.ANTHROPIC_API_KEY) { console.error('Defina ANTHROPIC_API_KEY ou EVAL_ANTHROPIC_API_KEY (este script faz chamadas reais).'); process.exit(1); }
   const what = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : 'all';
   const ci = process.argv.indexOf('--case'); const only = ci > 0 ? Number(process.argv[ci + 1]) : null;
   const cases = CASES.filter((_, i) => only === null || i === only);
