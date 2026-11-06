@@ -41,7 +41,8 @@ const brand: BrandProfile = {
 type Persona = { name: string; tagline: string; role: string; data: PersonaData };
 type VideoFormat = { name: string; parts: { id: string; name: string; instruction: string; percent: number }[] };
 /** kind: de onde o conteúdo parte, como no app (ideia de conteúdo, tema livre ou material colado). */
-type Case = { name: string; kind: 'ideia' | 'tema' | 'material'; persona: Persona | null; territory: string; idea?: IdeaFields; text?: string; videoFormat: 'curto' | 'longo'; seconds: number };
+/** channels: a CTA padrão com canais por público, como a organização preencheria; expect: o canal que o texto deve citar. Sem channels, o texto não pode citar canal nenhum. */
+type Case = { name: string; kind: 'ideia' | 'tema' | 'material'; persona: Persona | null; territory: string; idea?: IdeaFields; text?: string; videoFormat: 'curto' | 'longo'; seconds: number; channels?: string; expect?: RegExp };
 
 const SHELTON: Persona = {
   name: 'Shelton', tagline: 'Recém-formado que manda currículo todo dia e ouve que falta experiência', role: 'Jovem em busca do primeiro emprego',
@@ -109,6 +110,7 @@ const CASES: Case[] = [
   },
   {
     name: 'material-encontro-mentores', kind: 'material', persona: null, territory: '', videoFormat: 'longo', seconds: 60,
+    channels: 'Empresas parceiras: WhatsApp (11) 4000-0000. Quem quer ser mentor voluntário: formulário no link da bio. Jovens: mensagem no direct.', expect: /link na bio|formul[áa]rio/i,
     text: `Anotações do encontro de mentores (sábado, sede da organização)
 
 - Abrimos com a pergunta: o que vocês queriam ter ouvido no primeiro emprego? A Carla (mentora, analista de RH) disse que queria ter ouvido que errar no começo é esperado, e que o problema é esconder o erro.
@@ -120,6 +122,7 @@ const CASES: Case[] = [
   },
   {
     name: 'rh-persona-empresa', kind: 'ideia', persona: MARTA, territory: 'Empresas parceiras', videoFormat: 'curto', seconds: 45,
+    channels: 'Empresas parceiras: WhatsApp (11) 4000-0000. Quem quer ser mentor voluntário: formulário no link da bio. Jovens: mensagem no direct.', expect: /whats/i,
     idea: {
       pain: 'A empresa abre vaga de estágio, investe semanas no treinamento e o jovem sai antes de completar três meses.',
       impact: 'A equipe se cansa de treinar gente nova, a diretoria passa a ver o programa de jovens como desperdício e a vaga volta para o mural.',
@@ -144,6 +147,17 @@ const NOT_X_IS_Y = /(?<![\wà-ú])n[ãa]o (?:[ée]|foi|era)(?![\wà-ú])[^.!?;:]
 const tics = (t: string) => (t.match(NOT_X_IS_Y) ?? []).length;
 const personaLeak = (c: Case, t: string) => !!c.persona && new RegExp(`\\b${c.persona.name}\\b`).test(t);
 const CTA_END = /\b(mand\w*|fal\w*|convers[ae] com|cham\w*|envi\w*|compartilh\w*|marc\w*|escrev\w*|respond\w*|ser mentor)\b/i;
+const brandOf = (c: Case): BrandProfile => ({ ...brand, cta: c.channels ?? brand.cta, audience: c.persona ? '' : brand.audience });
+const CHANNEL = /\b(direct|dm|whats\w*|link na bio|na bio|formul[áa]rio|telefone|site)\b/i;
+const channelCheck = (c: Case, t: string) => (c.expect ? flag(c.expect.test(t), 'Canal certo para o público', (t.match(CHANNEL) ?? ['nenhum'])[0]) : flag(!CHANNEL.test(t), 'Sem canal inventado', (t.match(CHANNEL) ?? ['nenhum'])[0]));
+/** Números e horas que não estão na fonte (idade, horário, prazo inventados). */
+const HOURS = /\b(?:seis|sete|oito|nove|dez|onze|meio-dia)(?: e (?:meia|quinze|vinte|quarenta))?(?: da (?:manh[ãa]|noite|tarde))\b|\b\d{1,2}h\d{0,2}\b/gi;
+const invented = (c: Case, t: string) => {
+  t = t.replace(/^\s*\d+[.)]\s/gm, ''); // numeração de lista não é dado
+  const src = `${c.text ?? ''} ${JSON.stringify(c.idea ?? {})} ${JSON.stringify(c.persona ?? {})} ${c.channels ?? ''}`;
+  const nums = [...new Set(t.match(/\b\d+\b/g) ?? [])].filter((n) => !src.includes(n));
+  return [...nums, ...(t.match(HOURS) ?? [])];
+};
 const GENERIC_CTA = /(siga a p[aá]gina|siga (o perfil|a gente|n[oó]s)|ative o sininho|deixe seu like|curta e compartilhe)/i;
 
 function report(file: string, md: string) { mkdirSync('eval-out', { recursive: true }); writeFileSync(`eval-out/${file}.md`, md); console.log(`\n=== ${file} ===\n${md}`); }
@@ -153,13 +167,13 @@ async function carrossel(c: Case) {
   // como no app: ideia → modo "ideia" (com a persona no bloco e o público da marca omitido); tema → modo "tema"; material → tema + fatos permitidos
   const r = await generatePost({
     editor: 'carrossel', mode: c.kind === 'ideia' ? 'ideia' : 'tema', brief: c.kind === 'ideia' ? ideaOf(c) : c.kind === 'tema' ? c.text! : 'Um carrossel a partir do material abaixo (anotações de um encontro).',
-    slidesTarget: 0, facts: c.kind === 'material' ? c.text! : '', instructions: '', angle: 'auto', plan: null, brand: c.persona ? { ...brand, audience: '' } : brand,
+    slidesTarget: 0, facts: c.kind === 'material' ? c.text! : '', instructions: '', angle: 'auto', plan: null, brand: brandOf(c),
   });
   const slides = r.slides as { format?: string; html?: string }[];
   const texts = slides.map((s, i) => `**${i + 1}. [${s.format}]** ${plainText(String(s.html ?? '').replace(/<\/(h2|p|li)>/g, '\n'))}`);
   const rev = reviewCarousel(slides);
   const all = slides.map((s) => plainText(String(s.html ?? ''))).join(' ');
-  const checks = [...rev.map((x) => flag(x.ok, x.label, x.detail)), flag(!CLICHES.test(all), 'Sem clichês de IA'), flag(!TEASE.test(all), 'Sem ganchos vazios'), flag(!GENERIC_CTA.test(all), 'Sem CTA genérica'), flag(new Set(slides.map((s) => s.format)).size >= 4, 'Variedade de formatos (3+ além da capa)', [...new Set(slides.map((s) => s.format))].join(', ')), flag(!CLICHES.test(r.caption), 'Legenda sem clichês'), flag(tics(`${all} ${r.caption}`) <= 1, '"Não é X, é Y" no máximo 1x', `${tics(`${all} ${r.caption}`)}x`), flag(!personaLeak(c, `${all} ${r.caption}`), 'Sem o nome interno da persona')];
+  const checks = [...rev.map((x) => flag(x.ok, x.label, x.detail)), flag(!CLICHES.test(all), 'Sem clichês de IA'), flag(!TEASE.test(all), 'Sem ganchos vazios'), flag(!GENERIC_CTA.test(all), 'Sem CTA genérica'), flag(new Set(slides.map((s) => s.format)).size >= 4, 'Variedade de formatos (3+ além da capa)', [...new Set(slides.map((s) => s.format))].join(', ')), flag(!CLICHES.test(r.caption), 'Legenda sem clichês'), flag(tics(`${all} ${r.caption}`) <= 1, '"Não é X, é Y" no máximo 1x', `${tics(`${all} ${r.caption}`)}x`), flag(!personaLeak(c, `${all} ${r.caption}`), 'Sem o nome interno da persona'), channelCheck(c, `${all} ${r.caption}`), flag(!invented(c, `${all} ${r.caption}`).length, 'Sem número/horário inventado', invented(c, `${all} ${r.caption}`).join(', '))];
   report(`carrossel-${c.name}`, `# Carrossel · ${c.name}\n\n**Título:** ${r.title}\n\n## Slides\n\n${texts.join('\n\n')}\n\n## Capas alternativas\n${r.coverOptions.map((x) => `- ${x}`).join('\n')}\n\n## Legenda\n${r.caption}\n\n## Notas\n${r.notes.map((n) => `- ${n}`).join('\n')}\n\n## Checagens\n${checks.join('\n')}\n\n${track('carrossel', r.inputTokens, r.outputTokens)}\n`);
 }
 
@@ -171,10 +185,10 @@ async function video(c: Case) {
   const idea = c.kind === 'ideia'
     ? { title: ideaTitle(c.idea!.pain), angle: ideaAngle(c.idea!), points: ideaPoints(c.idea!) }
     : { title: c.kind === 'tema' ? c.text!.slice(0, 120) : 'O que os mentores aprenderam com a primeira semana de trabalho dos jovens', angle: c.kind === 'tema' ? 'Mostrar que pedir ajuda bem feito é sinal de profissionalismo, não de fraqueza.' : 'A maior dúvida do jovem no primeiro emprego não é técnica; uma mensagem do mentor na hora certa muda o desfecho.', points: [] as string[] };
-  const r = await generateVideoScript({ content, format, seconds, platform: 'all', instructions: c.kind === 'ideia' ? IDEA_INSTRUCTIONS : '', brand, idea, personaBrief: personaBriefOf(c.persona) });
+  const r = await generateVideoScript({ content, format, seconds, platform: 'all', instructions: c.kind === 'ideia' ? IDEA_INSTRUCTIONS : '', brand: brandOf(c), idea, personaBrief: personaBriefOf(c.persona) });
   const body = r.data.parts.map((p, i) => `**${p.name}** (${secs[i]}s, máx ~${wordsFor(secs[i])} palavras · fala tem ${countWords(p.speech)})\n- Fala: ${p.speech}\n- Tela: ${p.onScreen}\n- Visual: ${p.visual}`).join('\n\n');
   const all = r.data.parts.map((p) => p.speech).join(' ');
-  const checks = [...r.data.parts.map((p, i) => flag(countWords(p.speech) <= wordsFor(secs[i]) + 3, `${p.name} cabe no tempo`, `${countWords(p.speech)}/${wordsFor(secs[i])} palavras`)), flag(!CLICHES.test(all), 'Sem clichês'), flag(!TEASE.test(all), 'Sem ganchos vazios'), flag(!GENERIC_CTA.test(all), 'Sem CTA genérica'), flag(!CLICHES.test(r.data.caption), 'Legenda sem clichês'), flag(CTA_END.test(r.data.caption.trim().split('\n').filter(Boolean).pop() ?? ''), 'Legenda termina com a ação'), flag(tics(`${all} ${r.data.caption}`) <= 1, '"Não é X, é Y" no máximo 1x', `${tics(`${all} ${r.data.caption}`)}x`), flag(!personaLeak(c, `${all} ${r.data.caption}`), 'Sem o nome interno da persona')];
+  const checks = [...r.data.parts.map((p, i) => flag(countWords(p.speech) <= wordsFor(secs[i]) + 3, `${p.name} cabe no tempo`, `${countWords(p.speech)}/${wordsFor(secs[i])} palavras`)), flag(!CLICHES.test(all), 'Sem clichês'), flag(!TEASE.test(all), 'Sem ganchos vazios'), flag(!GENERIC_CTA.test(all), 'Sem CTA genérica'), flag(!CLICHES.test(r.data.caption), 'Legenda sem clichês'), flag(CTA_END.test(r.data.caption.trim().split('\n').filter(Boolean).pop() ?? ''), 'Legenda termina com a ação'), flag(tics(`${all} ${r.data.caption}`) <= 1, '"Não é X, é Y" no máximo 1x', `${tics(`${all} ${r.data.caption}`)}x`), flag(!personaLeak(c, `${all} ${r.data.caption}`), 'Sem o nome interno da persona'), channelCheck(c, `${all} ${r.data.caption}`), flag(!invented(c, `${all} ${r.data.caption}`).length, 'Sem número/horário inventado', invented(c, `${all} ${r.data.caption}`).join(', '))];
   report(`video-${c.name}`, `# Roteiro · ${c.name} (${format.name}, ${seconds}s)\n\n**Título:** ${r.title}\n\n${body}\n\n## Legenda\n${r.data.caption}\n${r.data.hashtags.map((h) => `#${h}`).join(' ')}\n\n## Notas\n${r.data.notes.map((n) => `- ${n}`).join('\n')}\n\n## Checagens\n${checks.join('\n')}\n\n${track('vídeo', r.inputTokens, r.outputTokens)}\n`);
 }
 
@@ -186,9 +200,9 @@ const SOURCE_LABEL = {
 } as const;
 
 async function artigo(c: Case) {
-  const a = await writeArticle({ source: { label: SOURCE_LABEL[c.kind], text: c.kind === 'ideia' ? ideaOf(c) : c.text! }, angle: 'auto', length: c.kind === 'tema' ? 'curto' : 'medio', instructions: '', brand, plan: null });
+  const a = await writeArticle({ source: { label: SOURCE_LABEL[c.kind], text: c.kind === 'ideia' ? ideaOf(c) : c.text! }, angle: 'auto', length: c.kind === 'tema' ? 'curto' : 'medio', instructions: '', brand: brandOf(c), plan: null });
   const rev = reviewArticle(a);
-  const checks = [...rev.map((x) => flag(x.ok, x.label, x.detail)), flag(!CLICHES.test(a.body), 'Sem clichês de IA'), flag(!GENERIC_CTA.test(a.body), 'Sem CTA genérica'), flag(tics(a.body) <= 2, '"Não é X, é Y" no máximo 2x', `${tics(a.body)}x`), flag(!personaLeak(c, `${a.title} ${a.body}`), 'Sem o nome interno da persona')];
+  const checks = [...rev.map((x) => flag(x.ok, x.label, x.detail)), flag(!CLICHES.test(a.body), 'Sem clichês de IA'), flag(!GENERIC_CTA.test(a.body), 'Sem CTA genérica'), flag(tics(a.body) <= 2, '"Não é X, é Y" no máximo 2x', `${tics(a.body)}x`), flag(!personaLeak(c, `${a.title} ${a.body}`), 'Sem o nome interno da persona'), flag(!invented(c, a.body).length, 'Sem número/horário inventado', invented(c, a.body).join(', ')), ...(c.expect ? [flag(c.expect.test(a.body) || /respond\w* (a )?este e-mail/i.test(a.body), 'Canal certo (ou responder o e-mail)')] : [])];
   report(`artigo-${c.name}`, `# Artigo · ${c.name}\n\n**Estratégia:** ${a.strategy}\n\n# ${a.title}\n*${a.subtitle}*\n\n${a.body}\n\n---\n## Publicação\n- Assunto: ${a.meta.emailSubject}\n- Prévia: ${a.meta.previewText}\n- SEO: ${a.meta.seoDescription}\n- Tags: ${a.meta.tags.join(', ')}\n${a.meta.notes.map((n, i) => `- Note ${i + 1}: ${n}`).join('\n')}\n\n## A conferir\n${a.meta.toVerify.map((n) => `- ${n}`).join('\n')}\n\n## Checagens\n${checks.join('\n')}\n\n${track('artigo', a.inputTokens, a.outputTokens)}\n`);
 }
 

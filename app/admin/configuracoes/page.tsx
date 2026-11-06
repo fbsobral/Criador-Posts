@@ -71,7 +71,9 @@ export default async function SettingsPage() {
           </label>
           <label className="field">Tom de voz<textarea name="aiVoice" defaultValue={s.aiVoice} disabled={ro} rows={2} placeholder="Ex.: direto, didático, sem jargão, um pouco irônico" /></label>
           <label className="field">Regras (o que sempre ou nunca fazer)<textarea name="aiRules" defaultValue={s.aiRules} disabled={ro} rows={3} placeholder={'Ex.: nunca prometer ganho garantido; sempre explicar siglas; não usar emojis'} /></label>
-          <label className="field">Chamada para ação (CTA) padrão<input name="aiCta" defaultValue={s.aiCta} disabled={ro} placeholder="Ex.: Siga @suamarca e salve este post" /></label>
+          <label className="field">Chamada para ação (CTA) padrão e canais de contato<textarea name="aiCta" defaultValue={s.aiCta} disabled={ro} rows={3} maxLength={600} placeholder={'Ex.: Empresas: falar com a gente pelo WhatsApp (11) 4000-0000. Quem quer ser voluntário: formulário no link da bio. Jovens: mandar mensagem no direct.'} />
+            <small className="muted">Diga por onde cada público fala com vocês. A IA só cita um canal (direct, WhatsApp, link na bio, site) se ele estiver aqui; sem canal, a chamada sai sem canal (&quot;fale com a gente&quot;). Quando o post nasce de uma ideia, a CTA da ideia diz <b>a ação</b> e este campo diz <b>por onde</b>.</small>
+          </label>
           <h2 style={{ marginTop: 6 }}>Briefing de imagens (Nano Banana)</h2>
           <p className="muted" style={{ marginTop: -10 }}>Funciona como o tom de voz dos textos: a identidade visual da marca, usada em <b>toda</b> imagem gerada. Cada post pode ter um briefing próprio, que é somado a este (o do post prevalece em caso de conflito).</p>
           <label className="field">Briefing visual da marca<textarea name="aiImageStyle" defaultValue={s.aiImageStyle} disabled={ro} rows={5} maxLength={1500} placeholder={'Ex.: fotografia editorial realista, luz natural, tons quentes (âmbar, terracota, bege), pouca profundidade de campo, composição limpa com espaço para texto. Evitar: pessoas identificáveis, bandeiras, dinheiro vivo, estilo cartoon.'} /></label>

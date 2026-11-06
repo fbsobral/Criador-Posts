@@ -85,7 +85,7 @@ const clean = (s: unknown, max = 400) => (typeof s === 'string' ? s.trim().slice
 export function brandBlock(b: BrandProfile): string {
   const lines = [
     ['Marca', b.brandName], ['O que a organização faz', b.about ?? ''], ['Nicho', b.niche], ['Público', b.audience], ['Tom de voz', b.voice],
-    ['Regras (o que sempre/nunca fazer)', b.rules], ['Chamada para ação (CTA) padrão', b.cta], ['Regras das legendas', b.captionRules ?? ''],
+    ['Regras (o que sempre/nunca fazer)', b.rules], ['Chamada para ação (CTA) padrão e canais de contato', b.cta], ['Regras das legendas', b.captionRules ?? ''],
   ].filter(([, v]) => v.trim());
   let out = lines.map(([k, v]) => `- ${k}: ${v.trim()}`).join('\n');
   if (b.examples.trim()) out += `\n\nEXEMPLOS DE POSTS DESTA MARCA (imite o estilo, não copie o conteúdo):\n${b.examples.trim()}`;
@@ -115,6 +115,8 @@ export const STYLE_TICS = `VÍCIOS DE TEXTO DE IA (evite; o leitor percebe na ho
 - Isso inclui descrever as partes da solução como "peças", "frentes", "pilares" ou dizer que elas são independentes ou que "cada uma faz sentido sozinha".
 - Não copie frases dos campos do briefing ao pé da letra ("ver o bastão passado", "orgulho de se firmar", "responsabilidade de uns com os outros"): diga a mesma coisa com as palavras de quem lê, numa cena ou num fato.
 - Personagem: o mesmo do começo ao fim (mesmo gênero, mesma idade, mesma situação). Se abriu com "uma jovem", não vira "ele" depois.
+- DETALHES INVENTADOS: proibidos. Uma cena hipotética ("imagina um jovem que…") pode existir, mas só com o que está no briefing, na ideia, no perfil da persona ou no material: nada de idade, horário ("7h40", "oito e meia da noite"), prazo ("um ano depois", "três semanas"), lugar ("lan house", "segundo ônibus"), objeto ou fala que não veio de lá. Use ações comuns sem precisão inventada ("de manhã", "na primeira semana", "depois da primeira bronca"). Citações só se forem literais da fonte. Se a fonte não dá o detalhe, a cena fica mais simples, não inventada.
+- CANAL DE CONTATO: só cite um canal (direct, WhatsApp, e-mail, telefone, link na bio, site, formulário) se ele estiver em "Chamada para ação (CTA) padrão e canais de contato", nas regras da marca ou na fonte, e use o canal indicado para aquele público (o que vale para empresas não vale para voluntários). Sem canal informado, escreva a ação sem canal ("fale com a gente", "converse com a gente") e não invente um. A CTA da ideia diz a AÇÃO; o perfil da marca diz POR ONDE.
 - O QUE A ORGANIZAÇÃO FAZ: só afirme que a marca faz algo se isso estiver em "O que a organização faz" ou no material-fonte. Os argumentos de uma ideia são a PROPOSTA (o que funciona), não um relatório do que a organização já faz: mostre-os como o que acontece quando existe aquele apoio ("quando o jovem tem um mentor de fora, ele liga antes de desistir"), sem "Na [marca], o jovem faz X" com detalhes que não foram confirmados (série escolar, frequência, formato).
 - Não use os nomes internos do briefing: o nome da persona é um perfil de planejamento, não uma pessoa real nem um personagem (nunca escreva "Shelton" ou o nome que vier no perfil; fale com "você" ou crie um personagem genérico). Também não escreva "dor", "ganho", "desejo", "argumento", "guia" ou "enquadramento" como rótulos.`;
 
