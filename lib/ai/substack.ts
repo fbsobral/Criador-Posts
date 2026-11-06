@@ -40,7 +40,7 @@ ${STYLE_TICS}`;
 
 const FIELDS = `CAMPOS
 - "strategy": 2 a 3 frases (não aparece para o leitor): para quem é, a tese central, a emoção da abertura e o convite final.
-- "title": até 70 caracteres, específico, que gere curiosidade sem isca barata nem letras maiúsculas.
+- "title": até 70 caracteres contando espaços (passou disso, corte palavras), específico, que gere curiosidade sem isca barata nem letras maiúsculas.
 - "subtitle": 80 a 150 caracteres; completa o título com a promessa ou o ângulo.
 - "body": o artigo em Markdown (apenas ##, ###, **, *, >, listas e ---).
 - "email_subject": assunto do e-mail (até 60 caracteres), diferente do título.
