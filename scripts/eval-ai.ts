@@ -5,7 +5,7 @@
  *
  *   ANTHROPIC_API_KEY=... (ou EVAL_ANTHROPIC_API_KEY=...) npx tsx scripts/eval-ai.ts [carrossel|video|artigo|all] [--case N]
  *
- * Os casos cobrem ideia sem persona, ideia com persona jovem, ideia com persona de empresa (RH), tema livre e material colado,
+ * Casos (--case N): 0 ideia sem persona, 1 ideia com persona jovem, 2 tema livre, 3 material colado, 4 ideia com persona de empresa (RH);
  * e o roteiro alterna entre um formato de 3 partes e outro de 5. As entradas imitam o que o app envia.
  *
  * Os resultados ficam em eval-out/<alvo>-<caso>.md (fora do git).
@@ -104,19 +104,6 @@ const CASES: Case[] = [
     },
   },
   {
-    name: 'rh-persona-empresa', kind: 'ideia', persona: MARTA, territory: 'Empresas parceiras', videoFormat: 'curto', seconds: 45,
-    idea: {
-      pain: 'A empresa abre vaga de estágio, investe semanas no treinamento e o jovem sai antes de completar três meses.',
-      impact: 'A equipe se cansa de treinar gente nova, a diretoria passa a ver o programa de jovens como desperdício e a vaga volta para o mural.',
-      cause: 'O jovem chega sem saber as regras não escritas do trabalho e sem ninguém de fora com quem conversar quando algo dá errado. A empresa, sozinha, não tem tempo para fazer esse acompanhamento.',
-      guide: 'Parceria: ninguém precisa carregar o peso sozinho.',
-      args: 'O jovem chega depois de um treino prático de postura e comunicação.\nUm mentor voluntário de fora da empresa acompanha o jovem nos primeiros meses.\nA empresa conhece o jovem antes de contratar.',
-      gain: 'A vaga é preenchida por alguém que fica, e a equipe não precisa recomeçar o treinamento.',
-      desire: 'A gestora mostra para a diretoria um programa de jovens que deu certo.',
-      cta: 'Converse com a gente para receber jovens da próxima turma na sua empresa.',
-    },
-  },
-  {
     name: 'tema-pedir-ajuda', kind: 'tema', persona: null, territory: '', videoFormat: 'curto', seconds: 30,
     text: 'Como pedir ajuda no primeiro emprego sem parecer que não sabe nada.',
   },
@@ -130,6 +117,19 @@ const CASES: Case[] = [
 - Um mentor contou que o jovem dele quase pediu demissão depois de uma bronca do gerente. Conversaram por telefone à noite, ele entendeu que a bronca era sobre o prazo e não sobre ele, e no dia seguinte foi falar com o gerente. Continua no estágio.
 - Pedido para a próxima turma: precisamos de mais mentores que trabalhem em áreas administrativas e de tecnologia. O compromisso é de uma conversa a cada quinze dias, por seis meses.
 - Próximo encontro de formação de mentores: a definir.`,
+  },
+  {
+    name: 'rh-persona-empresa', kind: 'ideia', persona: MARTA, territory: 'Empresas parceiras', videoFormat: 'curto', seconds: 45,
+    idea: {
+      pain: 'A empresa abre vaga de estágio, investe semanas no treinamento e o jovem sai antes de completar três meses.',
+      impact: 'A equipe se cansa de treinar gente nova, a diretoria passa a ver o programa de jovens como desperdício e a vaga volta para o mural.',
+      cause: 'O jovem chega sem saber as regras não escritas do trabalho e sem ninguém de fora com quem conversar quando algo dá errado. A empresa, sozinha, não tem tempo para fazer esse acompanhamento.',
+      guide: 'Parceria: ninguém precisa carregar o peso sozinho.',
+      args: 'O jovem chega depois de um treino prático de postura e comunicação.\nUm mentor voluntário de fora da empresa acompanha o jovem nos primeiros meses.\nA empresa conhece o jovem antes de contratar.',
+      gain: 'A vaga é preenchida por alguém que fica, e a equipe não precisa recomeçar o treinamento.',
+      desire: 'A gestora mostra para a diretoria um programa de jovens que deu certo.',
+      cta: 'Converse com a gente para receber jovens da próxima turma na sua empresa.',
+    },
   },
 ];
 
