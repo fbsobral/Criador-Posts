@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { AI_MODEL, AiError, brandBlock, type BrandProfile } from './generate';
+import { AI_MODEL, AiError, STYLE_TICS, brandBlock, type BrandProfile } from './generate';
 import { MAX_CONTENT_CHARS, PLATFORMS, allocate, wordsFor, type Platform, type ScriptData, type VideoIdea, type VideoPart } from '../video';
 
 const PLATFORM_GUIDE: Record<Platform, string> = {
@@ -133,7 +133,11 @@ TAREFA: ESCREVER O ROTEIRO
 - FALA DE VERDADE: escreva como a pessoa fala olhando para a câmera, em português do Brasil do dia a dia: "a gente", "pra", "tá", frases de 4 a 12 palavras, uma ideia por frase, sem ponto e vírgula, sem parênteses e sem palavras de texto escrito ("ademais", "contudo", "visto que", "nesse sentido"). Leia em voz alta mentalmente: se travar, reescreva.
 - GANCHO: a primeira frase já é a cena ou a contradição (quem, onde, o que aconteceu). Nada de "Você sabia…?", "Deixa eu te contar", "Presta atenção", "E aí tudo muda" nem pergunta genérica.
 - CTA: a parte final pede UMA ação só. Se o conteúdo traz uma CTA (ex.: a CTA da ideia ou um pedido do material), use essa ação e esse destinatário, em fala natural; não troque por "me segue", "deixa o like" ou "comenta aí".
-- "on_screen" reforça a fala com outra informação curta (a palavra-chave, a contradição, o passo), não a mesma frase.${isIdea ? `
+- "on_screen" reforça a fala com outra informação curta (a palavra-chave, a contradição, o passo), não a mesma frase.
+- CONTINUIDADE: quem aparece na história é apresentado antes de ser retomado. Não escreva "os dois", "ele" ou "o mentor dele" sem antes ter mostrado quem é (ex.: "o mentor dele ligou à noite" só depois de dizer que ele tinha um mentor). Quem assiste não tem o conteúdo-fonte.
+- UMA ação só no fim (fala e legenda): não some "manda pra alguém" com "fala com a gente".
+
+${STYLE_TICS}${isIdea ? `
 
 COMO USAR A IDEIA DE CONTEÚDO (o conteúdo-fonte é uma ideia estruturada: dor, impacto, causa, guia, argumentos, ganho, desejo, CTA)
 - Distribua a história pelas partes do formato, com começo, meio e fim claros. Ex.: abertura = a dor em cena; partes do meio = o impacto, a causa explicada passo a passo e os argumentos (só os mais fortes, desenvolvidos; veja a regra abaixo); parte final = ganho, desejo e CTA. Se o formato tem poucas partes, comprima, mas preserve esse arco.

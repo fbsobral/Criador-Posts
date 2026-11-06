@@ -5,7 +5,7 @@
  *
  *   ANTHROPIC_API_KEY=... (ou EVAL_ANTHROPIC_API_KEY=...) npx tsx scripts/eval-ai.ts [carrossel|video|artigo|all] [--case N]
  *
- * Os casos cobrem ideia sem persona, ideia com persona e território, tema livre e material colado,
+ * Os casos cobrem ideia sem persona, ideia com persona jovem, ideia com persona de empresa (RH), tema livre e material colado,
  * e o roteiro alterna entre um formato de 3 partes e outro de 5. As entradas imitam o que o app envia.
  *
  * Os resultados ficam em eval-out/<alvo>-<caso>.md (fora do git).
@@ -65,6 +65,19 @@ const LONG: VideoFormat = { name: 'História em 5 tempos', parts: [
   { id: 'p5', name: 'Convite', instruction: 'O que muda e uma ação só.', percent: 15 },
 ] };
 
+const MARTA: Persona = {
+  name: 'Marta', tagline: 'Gerente de RH que já se decepcionou com estagiário e prefere contratar gente pronta', role: 'Gestora de RH de empresa de médio porte',
+  data: {
+    age: '41', role: 'Gerente de RH de uma rede regional de supermercados', location: 'Região metropolitana',
+    bio: 'Cuida da contratação de mais de cem pessoas por ano. Já abriu programa de estágio, viu metade dos jovens sair antes do fim e ouviu da diretoria que era dinheiro jogado fora.',
+    goals: ['Reduzir a rotatividade', 'Ter gente de confiança para as vagas de entrada', 'Mostrar resultado para a diretoria'],
+    pains: ['Estagiário que some sem avisar', 'Gastar semanas treinando quem sai em dois meses', 'Diretoria cética com programa de jovens'],
+    objections: ['Não tenho gente para ficar acompanhando estagiário', 'Já tentei e não deu certo'],
+    triggers: ['Casos de empresas parecidas', 'Algo que não dê trabalho extra para a equipe'],
+    channels: ['LinkedIn', 'Instagram', 'eventos de RH'], quote: 'Eu até quero dar a chance, mas não posso recomeçar a seleção a cada dois meses.',
+  },
+};
+
 const CASES: Case[] = [
   {
     name: 'estagio-publico-geral', kind: 'ideia', persona: null, territory: 'Pipeline de jovens talentos', videoFormat: 'curto', seconds: 45,
@@ -91,6 +104,19 @@ const CASES: Case[] = [
     },
   },
   {
+    name: 'rh-persona-empresa', kind: 'ideia', persona: MARTA, territory: 'Empresas parceiras', videoFormat: 'curto', seconds: 45,
+    idea: {
+      pain: 'A empresa abre vaga de estágio, investe semanas no treinamento e o jovem sai antes de completar três meses.',
+      impact: 'A equipe se cansa de treinar gente nova, a diretoria passa a ver o programa de jovens como desperdício e a vaga volta para o mural.',
+      cause: 'O jovem chega sem saber as regras não escritas do trabalho e sem ninguém de fora com quem conversar quando algo dá errado. A empresa, sozinha, não tem tempo para fazer esse acompanhamento.',
+      guide: 'Parceria: ninguém precisa carregar o peso sozinho.',
+      args: 'O jovem chega depois de um treino prático de postura e comunicação.\nUm mentor voluntário de fora da empresa acompanha o jovem nos primeiros meses.\nA empresa conhece o jovem antes de contratar.',
+      gain: 'A vaga é preenchida por alguém que fica, e a equipe não precisa recomeçar o treinamento.',
+      desire: 'A gestora mostra para a diretoria um programa de jovens que deu certo.',
+      cta: 'Converse com a gente para receber jovens da próxima turma na sua empresa.',
+    },
+  },
+  {
     name: 'tema-pedir-ajuda', kind: 'tema', persona: null, territory: '', videoFormat: 'curto', seconds: 30,
     text: 'Como pedir ajuda no primeiro emprego sem parecer que não sabe nada.',
   },
@@ -112,8 +138,11 @@ const personaBriefOf = (p: Persona | null) => (p ? `${personaBlock(p)}${p.data.q
 let spent = 0;
 const track = (label: string, i: number, o: number) => { const v = costUsd(i, o); spent += v; return `Tokens: ${i} entrada / ${o} saída · ~US$ ${v.toFixed(3)} (${label})`; };
 
-const CLICHES = /(no mundo de hoje|mergulh\w+|jornada|em suma|vale ressaltar|é importante destacar|você não vai acreditar|fica comigo até o final|descubra|você sabia)/i;
+const CLICHES = /(no mundo de hoje|mergulh\w+|jornada|em suma|vale ressaltar|é importante destacar|você não vai acreditar|fica comigo até o final|descubra|você sabia|mud(?:a|ou) tudo|faz toda a diferen[çc]a|a boa not[íi]cia|ningu[ée]m nasce sabendo|empurr[ãa]o que faltava|encurta\w* (?:o caminho|a estrada)|zona de conforto|aqui est[áa] o n[óo])/i;
 const TEASE = /(e a[ií] tudo muda|outro detalhe|tem um detalhe|aqui est[aá] o problema|n[aã]o [eé] a que todo mundo|mas tem mais|o que ningu[eé]m conta|spoiler)/i;
+const NOT_X_IS_Y = /(?<![\wà-ú])n[ãa]o (?:[ée]|foi|era)(?![\wà-ú])[^.!?;:]{1,70}[.,;]\s+(?:[ée]|foi|era)(?![\wà-ú])/gi;
+const tics = (t: string) => (t.match(NOT_X_IS_Y) ?? []).length;
+const personaLeak = (c: Case, t: string) => !!c.persona && new RegExp(`\\b${c.persona.name}\\b`).test(t);
 const GENERIC_CTA = /(siga a p[aá]gina|siga (o perfil|a gente|n[oó]s)|ative o sininho|deixe seu like|curta e compartilhe)/i;
 
 function report(file: string, md: string) { mkdirSync('eval-out', { recursive: true }); writeFileSync(`eval-out/${file}.md`, md); console.log(`\n=== ${file} ===\n${md}`); }
@@ -129,7 +158,7 @@ async function carrossel(c: Case) {
   const texts = slides.map((s, i) => `**${i + 1}. [${s.format}]** ${plainText(String(s.html ?? '').replace(/<\/(h2|p|li)>/g, '\n'))}`);
   const rev = reviewCarousel(slides);
   const all = slides.map((s) => plainText(String(s.html ?? ''))).join(' ');
-  const checks = [...rev.map((x) => flag(x.ok, x.label, x.detail)), flag(!CLICHES.test(all), 'Sem clichês de IA'), flag(!TEASE.test(all), 'Sem ganchos vazios'), flag(!GENERIC_CTA.test(all), 'Sem CTA genérica'), flag(new Set(slides.map((s) => s.format)).size >= 3, 'Variedade de formatos', [...new Set(slides.map((s) => s.format))].join(', '))];
+  const checks = [...rev.map((x) => flag(x.ok, x.label, x.detail)), flag(!CLICHES.test(all), 'Sem clichês de IA'), flag(!TEASE.test(all), 'Sem ganchos vazios'), flag(!GENERIC_CTA.test(all), 'Sem CTA genérica'), flag(new Set(slides.map((s) => s.format)).size >= 4, 'Variedade de formatos (3+ além da capa)', [...new Set(slides.map((s) => s.format))].join(', ')), flag(!CLICHES.test(r.caption), 'Legenda sem clichês'), flag(tics(`${all} ${r.caption}`) <= 1, '"Não é X, é Y" no máximo 1x', `${tics(`${all} ${r.caption}`)}x`), flag(!personaLeak(c, `${all} ${r.caption}`), 'Sem o nome interno da persona')];
   report(`carrossel-${c.name}`, `# Carrossel · ${c.name}\n\n**Título:** ${r.title}\n\n## Slides\n\n${texts.join('\n\n')}\n\n## Capas alternativas\n${r.coverOptions.map((x) => `- ${x}`).join('\n')}\n\n## Legenda\n${r.caption}\n\n## Notas\n${r.notes.map((n) => `- ${n}`).join('\n')}\n\n## Checagens\n${checks.join('\n')}\n\n${track('carrossel', r.inputTokens, r.outputTokens)}\n`);
 }
 
@@ -144,7 +173,7 @@ async function video(c: Case) {
   const r = await generateVideoScript({ content, format, seconds, platform: 'all', instructions: c.kind === 'ideia' ? IDEA_INSTRUCTIONS : '', brand, idea, personaBrief: personaBriefOf(c.persona) });
   const body = r.data.parts.map((p, i) => `**${p.name}** (${secs[i]}s, máx ~${wordsFor(secs[i])} palavras · fala tem ${countWords(p.speech)})\n- Fala: ${p.speech}\n- Tela: ${p.onScreen}\n- Visual: ${p.visual}`).join('\n\n');
   const all = r.data.parts.map((p) => p.speech).join(' ');
-  const checks = [...r.data.parts.map((p, i) => flag(countWords(p.speech) <= wordsFor(secs[i]) + 3, `${p.name} cabe no tempo`, `${countWords(p.speech)}/${wordsFor(secs[i])} palavras`)), flag(!CLICHES.test(all), 'Sem clichês'), flag(!TEASE.test(all), 'Sem ganchos vazios'), flag(!GENERIC_CTA.test(all), 'Sem CTA genérica')];
+  const checks = [...r.data.parts.map((p, i) => flag(countWords(p.speech) <= wordsFor(secs[i]) + 3, `${p.name} cabe no tempo`, `${countWords(p.speech)}/${wordsFor(secs[i])} palavras`)), flag(!CLICHES.test(all), 'Sem clichês'), flag(!TEASE.test(all), 'Sem ganchos vazios'), flag(!GENERIC_CTA.test(all), 'Sem CTA genérica'), flag(!CLICHES.test(r.data.caption), 'Legenda sem clichês'), flag(tics(`${all} ${r.data.caption}`) <= 1, '"Não é X, é Y" no máximo 1x', `${tics(`${all} ${r.data.caption}`)}x`), flag(!personaLeak(c, `${all} ${r.data.caption}`), 'Sem o nome interno da persona')];
   report(`video-${c.name}`, `# Roteiro · ${c.name} (${format.name}, ${seconds}s)\n\n**Título:** ${r.title}\n\n${body}\n\n## Legenda\n${r.data.caption}\n${r.data.hashtags.map((h) => `#${h}`).join(' ')}\n\n## Notas\n${r.data.notes.map((n) => `- ${n}`).join('\n')}\n\n## Checagens\n${checks.join('\n')}\n\n${track('vídeo', r.inputTokens, r.outputTokens)}\n`);
 }
 
@@ -158,7 +187,7 @@ const SOURCE_LABEL = {
 async function artigo(c: Case) {
   const a = await writeArticle({ source: { label: SOURCE_LABEL[c.kind], text: c.kind === 'ideia' ? ideaOf(c) : c.text! }, angle: 'auto', length: c.kind === 'tema' ? 'curto' : 'medio', instructions: '', brand, plan: null });
   const rev = reviewArticle(a);
-  const checks = [...rev.map((x) => flag(x.ok, x.label, x.detail)), flag(!CLICHES.test(a.body), 'Sem clichês de IA'), flag(!GENERIC_CTA.test(a.body), 'Sem CTA genérica')];
+  const checks = [...rev.map((x) => flag(x.ok, x.label, x.detail)), flag(!CLICHES.test(a.body), 'Sem clichês de IA'), flag(!GENERIC_CTA.test(a.body), 'Sem CTA genérica'), flag(tics(a.body) <= 2, '"Não é X, é Y" no máximo 2x', `${tics(a.body)}x`), flag(!personaLeak(c, `${a.title} ${a.body}`), 'Sem o nome interno da persona')];
   report(`artigo-${c.name}`, `# Artigo · ${c.name}\n\n**Estratégia:** ${a.strategy}\n\n# ${a.title}\n*${a.subtitle}*\n\n${a.body}\n\n---\n## Publicação\n- Assunto: ${a.meta.emailSubject}\n- Prévia: ${a.meta.previewText}\n- SEO: ${a.meta.seoDescription}\n- Tags: ${a.meta.tags.join(', ')}\n${a.meta.notes.map((n, i) => `- Note ${i + 1}: ${n}`).join('\n')}\n\n## A conferir\n${a.meta.toVerify.map((n) => `- ${n}`).join('\n')}\n\n## Checagens\n${checks.join('\n')}\n\n${track('artigo', a.inputTokens, a.outputTokens)}\n`);
 }
 

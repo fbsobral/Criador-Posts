@@ -103,9 +103,16 @@ const CAPTION_CARROSSEL = `LEGENDA ("caption")
 Escreva também a legenda para publicar junto com o carrossel (padrão: Instagram):
 - Ela COMPLEMENTA os slides, não os repete. 1ª linha: um gancho DIFERENTE do título da capa (outro ângulo da mesma promessa) que, sozinho, já justifica abrir o "ver mais".
 - 2 ou 3 parágrafos curtos (uma ou duas frases cada) com uma ideia nova ou um exemplo que não está nos slides.
-- Fecho: UMA chamada à ação, a mesma do último slide (quando o post nasce de uma ideia, a CTA da ideia, com o mesmo destinatário), dita de outro jeito e só com o que a organização realmente oferece. "Salve" ou "mande para quem…" só se combinarem com essa ação; nada de "siga a página" se a ideia não pediu.
+- Fecho: UMA chamada à ação (uma ação só, sem somar "mande para alguém" com "fale com a gente"), a mesma do último slide (quando o post nasce de uma ideia, a CTA da ideia, com o mesmo destinatário), dita de outro jeito e só com o que a organização realmente oferece. "Salve" ou "mande para quem…" só se combinarem com essa ação; nada de "siga a página" se a ideia não pediu.
 - Hashtags no fim: siga as "Regras das legendas" da marca; se não houver, use 3 a 5 relevantes.
 - No máximo ~900 caracteres. Não invente fatos, números ou fontes.`;
+
+/** Vícios de texto de IA que valem para carrossel, roteiro e artigo (vistos nos testes reais). */
+export const STYLE_TICS = `VÍCIOS DE TEXTO DE IA (evite; o leitor percebe na hora)
+- "Não é X, é Y" e variações ("O problema não é X, é Y", "Não é falta de X. É falta de Y", "não foi X, foi Y"): no máximo UMA vez na peça inteira (corpo e legenda juntos), no momento da virada. Nas outras vezes, afirme o Y direto.
+- Frases feitas: "muda tudo", "mudou tudo", "faz toda a diferença", "a boa notícia é que", "ninguém nasce sabendo", "o empurrão que faltava", "encurtar o caminho/a estrada", "sair da zona de conforto", "e aqui está o nó", "no fim das contas", "mais do que nunca".
+- Não fale sobre o próprio texto nem sobre a estrutura dele ("são três razões", "cada uma de pé sozinha", "este post vai mostrar", "neste carrossel"). Mostre.
+- Não use os nomes internos do briefing: o nome da persona é um perfil de planejamento, não uma pessoa real nem um personagem (nunca escreva "Shelton" ou o nome que vier no perfil; fale com "você" ou crie um personagem genérico). Também não escreva "dor", "ganho", "desejo", "argumento", "guia" ou "enquadramento" como rótulos.`;
 
 const COMMON_RULES = `REGRAS GERAIS
 - Escreva em português do Brasil, salvo se o briefing estiver em outro idioma.
@@ -152,7 +159,7 @@ Tamanho: de 18 a 32 palavras por slide de texto (nunca mais de 40; ~20 quando fo
 "show_more": true em todos os slides, exceto no último (false).
 Use "text-image"/"image" só quando um dado, gráfico ou foto ajudar de verdade, e descreva o que entra em "image_note". Caso contrário "image_note" é "".
 "topic": o assunto curto do carrossel em caixa normal (ex.: "Dívida pública"), até 40 caracteres.
-"strategy": ANTES de escrever os slides, defina: o ângulo; o leitor ("reader": com quem os slides falam e o que essa pessoa precisa sentir ou fazer); a promessa (o que a pessoa leva ao terminar); a tensão (a pergunta CONCRETA que mantém a pessoa virando os slides, não um tease); a ação final ("cta": a ação do último slide, tirada da CTA da ideia quando houver); e a estrutura (uma linha por slide: "formato · função · mensagem"). Os slides seguem essa estrutura.
+"strategy": ANTES de escrever os slides, defina: o ângulo; o leitor ("reader": com quem os slides falam e o que essa pessoa precisa sentir ou fazer); a promessa (o que a pessoa leva ao terminar); a tensão (a pergunta CONCRETA que mantém a pessoa virando os slides, não um tease); a ação final ("cta": a ação do último slide, tirada da CTA da ideia quando houver); e a estrutura (uma linha por slide: "formato · função · mensagem · leve|denso"; denso = parágrafo com mais de ~25 palavras; nunca dois "denso" seguidos). Os slides seguem essa estrutura.
 Ordem de escrita: estratégia, slides, depois as capas alternativas e a legenda (que complementam os slides prontos).`;
 
 const TWEET_FORMAT = `FORMATO: TWEET CARD
@@ -197,6 +204,7 @@ function systemPrompt(i: GenerateInput): string {
     i.withImages ? (i.editor === 'carrossel' ? IMAGES_CARROSSEL : i.editor === 'noticia' ? IMAGES_NOTICIA : IMAGES_TWEET) : '',
     i.editor === 'carrossel' ? CAPTION_CARROSSEL : CAPTION_BASE,
     COMMON_RULES,
+    STYLE_TICS,
   ].filter(Boolean).join('\n\n');
 }
 

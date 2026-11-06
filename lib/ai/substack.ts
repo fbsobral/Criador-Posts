@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { AI_MODEL, AiError, brandBlock, type BrandProfile } from './generate';
+import { AI_MODEL, AiError, STYLE_TICS, brandBlock, type BrandProfile } from './generate';
 import { ARTICLE_ANGLES, MAX_BODY_CHARS, countWords, lengthOf, type ArticleAngleId, type ArticleMeta, type ArticlePlan, type OutlineSection } from '../substack';
 
 /** Artigos de newsletter para o Substack: esboço, escrita e refino. Nada é gravado aqui. */
@@ -33,7 +33,10 @@ const CRAFT = `OFÍCIO DE NEWSLETTER (siga à risca)
 - Concretude: exemplos, cenas, comparações do dia a dia. Zero abstração vazia. NÃO invente números, estudos, datas, nomes de pessoas reais nem citações; quando precisar de um retrato, deixe claro que é ilustrativo. Liste em "to_verify" o que o revisor deve conferir.
 - Voz da marca e da persona; calor humano; sem sermão. Português do Brasil. Evite clichês de IA ("no mundo de hoje", "mergulhar", "jornada", "em suma", "vale ressaltar", "é importante destacar").
 - Pode usar **negrito** com parcimônia, uma citação (>) forte, listas curtas e um divisor (---). Sem emojis no corpo. Sem título H1 no corpo: o título vai no campo próprio.
-- FECHAMENTO: retome a abertura, entregue a ideia que a pessoa leva e faça UM convite só, natural. Se a fonte traz uma CTA (a CTA da ideia ou um pedido do material), o convite é ESSA ação, para ESSE destinatário; só sem ela use responder ao e-mail, compartilhar com alguém ou assinar.`;
+- FECHAMENTO: retome a abertura, entregue a ideia que a pessoa leva e faça UM convite só, natural. Se a fonte traz uma CTA (a CTA da ideia ou um pedido do material), o convite é ESSA ação, para ESSE destinatário; só sem ela use responder ao e-mail, compartilhar com alguém ou assinar.
+- PERSONA: escreva PARA ela (o leitor que tem essa vida, essas dúvidas e objeções), nunca SOBRE ela. Para uma cena, use um personagem genérico ("um jovem que…") ou "você", sem o nome do perfil.
+
+${STYLE_TICS}`;
 
 const FIELDS = `CAMPOS
 - "strategy": 2 a 3 frases (não aparece para o leitor): para quem é, a tese central, a emoção da abertura e o convite final.
@@ -130,7 +133,7 @@ export async function writeArticle(i: Common & { plan?: { title: string; subtitl
   const system = ['Você é um editor e escritor sênior de newsletters. Você escreve ARTIGOS PRONTOS PARA O SUBSTACK, em JSON estrito, em português do Brasil.', CRAFT, FIELDS, brandBlock(i.brand)].join('\n\n');
   try {
     const res = await new Anthropic().beta.messages.create({
-      model: AI_MODEL, max_tokens: Math.min(16000, Math.round(len.words * 3.2) + 2500), betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default', system,
+      model: AI_MODEL, max_tokens: Math.max(16000, Math.round(len.words * 6) + 4000), betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default', system,
       output_config: { effort: 'medium', format: { type: 'json_schema', schema: ARTICLE_SCHEMA } }, messages: [{ role: 'user', content: userBlock(i, plan) }],
     });
     if (res.stop_reason === 'refusal') throw new AiError('A IA recusou escrever este artigo.');
