@@ -22,8 +22,10 @@ const IDEAS_SCHEMA = {
 const SCRIPT_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['title', 'parts', 'caption', 'hashtags', 'to_verify'],
   properties: {
-    title: STR, caption: STR, hashtags: { type: 'array', items: STR }, to_verify: { type: 'array', items: STR },
+    // as partes vêm antes da legenda: ela é escrita depois do roteiro pronto e fecha com a mesma ação da fala
+    title: STR,
     parts: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['speech', 'on_screen', 'visual'], properties: { speech: STR, on_screen: STR, visual: STR } } },
+    caption: STR, hashtags: { type: 'array', items: STR }, to_verify: { type: 'array', items: STR },
   },
 };
 
@@ -129,7 +131,7 @@ TAREFA: ESCREVER O ROTEIRO
 - "speech": a fala daquela parte, dentro do limite de palavras indicado (não ultrapasse: o vídeo tem de caber em ${i.seconds} s). Se a parte for o gancho, a primeira frase precisa prender em até 3 segundos.
 - "on_screen": texto curto na tela (até 6 palavras, em caixa normal), ou "" se não houver.
 - "visual": o que aparece/acontece na tela naquele trecho (enquadramento, b-roll, gráfico, ação), concreto e fácil de gravar, em uma frase.
-- "title": título interno do vídeo (até 70 caracteres). "caption": legenda para publicar, que complementa a fala (não a repete) e fecha com a mesma ação do vídeo. "hashtags": sem o "#".
+- "title": título interno do vídeo (até 70 caracteres). "caption": legenda para publicar, escrita DEPOIS das partes: complementa a fala (não a repete) e a ÚLTIMA frase é o convite da parte final, com a mesma ação e o mesmo destinatário (uma legenda que termina sem pedir nada está errada). "hashtags": sem o "#".
 - FALA DE VERDADE: escreva como a pessoa fala olhando para a câmera, em português do Brasil do dia a dia: "a gente", "pra", "tá", frases de 4 a 12 palavras, uma ideia por frase, sem ponto e vírgula, sem parênteses e sem palavras de texto escrito ("ademais", "contudo", "visto que", "nesse sentido"). Leia em voz alta mentalmente: se travar, reescreva.
 - GANCHO: a primeira frase já é a cena ou a contradição (quem, onde, o que aconteceu). Nada de "Você sabia…?", "Deixa eu te contar", "Presta atenção", "E aí tudo muda" nem pergunta genérica.
 - CTA: a parte final pede UMA ação só. Se o conteúdo traz uma CTA (ex.: a CTA da ideia ou um pedido do material, como "precisamos de mentores"), use essa ação e esse destinatário, em fala natural, de forma DIRETA (quem pode ser mentor ouve "fala com a gente pra ser mentor", não "manda pra alguém"); a CTA padrão da marca só entra quando o conteúdo não pede nada. Não troque por "me segue", "deixa o like" ou "comenta aí". A legenda fecha com a MESMA ação e o mesmo verbo (se a fala diz "manda", a legenda não diz "marca").
@@ -174,8 +176,9 @@ ${i.personaBrief}` : ''}`;
 const REFINE_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['title', 'parts', 'caption', 'hashtags', 'note'],
   properties: {
-    title: STR, caption: STR, hashtags: { type: 'array', items: STR }, note: STR,
+    title: STR,
     parts: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['speech', 'on_screen', 'visual'], properties: { speech: STR, on_screen: STR, visual: STR } } },
+    caption: STR, hashtags: { type: 'array', items: STR }, note: STR,
   },
 };
 
