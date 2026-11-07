@@ -109,6 +109,63 @@ export async function planArticle(i: Common): Promise<ArticlePlan & { inputToken
   } catch (e) { return fail(e); }
 }
 
+/* ---------------- refino do esboço ---------------- */
+export type OutlineDraft = { title: string; titles: string[]; subtitle: string; hook: string; sections: OutlineSection[] };
+/** O que melhorar: o esboço inteiro, só o bloco de cima (título, subtítulo e abertura) ou uma seção (índice). */
+export type OutlineScope = 'all' | 'top' | number;
+
+const OUTLINE_REFINE_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['titles', 'subtitle', 'hook', 'sections', 'note'],
+  properties: { titles: STRS, subtitle: STR, hook: STR, sections: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['heading', 'point'], properties: { heading: STR, point: STR } } }, note: STR },
+};
+
+/** Melhora o esboço que está na tela (com as edições do usuário), no escopo pedido. Não grava: o usuário vê e pode desfazer. */
+export async function refineOutline(i: Common & { current: OutlineDraft; feedback: string; scope: OutlineScope }): Promise<OutlineDraft & { note: string; inputTokens: number; outputTokens: number }> {
+  const cur = i.current;
+  const nSec = cur.sections.length;
+  const scope: OutlineScope = typeof i.scope === 'number' && (i.scope < 0 || i.scope >= nSec) ? 'all' : i.scope;
+  const ask = i.feedback.trim() || (scope === 'top' ? 'Deixe título, subtítulo e abertura mais fortes e específicos.' : typeof scope === 'number' ? 'Deixe esta seção mais forte, concreta e específica.' : 'Deixe o esboço mais forte: tese clara, seções que avançam e um fecho que leva ao convite.');
+  // garantia no código: fora do escopo, nada muda
+  const keep = (r: OutlineDraft): OutlineDraft => scope === 'top' ? { ...r, sections: cur.sections }
+    : typeof scope === 'number' ? { ...cur, sections: cur.sections.map((x, k) => (k === scope ? (r.sections[scope] ?? r.sections[0] ?? x) : x)) }
+    : r;
+  if (process.env.AI_MOCK === '1') {
+    await sleep(700);
+    const r = scope === 'top' ? { ...cur, subtitle: `${cur.subtitle} (melhorado)` } : { ...cur, sections: cur.sections.map((x, k) => (scope === 'all' || k === scope ? { ...x, point: `${x.point} (melhorado: ${ask.slice(0, 30)})` } : x)) };
+    return { ...keep(r), note: 'Versão simulada (AI_MOCK=1).', inputTokens: 900, outputTokens: 400 };
+  }
+  if (!process.env.ANTHROPIC_API_KEY) throw new AiError('ANTHROPIC_API_KEY não configurada no servidor.');
+  const show = `Título escolhido: ${cur.title}\nOutras opções de título: ${cur.titles.filter((t) => t !== cur.title).join(' | ') || '(nenhuma)'}\nSubtítulo: ${cur.subtitle}\nAbertura: ${cur.hook}\nSeções:\n${cur.sections.map((x, k) => `${k + 1}. ## ${x.heading || '(sem intertítulo)'} — ${x.point || '(vazio)'}`).join('\n')}`;
+  const rule = scope === 'top'
+    ? 'ESCOPO: só o bloco de cima. Melhore "titles" (3 opções; a primeira é a recomendada, pode ser o título atual melhorado), "subtitle" e "hook". Devolva "sections" EXATAMENTE como estão.'
+    : typeof scope === 'number'
+      ? `ESCOPO: só a SEÇÃO ${scope + 1}. Melhore o "heading" e o "point" dela, mantendo o lugar dela no caminho do texto (ela recebe da seção anterior e entrega para a próxima). Devolva todo o resto EXATAMENTE como está (titles com o título escolhido primeiro, subtitle, hook e as outras seções).`
+      : 'ESCOPO: o esboço inteiro. Aplique o pedido preservando o que já está bom e as edições do usuário (texto que parece escrito por uma pessoa fica, a menos que o pedido peça outra coisa). Pode reordenar, juntar, cortar ou acrescentar seções (de 3 a 7). "titles": 3 opções, a primeira é a recomendada.';
+  const system = [
+    'Você é um editor sênior de newsletters. Você MELHORA o esboço de um artigo para o Substack que já existe (ainda sem escrever o texto), em JSON estrito, em português do Brasil.',
+    `${rule}\n- "heading" é o intertítulo final (específico, não "Introdução"); "point" é o que a seção prova ou conta, em uma frase. A última seção leva ao convite final.\n- "note": uma frase curta dizendo o que você mudou.\n- Sem inventar números, estudos, datas, nomes ou detalhes que a fonte não deu.`,
+    CRAFT, brandBlock(i.brand),
+  ].join('\n\n');
+  try {
+    const res = await new Anthropic().beta.messages.create({
+      model: AI_MODEL, max_tokens: 3000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default', system,
+      output_config: { effort: 'low', format: { type: 'json_schema', schema: OUTLINE_REFINE_SCHEMA } },
+      messages: [{ role: 'user', content: userBlock(i, `ESBOÇO ATUAL (o que está na tela):\n${show}\n\nPEDIDO DO USUÁRIO: ${ask}`) }],
+    });
+    if (res.stop_reason === 'refusal') throw new AiError('A IA recusou este ajuste.');
+    if (res.stop_reason === 'max_tokens') throw new AiError('A resposta ficou grande demais. Tente de novo.', true);
+    const raw = JSON.parse(textOf(res as never)) as { titles?: string[]; subtitle?: string; hook?: string; sections?: { heading?: string; point?: string }[]; note?: string };
+    const titles = cleanList(raw.titles, 3, 120);
+    const sections = (raw.sections ?? []).map((x) => ({ heading: clean(x.heading, 120), point: clean(x.point, 240) })).filter((x) => x.heading).slice(0, 8);
+    if (scope === 'all' && sections.length < 2) throw new AiError('A IA não devolveu um esboço válido. Tente de novo.', true);
+    if (typeof scope === 'number' && !sections.length) throw new AiError('A IA não devolveu a seção. Tente de novo.', true);
+    const r: OutlineDraft = scope === 'top' || scope === 'all'
+      ? { title: titles[0] || cur.title, titles: titles.length ? titles : cur.titles, subtitle: clean(raw.subtitle, 200) || cur.subtitle, hook: clean(raw.hook, 300) || cur.hook, sections: sections.length ? sections : cur.sections }
+      : { ...cur, sections: sections.length === nSec ? sections : cur.sections.map((x, k) => (k === scope ? sections[0] : x)) };
+    return { ...keep(r), note: clean(raw.note, 240), ...usageOf(res.usage) };
+  } catch (e) { return fail(e); }
+}
+
 export type WrittenArticle = { title: string; subtitle: string; body: string; angle: string; meta: ArticleMeta; strategy: string };
 
 /** Passo 2: escreve o artigo inteiro (com o esboço aprovado, quando houver). */

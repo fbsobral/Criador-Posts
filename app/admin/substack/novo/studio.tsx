@@ -31,6 +31,29 @@ async function call<T>(url: string, body: unknown): Promise<{ data?: T; error?: 
   } catch { return { error: 'Sem conexão com o servidor. Tente de novo.' }; }
 }
 
+type Scope = 'all' | 'top' | number;
+const REFINE_CHIPS: Record<'all' | 'top' | 'sec', string[]> = {
+  all: ['Tese mais clara', 'Menos seções', 'Abrir com uma cena', 'Fechar levando ao convite'],
+  top: ['Título mais forte', 'Abrir com uma cena', 'Subtítulo mais claro'],
+  sec: ['Mais concreta', 'Intertítulo mais forte', 'Outro ângulo'],
+};
+
+/** "Melhorar com IA" de uma parte do esboço: chips de pedido rápido, pedido livre e o botão. */
+function RefineBox({ kind, placeholder, busy, onRun, onClose }: { kind: 'all' | 'top' | 'sec'; placeholder: string; busy: boolean; onRun: (fb: string) => void; onClose: () => void }) {
+  const [fb, setFb] = useState('');
+  return (
+    <div className="sb-refine">
+      <div className="sb-chips sm">{REFINE_CHIPS[kind].map((c) => <button key={c} type="button" className="sb-chip" disabled={busy} onClick={() => onRun(c)}>{c}</button>)}</div>
+      <div className="sb-refine-row">
+        <input value={fb} onChange={(e) => setFb(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !busy) { e.preventDefault(); onRun(fb); } }} placeholder={placeholder} maxLength={600} disabled={busy} aria-label="Pedido para a IA" />
+        <button type="button" className="btn small primary" disabled={busy} onClick={() => onRun(fb)}><IconSpark /> {busy ? 'Melhorando…' : 'Melhorar'}</button>
+        <button type="button" className="btn small ghost" disabled={busy} onClick={onClose}>Cancelar</button>
+      </div>
+      <small className="muted">Sem pedido, a IA só deixa mais forte e específico. O resto do esboço não muda{kind === 'all' ? ', e o que você editou é mantido' : ''}.</small>
+    </div>
+  );
+}
+
 export function Studio({ ideas, initialIdeaId, hasKey, remaining }: { ideas: IdeaRow[]; initialIdeaId: string; hasKey: boolean; remaining: number }) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [kind, setKind] = useState<Kind>(initialIdeaId || ideas.length ? 'idea' : 'tema');
@@ -44,6 +67,9 @@ export function Studio({ ideas, initialIdeaId, hasKey, remaining }: { ideas: Ide
   const [plan, setPlan] = useState<Plan | null>(null);
   const [title, setTitle] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [refining, setRefining] = useState<Scope | null>(null);
+  const [rbusy, setRbusy] = useState(false);
+  const [undo, setUndo] = useState<{ plan: Plan; title: string; note: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [tick, setTick] = useState(0);
@@ -72,7 +98,7 @@ export function Studio({ ideas, initialIdeaId, hasKey, remaining }: { ideas: Ide
     const r = await call<{ plan: Plan }>('/api/substack/plan', body(fb.trim() ? `AJUSTE PEDIDO PELO USUÁRIO AO ESBOÇO: ${fb.trim()}` : ''));
     setBusy(false);
     if (r.error || !r.data) { setErr(r.error ?? 'Não foi possível montar o esboço.'); return; }
-    setPlan(r.data.plan); setTitle(r.data.plan.titles[0] ?? ''); setFeedback('');
+    setPlan(r.data.plan); setTitle(r.data.plan.titles[0] ?? ''); setFeedback(''); setUndo(null); setRefining(null);
   }
   async function write(approved: boolean) {
     setBusy(true); setErr(''); setStep(3); setResult(null);
@@ -81,6 +107,20 @@ export function Studio({ ideas, initialIdeaId, hasKey, remaining }: { ideas: Ide
     if (r.error || !r.data) { setErr(r.error ?? 'Não foi possível escrever o artigo.'); return; }
     setResult({ id: r.data.id });
   }
+  /** Melhora o esboço que está na tela (com as edições) no escopo pedido; guarda a versão anterior para desfazer. */
+  async function refine(scope: Scope, fb: string) {
+    if (!plan) return;
+    setRbusy(true); setErr('');
+    const r = await call<{ outline: { title: string; titles: string[]; subtitle: string; hook: string; sections: OutlineSection[] }; note: string }>('/api/substack/plan/refine', { ...body(), outline: { title, titles: plan.titles, subtitle: plan.subtitle, hook: plan.hook, sections: plan.sections }, scope, feedback: fb.trim() });
+    setRbusy(false);
+    if (r.error || !r.data) { setErr(r.error ?? 'Não foi possível melhorar o esboço.'); return; }
+    const o = r.data.outline;
+    setUndo({ plan, title, note: r.data.note || 'Esboço melhorado.' });
+    setPlan({ ...plan, titles: o.titles.length ? o.titles : plan.titles, subtitle: o.subtitle, hook: o.hook, sections: o.sections });
+    setTitle(o.title || title);
+    setRefining(null);
+  }
+  const aiBtn = (scope: Scope, label = 'Melhorar com IA') => refining === scope ? null : <button type="button" className="sb-ai-btn" disabled={rbusy || refining !== null} onClick={() => { setRefining(scope); setErr(''); }}><IconSpark /> {label}</button>;
   const start = () => (review ? makePlan() : write(false));
   const setSection = (i: number, patch: Partial<OutlineSection>) => setPlan((p) => p && { ...p, sections: p.sections.map((s, k) => (k === i ? { ...s, ...patch } : s)) });
   const moveSection = (i: number, d: -1 | 1) => setPlan((p) => { if (!p) return p; const j = i + d; if (j < 0 || j >= p.sections.length) return p; const s = [...p.sections]; [s[i], s[j]] = [s[j], s[i]]; return { ...p, sections: s }; });
@@ -190,7 +230,9 @@ export function Studio({ ideas, initialIdeaId, hasKey, remaining }: { ideas: Ide
           {!busy && err && <><div className="notice err">{err}</div><div className="gen-foot vd-foot"><button type="button" className="btn ghost" onClick={() => { setStep(1); setErr(''); }}><IconBack /> Voltar</button><button type="button" className="btn primary" onClick={() => makePlan()}>Tentar de novo</button></div></>}
           {!busy && plan && !err && (
             <>
-              <p className="muted vd-lead">Revise o esboço: escolha o título, edite o subtítulo e as seções, tire as que não quiser ou acrescente as suas. Cada seção vira um trecho do artigo.</p>
+              <p className="muted vd-lead">Revise o esboço: escolha o título, edite o subtítulo e as seções, tire as que não quiser ou acrescente as suas. Cada parte tem um <b>Melhorar com IA</b>. Cada seção vira um trecho do artigo.</p>
+              {undo && !rbusy && <div className="notice sb-undo"><span>✓ {undo.note}</span><button type="button" className="vd-link" onClick={() => { setPlan(undo.plan); setTitle(undo.title); setUndo(null); }}>Desfazer</button></div>}
+              {err && <div className="notice err">{err}</div>}
               <div className="card-surface form-card sb-esb">
                 <div className="field">
                   <div className="lbl">Título</div>
@@ -201,6 +243,8 @@ export function Studio({ ideas, initialIdeaId, hasKey, remaining }: { ideas: Ide
                 </div>
                 <label className="field">Subtítulo<input value={plan.subtitle} maxLength={200} onChange={(e) => setPlan({ ...plan, subtitle: e.target.value })} /></label>
                 <label className="field">Como o texto abre<textarea rows={2} value={plan.hook} maxLength={300} onChange={(e) => setPlan({ ...plan, hook: e.target.value })} /></label>
+                <div className="sb-ai-row">{aiBtn('top', 'Melhorar título, subtítulo e abertura com IA')}</div>
+                {refining === 'top' && <RefineBox kind="top" placeholder="O que melhorar? (ex.: título com a contradição, abrir com a cena do currículo)" busy={rbusy} onRun={(fb) => refine('top', fb)} onClose={() => setRefining(null)} />}
               </div>
 
               <div className="vd-ideas">
@@ -210,6 +254,8 @@ export function Studio({ ideas, initialIdeaId, hasKey, remaining }: { ideas: Ide
                     <div className="vd-idea-body">
                       <input value={s.heading} onChange={(e) => setSection(i, { heading: e.target.value })} maxLength={120} placeholder="Intertítulo da seção" aria-label={`Intertítulo ${i + 1}`} />
                       <textarea rows={2} value={s.point} onChange={(e) => setSection(i, { point: e.target.value })} maxLength={240} placeholder="O que esta seção conta ou prova" aria-label={`O que a seção ${i + 1} conta`} />
+                      {aiBtn(i)}
+                      {refining === i && <RefineBox kind="sec" placeholder="O que melhorar nesta seção? (ex.: mostrar o lado da empresa)" busy={rbusy} onRun={(fb) => refine(i, fb)} onClose={() => setRefining(null)} />}
                     </div>
                     <div className="sb-sec-btns">
                       <button type="button" className="btn small ghost" disabled={i === 0} onClick={() => moveSection(i, -1)} aria-label="Subir"><IconUp /></button>
@@ -223,13 +269,17 @@ export function Studio({ ideas, initialIdeaId, hasKey, remaining }: { ideas: Ide
 
               <div className="card-surface vd-redo">
                 <input value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder="Quer outro caminho? Diga o que mudar (ex.: abrir com uma cena, falar mais das empresas)" maxLength={600} />
-                <button type="button" className="btn" onClick={() => makePlan(feedback)} disabled={busy}>Sugerir outro esboço</button>
+                <button type="button" className="btn" onClick={() => makePlan(feedback)} disabled={busy || rbusy}>Sugerir outro esboço</button>
+              </div>
+              <div className="sb-ai-row sb-ai-all">
+                {aiBtn('all', 'Melhorar o esboço inteiro com IA')}
+                {refining === 'all' && <div className="card-surface sb-refine-card"><RefineBox kind="all" placeholder="O que melhorar no esboço todo? (ex.: falar mais das empresas, menos seções)" busy={rbusy} onRun={(fb) => refine('all', fb)} onClose={() => setRefining(null)} /></div>}
               </div>
 
               <div className="gen-foot vd-foot">
                 <button type="button" className="btn ghost" onClick={() => { setStep(1); setPlan(null); }}><IconBack /> Voltar</button>
                 <span className="muted">≈ {fmtUsd(ESTIMATED_COST_ARTICLE)}</span>
-                <button type="button" className="btn primary" disabled={!title.trim() || plan.sections.some((s) => !s.heading.trim())} onClick={() => write(true)}><IconSpark /> Aprovar e escrever</button>
+                <button type="button" className="btn primary" disabled={rbusy || !title.trim() || plan.sections.some((s) => !s.heading.trim())} onClick={() => write(true)}><IconSpark /> Aprovar e escrever</button>
               </div>
             </>
           )}
