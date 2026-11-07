@@ -58,7 +58,7 @@ const STRATEGY: { icon: keyof typeof I; kicker: string; title: React.ReactNode; 
 
 export default async function Home() {
   const { userId } = await auth();
-  if (userId) redirect('/admin/posts'); // quem já está logado vai direto ao painel
+  if (userId) redirect('/admin'); // quem já está logado vai direto ao painel
   const href = '/sign-in';
   return (
     <div className={`${s.page} ${serif.variable}`}>

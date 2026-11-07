@@ -4,16 +4,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { actionErrorMessage } from '@/lib/action-error';
-import { createNode, deleteNode, duplicateNode, linkPersona, moveNode, saveTranslations, setScore, unlinkPersona, updateNode } from '@/lib/territory-actions';
+import { createNode, deleteNode, duplicateNode, linkPersona, moveNode, setScore, unlinkPersona, updateNode } from '@/lib/territory-actions';
 import { GROUP_COLORS, splitPersonaName } from '@/lib/persona';
-import { NODE_H, NODE_W, PUBLICO_ID, buildTree, descendantIds, edgePath, effectivePersonas, layoutTree, lensNodes, pathOf, translationFor, type TNode } from '@/lib/territory';
+import { NODE_H, NODE_W, PUBLICO_ID, buildTree, descendantIds, edgePath, effectivePersonas, layoutTree, lensNodes, pathOf, type TNode } from '@/lib/territory';
 import { IconCopy, IconEdit, IconPlus, IconSpark, IconTrash } from '../../icons';
 import { usePan } from '../use-pan';
 import { levelOf, type PriorityConfig } from '@/lib/priority';
 import { Menu } from './menu';
 import { ReclassifyButton } from './reclassify-button';
 import { TerritoryModal } from './territory-modal';
-import { TranslateModal } from './translate-modal';
 
 export type PersonaLite = { id: string; name: string; tagline: string; role: string; /** cor do grupo da persona */ color?: string; group?: string };
 
@@ -37,10 +36,9 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
   const [over, setOver] = useState<string | null>(null);
   const [err, setErr] = useState('');
   const [ai, setAi] = useState<{ parent: TNode | null } | null>(null);
-  const [tr, setTr] = useState<{ node: TNode; preselect?: string[] } | null>(null);
   // celular: o painel do território vira uma folha (abre pelo "detalhes" da barra do nó) e o arraste vira "Mover para…"
   const [sheet, setSheet] = useState(false);
-  const [ptab, setPtab] = useState<'tema' | 'personas' | 'ideias'>('tema');
+  const [ptab, setPtab] = useState<'tema' | 'personas'>('tema');
   const [fine, setFine] = useState(true);
   useEffect(() => setFine(window.matchMedia('(pointer: fine)').matches), []);
   // celular: abre um pouco afastado e já com os primeiros temas à vista (o cartão da marca fica logo à esquerda)
@@ -159,12 +157,6 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
     setLinks(n.id, (l) => l.filter((x) => x.personaId !== pid));
     start(async () => { const r = await unlinkPersona(n.id, pid); if (r.error) { setErr(r.error); setLinks(n.id, () => prev); } else router.refresh(); });
   };
-  const saveTr = (n: TNode, pid: string, text: string) => {
-    const v = text.trim(); const own = n.links.find((x) => x.personaId === pid);
-    if (v === (own?.translation ?? '').trim() || (!own && !v)) return;
-    setLinks(n.id, (l) => (l.some((x) => x.personaId === pid) ? l.map((x) => (x.personaId === pid ? { ...x, translation: v } : x)) : [...l, { personaId: pid, translation: v }]));
-    start(async () => { const r = await saveTranslations(n.id, [{ personaId: pid, translation: v, source: 'manual' }]); if (r.error) setErr(r.error); else router.refresh(); });
-  };
   const toggleCollapse = (id: string) => setCollapsed((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const parents = vis.nodes.filter((x) => vis.nodes.some((c) => c.parentId === x.id)).map((x) => x.id);
 
@@ -252,7 +244,7 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
                     )}
                     {n.links.length > 0 && (
                       <span className="tr-avs">
-                        {n.links.slice(0, 3).map((l) => <i key={l.personaId} style={{ background: colorOf(l.personaId), opacity: l.translation ? 1 : .55 }} title={`${personaOf(l.personaId)?.name ?? ''}${l.translation ? ' · traduzido' : ' · ligada, sem tradução'}`}>{initialsOf(personaOf(l.personaId)?.name ?? '?')}</i>)}
+                        {n.links.slice(0, 3).map((l) => <i key={l.personaId} style={{ background: colorOf(l.personaId) }} title={personaOf(l.personaId)?.name ?? ''}>{initialsOf(personaOf(l.personaId)?.name ?? '?')}</i>)}
                         {n.links.length > 3 && <i className="more">+{n.links.length - 3}</i>}
                       </span>
                     )}
@@ -265,12 +257,11 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
                     )}
                     {isSel && editing !== n.id && (
                       <div className="tr-tools" onClick={(e) => e.stopPropagation()}>
+                        <Link href={`/admin/ideias?t=${n.id}${lens ? `&p=${lens.id}` : ''}`} className="tr-tb-main" title="Gerar ideias de conteúdo para este tema" aria-label="Gerar ideias de conteúdo">💡 Gerar ideias</Link>
                         <button type="button" onClick={() => addChild(n.id)} title="Adicionar subtema (Tab)" aria-label="Adicionar subtema">↳ subtema</button>
                         <button type="button" onClick={() => addSibling(n)} title="Adicionar irmão (Enter)" aria-label="Adicionar irmão">↓ irmão</button>
                         <button type="button" onClick={() => setAi({ parent: n })} title="Gerar subtemas com IA" aria-label="Gerar subtemas com IA"><IconSpark /> subtemas</button>
-                        <button type="button" onClick={() => setTr({ node: n })} title="Traduzir este tema para as personas" aria-label="Traduzir para as personas">🔁 traduzir</button>
-                        <button type="button" onClick={() => duplicate(n)} title="Duplicar este território e o que há dentro dele" aria-label="Duplicar território"><IconCopy /></button>
-                        <Link href={`/admin/ideias?t=${n.id}${lens ? `&p=${lens.id}` : ''}`} title="Gerar ideias de conteúdo para este tema" aria-label="Gerar ideias de conteúdo">💡 ideias</Link>
+                                                <button type="button" onClick={() => duplicate(n)} title="Duplicar este território e o que há dentro dele" aria-label="Duplicar território"><IconCopy /></button>
                         <button type="button" className="danger" onClick={() => remove(n)} title="Excluir este território (pede confirmação)" aria-label="Excluir território"><IconTrash /></button>
                       </div>
                     )}
@@ -290,12 +281,11 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
 
       {sel && editing !== sel.id && !sheet && (
         <div className="tr-mbar" role="toolbar" aria-label={`Ações em “${sel.name}”`}>
+          <Link className="tr-mb-main" href={`/admin/ideias?t=${sel.id}${lens ? `&p=${lens.id}` : ''}`}><span aria-hidden>💡</span><span>Ideias</span></Link>
           <button type="button" onClick={() => setSheet(true)}><IconEdit /><span>Detalhes</span></button>
           <button type="button" onClick={() => addChild(sel.id)}><IconPlus /><span>Subtema</span></button>
           <button type="button" onClick={() => addSibling(sel)}><IconPlus /><span>Irmão</span></button>
           <button type="button" onClick={() => setAi({ parent: sel })}><IconSpark /><span>Subtemas</span></button>
-          <button type="button" onClick={() => setTr({ node: sel })}><span aria-hidden>🔁</span><span>Traduzir</span></button>
-          <Link href={`/admin/ideias?t=${sel.id}${lens ? `&p=${lens.id}` : ''}`}><span aria-hidden>💡</span><span>Ideias</span></Link>
         </div>
       )}
       {sheet && sel && <div className="tr-sheet-back" onMouseDown={() => setSheet(false)} />}
@@ -305,8 +295,15 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
             <button type="button" className="btn small ghost tr-sheet-close" onClick={() => setSheet(false)} aria-label="Fechar detalhes">✕ Fechar</button>
             <div className="tr-crumb">{pathOf(nodes, sel.id).map((x, i, a) => <span key={i}>{x}{i < a.length - 1 ? ' › ' : ''}</span>)}</div>
             <div className="field"><label htmlFor="tn">Nome</label><input id="tn" key={sel.id + sel.name} defaultValue={sel.name} maxLength={80} onBlur={(e) => saveName(sel, e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} /></div>
+            <div className="tr-next">
+              <div><b>Próximo passo: ideias para este tema</b><small>{approved[sel.id] ? `✓ ${approved[sel.id]} ${approved[sel.id] === 1 ? 'ideia aprovada' : 'ideias aprovadas'} aqui. Gere mais ou transforme as aprovadas em conteúdo.` : 'A IA cria ideias prontas para virar post, roteiro ou artigo.'}</small></div>
+              <div className="row-actions">
+                <Link href={`/admin/ideias?t=${sel.id}${lens ? `&p=${lens.id}` : ''}`} className="btn primary">💡 Gerar ideias</Link>
+                <Link href={`/admin/ideias?t=${sel.id}&ver=1`} className="btn small ghost">Ver ideias</Link>
+              </div>
+            </div>
             <div className="tr-ptabs" role="tablist" aria-label="Seções do território">
-              {([['tema', 'Tema', ''], ['personas', 'Personas', effectivePersonas(nodes, sel.id).length ? String(effectivePersonas(nodes, sel.id).length) : ''], ['ideias', 'Ideias', approved[sel.id] ? `✓${approved[sel.id]}` : '']] as const).map(([k, label, badge]) => (
+              {([['tema', 'Tema', ''], ['personas', 'Personas', effectivePersonas(nodes, sel.id).length ? String(effectivePersonas(nodes, sel.id).length) : '']] as const).map(([k, label, badge]) => (
                 <button key={k} type="button" role="tab" aria-selected={ptab === k} className={ptab === k ? 'on' : ''} onClick={() => setPtab(k)}>{label}{badge && <i>{badge}</i>}</button>
               ))}
             </div>
@@ -335,9 +332,9 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
               const free = personas.filter((x) => !eff.includes(x.id));
               return (
                 <div className="tr-bridge">
-                  <div className="tr-bridge-head"><b>Personas deste tema</b><small>{eff.length ? `${eff.length} de ${personas.length} · cada uma com a tradução do tema para o dia a dia dela` : 'Nenhuma persona ligada ainda'}</small></div>
+                  <div className="tr-bridge-head"><b>Personas deste tema</b><small>{eff.length ? `${eff.length} de ${personas.length}. Use o 💡 para gerar ideias deste tema para uma delas.` : 'Opcional: ligue personas para gerar ideias para públicos específicos. Sem persona, as ideias são para o público geral.'}</small></div>
                   {eff.map((pid) => {
-                    const p = personaOf(pid); const own = sel.links.find((x) => x.personaId === pid); const inh = translationFor(nodes, sel.id, pid);
+                    const p = personaOf(pid); const own = sel.links.find((x) => x.personaId === pid);
                     return (
                       <div key={pid} className="tr-bridge-row">
                         <div className="tr-bridge-who">
@@ -348,9 +345,6 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
                           <Link href={`/admin/ideias?t=${sel.id}&p=${pid}`} className="tr-mini" title="Gerar ideias para esta persona neste tema">💡</Link>
                           {own && <button type="button" className="tr-mini" onClick={() => unlink(sel, pid)} title="Desligar esta persona deste tema" aria-label="Desligar persona">×</button>}
                         </div>
-                        <textarea key={sel.id + pid + (own?.translation ?? '')} rows={3} defaultValue={own?.translation ?? ''} maxLength={1200}
-                          placeholder={inh.text ? `Herdada${inh.from ? ` de “${inh.from}”` : ''}: ${inh.text}` : 'Como este tema aparece no dia a dia dela (cena, linguagem, o que ela já sente)…'}
-                          onBlur={(e) => saveTr(sel, pid, e.target.value)} />
                       </div>
                     );
                   })}
@@ -361,21 +355,10 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
                         {free.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}
                       </select>
                     )}
-                    <button type="button" className="btn small" onClick={() => setTr({ node: sel })} disabled={!personas.length}>🔁 Traduzir com IA</button>
                   </div>
                 </div>
               );
             })()}
-            </>)}
-            {ptab === 'ideias' && (<>
-            <div className="tr-ideas-box">
-              <div><b>Ideias de conteúdo</b><small>{approved[sel.id] ? `✓ ${approved[sel.id]} ${approved[sel.id] === 1 ? 'aprovada' : 'aprovadas'} neste tema` : 'Nenhuma aprovada neste tema ainda'}</small></div>
-              <div className="row-actions">
-                <Link href={`/admin/ideias?t=${sel.id}${lens ? `&p=${lens.id}` : ''}`} className="btn small primary">💡 Gerar ideias</Link>
-                <Link href={`/admin/ideias?t=${sel.id}&ver=1`} className="btn small">Ver</Link>
-              </div>
-            </div>
-              <p className="muted tr-hint">Cada ideia combina este tema com uma persona. Para escolher a persona, use o 💡 ao lado dela na aba Personas, ou abra o gerador e escolha lá.</p>
             </>)}
             <div className="tr-meta">{kidsCount(sel.id)} {kidsCount(sel.id) === 1 ? 'território dentro' : 'territórios dentro'} · {sel.source === 'ai' ? 'criado pela IA' : 'criado à mão'}</div>
             <div className="tr-actions">
@@ -394,9 +377,9 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
           <>
             <b className="tr-panel-title">{lens ? lens.name : brandName}</b>
             {lens?.role && <div className="tr-meta">{lens.role}</div>}
-            <p className="muted tr-tagline">{lens ? lens.tagline : 'O mapa de temas da marca. Cada tema pode nascer das dores de uma persona ou de um debate macro; depois, ligue as personas e traduza o tema para o dia a dia de cada uma.'}</p>
+            <p className="muted tr-tagline">{lens ? lens.tagline : 'O mapa de temas da marca: os assuntos sobre os quais você quer ser lembrado. Escolha um tema e gere ideias para ele.'}</p>
             <div className="tr-meta">{lens ? <>{vis.nodes.length - vis.context.size} {vis.nodes.length - vis.context.size === 1 ? 'território' : 'territórios'} que esta persona enxerga, de {nodes.length} no mapa</> : <>{nodes.length} {nodes.length === 1 ? 'território' : 'territórios'} no mapa</>}</div>
-            <p className="muted">Selecione um território para editar, ligar personas, traduzir o tema e gerar ideias.</p>
+            <p className="muted">Clique num tema para gerar ideias para ele, editar ou ligar personas.</p>
             <div className="tr-actions">
               <button type="button" className="btn small primary" onClick={() => setAi({ parent: null })}><IconSpark /> Gerar territórios</button>
               <button type="button" className="btn small" onClick={() => add(null)}><IconPlus /> Área de 1º nível</button>
@@ -406,7 +389,6 @@ export function MindMap({ lens, personas, brandName, nodes: n0, hasKey, hasAbout
       </aside>
 
       {ai && <TerritoryModal personas={personas} initialPersona={lens?.id ?? PUBLICO_ID} parent={ai.parent ? { id: ai.parent.id, name: ai.parent.name } : null} existingCount={nodes.length} hasKey={hasKey} hasAbout={hasAbout} onClose={() => setAi(null)} />}
-      {tr && <TranslateModal node={{ id: tr.node.id, name: tr.node.name, path: pathOf(nodes, tr.node.id).join(' › ') }} personas={personas} linked={effectivePersonas(nodes, tr.node.id)} translated={effectivePersonas(nodes, tr.node.id).filter((pid) => translationFor(nodes, tr.node.id, pid).text)} preselect={tr.preselect} hasKey={hasKey} hasAbout={hasAbout} onClose={() => setTr(null)} />}
     </div>
   );
 }

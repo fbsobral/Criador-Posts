@@ -41,7 +41,7 @@ const SCREENS: Record<ScreenKey, () => React.ReactElement> = {
     <div className="gs-paths">
       <Row><Pill c="dk">A</Pill><Chip on>Persona</Chip><i className="gs-ar" /><Chip>Território</Chip><i className="gs-ar" /><Chip>Ideia</Chip></Row>
       <Row><Pill c="dk">B</Pill><Chip on>Território</Chip><i className="gs-ar" /><Chip>Persona</Chip><i className="gs-ar" /><Chip>Ideia</Chip></Row>
-      <small>As dores da pessoa pedem os temas. Ou um tema maior é traduzido para cada pessoa.</small>
+      <small>As dores da pessoa pedem os temas. Ou um tema maior vira ideias para o público geral.</small>
     </div>
   ),
   idea: () => (
@@ -179,10 +179,9 @@ const SCREENS: Record<ScreenKey, () => React.ReactElement> = {
     </div>
   ),
   bridge: () => (
-    <Card className="gs-form"><Row className="gs-tabs"><span>Tema</span><span className="on">Personas <u>2</u></span><span>Ideias</span></Row>
-      <Row><Av t="H" /><b>Helena</b></Row><div className="gs-ta"><Ln /><Ln w={70} /></div>
-      <Row><Av c="b" t="S" /><b>Shelton</b></Row><div className="gs-ta"><Ln w={80} /></div>
-      <Btn hl>🔁 Traduzir com IA</Btn>
+    <Card className="gs-form"><Btn hl>💡 Gerar ideias</Btn><Row className="gs-tabs"><span>Tema</span><span className="on">Personas <u>2</u></span></Row>
+      <Row><Av t="H" /><b>Helena</b></Row>
+      <Row><Av c="b" t="S" /><b>Shelton</b></Row>
     </Card>
   ),
   matrix: () => (
@@ -191,7 +190,7 @@ const SCREENS: Record<ScreenKey, () => React.ReactElement> = {
       {[['Moradia', ['f', 'h', 'n']], ['Reajuste', ['f', 'n', 'n']], ['Trabalho', ['h', 'f', 'h']], ['Saúde', ['n', 'n', 'f']]].map(([t, c]) => (
         <div key={t as string} className="gs-mxr"><span>{t}</span>{(c as string[]).map((k, i) => <i key={i} className={`gs-dot ${k}`} />)}</div>
       ))}
-      <small>cheio: traduzido · vazado: ligada, sem tradução · tracejado: sem ligação</small>
+      <small>cheio: já tem ideias · vazado: ligada, sem ideias · tracejado: sem ligação</small>
     </Card>
   ),
   'map-score': () => (
@@ -201,7 +200,7 @@ const SCREENS: Record<ScreenKey, () => React.ReactElement> = {
         <span className="gs-node o">Moradia e aluguel<em className="sc hi">82</em></span>
         <span className="gs-node bl">Trabalho por app<em className="sc md">64</em></span>
         <span className="gs-node pu hl">Saúde pública<em className="sc lo">47</em></span>
-        <span className="gs-bar">↳ subtema · 🔁 traduzir · 💡 ideias</span>
+        <span className="gs-bar">💡 gerar ideias · ↳ subtema</span>
       </div>
     </div>
   ),

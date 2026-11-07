@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: 'Criador de Posts',
     short_name: 'Posts',
     description: 'Carrosséis, Tweet Cards e roteiros de vídeo com IA e a identidade da sua marca.',
-    start_url: '/admin/posts',
+    start_url: '/admin',
     display: 'standalone',
     background_color: '#F4F1EB',
     theme_color: '#F97335',

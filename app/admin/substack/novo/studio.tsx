@@ -185,6 +185,13 @@ export function Studio({ ideas, initialIdeaId, hasKey, remaining }: { ideas: Ide
               </div>
             )}
             <details className="vd-more">
+              <summary>Tipo de texto <span className="muted">({angle === 'auto' ? 'a IA escolhe' : ARTICLE_ANGLES.find((a) => a.id === angle)?.label.toLowerCase()})</span></summary>
+              <div className="vd-chips">
+                {ARTICLE_ANGLES.map((a) => <button key={a.id} type="button" className={`vd-chip${angle === a.id ? ' on' : ''}`} onClick={() => setAngle(a.id)} aria-pressed={angle === a.id} title={a.hint}>{a.label}</button>)}
+              </div>
+              <small className="muted">{ARTICLE_ANGLES.find((a) => a.id === angle)?.hint} Na dúvida, deixe a IA escolher.</small>
+            </details>
+            <details className="vd-more">
               <summary>Instruções extras <span className="muted">(opcional)</span></summary>
               <textarea rows={3} value={instructions} onChange={(e) => setInstructions(e.target.value)} maxLength={1200} placeholder="Ex.: abra com uma cena; cite a Maria só como exemplo; termine pedindo respostas." />
             </details>
@@ -192,13 +199,6 @@ export function Studio({ ideas, initialIdeaId, hasKey, remaining }: { ideas: Ide
 
           <div className="vd-config">
             <div className="card-surface form-card">
-              <div className="field">
-                <div className="lbl">Tipo de texto</div>
-                <div className="vd-chips">
-                  {ARTICLE_ANGLES.map((a) => <button key={a.id} type="button" className={`vd-chip${angle === a.id ? ' on' : ''}`} onClick={() => setAngle(a.id)} aria-pressed={angle === a.id} title={a.hint}>{a.label}</button>)}
-                </div>
-                <small className="muted">{ARTICLE_ANGLES.find((a) => a.id === angle)?.hint}</small>
-              </div>
               <div className="field">
                 <div className="lbl">Tamanho</div>
                 <div className="vd-chips">
