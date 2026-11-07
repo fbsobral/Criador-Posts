@@ -931,7 +931,7 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
   .tr-zoom button { width: 36px; height: 36px; } .tr-zoom span { min-width: 46px; }
   /* no celular a barra de ações do nó (dentro do mapa, escalada e cortável) dá lugar a uma barra fixa */
   .tr-tools { display: none; }
-  .tr-mbar { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; position: fixed; z-index: 45; left: 8px; right: 8px; bottom: calc(70px + env(safe-area-inset-bottom)); padding: 4px; background: var(--ink); border-radius: 16px; box-shadow: var(--shadow-lg); animation: msheet-up .18s ease-out; }
+  .tr-mbar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; position: fixed; z-index: 45; left: 8px; right: 8px; bottom: calc(70px + env(safe-area-inset-bottom)); padding: 4px; background: var(--ink); border-radius: 16px; box-shadow: var(--shadow-lg); animation: msheet-up .18s ease-out; }
   .tr-mbar button, .tr-mbar a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; padding: 7px 2px; border: 0; border-radius: 12px; background: transparent; color: #fff; font: inherit; font-size: 10.5px; font-weight: 600; line-height: 1.1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .tr-mbar button:active, .tr-mbar a:active { background: rgba(255, 255, 255, .18); } .tr-mbar svg { width: 19px; height: 19px; } .tr-mbar span[aria-hidden] { font-size: 17px; line-height: 19px; }
   .tr-fold { width: 30px; height: 30px; right: 4px; }
@@ -1345,3 +1345,35 @@ ul.id-ftext { padding-left: 20px; white-space: normal; } ul.id-ftext li { margin
 .pu-add select:first-child { flex: 1; min-width: 180px; }
 .pu-role { display: inline-flex; flex-direction: column; gap: 4px; }
 @media (max-width: 640px) { .pu-row { grid-template-columns: 1fr; } }
+
+/* Início: o caminho em passos */
+.home-steps { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.home-step { display: flex; align-items: center; gap: 16px; padding: 16px 18px; }
+.home-step.done { opacity: .78; }
+.home-step.next { border: 1.5px solid var(--primary); box-shadow: 0 0 0 4px var(--primary-soft); }
+.home-num { flex: none; width: 32px; height: 32px; border-radius: 99px; display: grid; place-items: center; font-weight: 700; background: var(--line); color: var(--ink-2); }
+.home-step.done .home-num { background: #E8F6EE; color: #11724A; }
+.home-step.next .home-num { background: var(--primary); color: #fff; }
+.home-num svg { width: 16px; height: 16px; }
+.home-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.home-body p { margin: 0; font-size: 13.5px; }
+.home-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.home-title b { font-family: var(--font-head); font-size: 15.5px; }
+.home-ic { display: inline-grid; place-items: center; color: var(--ink-2); }
+.home-ic svg { width: 18px; height: 18px; }
+.home-status { color: var(--ink-2); font-weight: 600; font-size: 12.5px; }
+.home-next { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 18px; margin-bottom: 12px; border: 1.5px solid var(--primary); flex-wrap: wrap; }
+.home-next div { display: flex; flex-direction: column; gap: 2px; }
+.home-extra { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+.home-tip { display: flex; gap: 12px; padding: 14px 16px; align-items: flex-start; flex-wrap: wrap; }
+.home-tip > div:first-of-type { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 3px; }
+.home-tip small { color: var(--muted); font-size: 12.5px; }
+.home-quick { display: flex; gap: 6px; flex-wrap: wrap; }
+@media (max-width: 760px) { .home-step { flex-wrap: wrap; } .home-step .btn { width: 100%; justify-content: center; } .home-extra { grid-template-columns: 1fr; } }
+
+/* Territórios: gerar ideias é a ação principal do tema */
+.tr-next { display: flex; flex-direction: column; gap: 10px; padding: 12px; margin-bottom: 12px; border-radius: 12px; background: #FFF8F4; border: 1.5px solid var(--primary); }
+.tr-next b { font-size: 13.5px; display: block; }
+.tr-next small { color: var(--muted); font-size: 12px; }
+.tr-tools a.tr-tb-main { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 8px; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; text-decoration: none; }
+.tr-mbar a.tr-mb-main { background: var(--primary); }

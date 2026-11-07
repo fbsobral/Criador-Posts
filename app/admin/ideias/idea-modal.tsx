@@ -91,8 +91,7 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
                   {from === 'persona' && territory && noPersonaTheme(territory) && persona === PUBLICO_ID && <small className="muted">Nenhuma persona está ligada a este tema, por isso a ideia já vem para o <b>público geral</b>. Você pode escolher uma persona acima.</small>}
                   {from === 'territory' && <small className="muted">Sem persona, a dor sai como <b>afirmação sobre o tema</b> (um fato do mercado ou do território), não como fala em primeira pessoa.</small>}
                   {pair === 'translated' && <small className="muted">✓ Já existe a tradução deste tema para esta persona; a IA vai usá-la como ponte.</small>}
-                  {pair === 'linked' && <small className="muted">Esta persona já enxerga o tema, mas ainda não há tradução dele para o dia a dia dela. <Link href={`/admin/territorios?p=${persona}&n=${territory}`} className="vd-link">Traduzir no mapa →</Link></small>}
-                  {pair === 'new' && <small className="muted">Esta persona ainda não está ligada ao tema: ao salvar, a ligação é criada. Para a ponte ficar melhor, <Link href={`/admin/territorios?p=${persona}&n=${territory}`} className="vd-link">traduza o tema para ela →</Link></small>}
+                  {pair === 'new' && <small className="muted">Esta persona ainda não está ligada a este tema: ao salvar as ideias, a ligação é criada.</small>}
                 </div>
               ))}
               <div className="field">

@@ -23,6 +23,7 @@ export const IconDown = () => (<svg {...base}><path d="M6 9l6 6 6-6" /></svg>);
 export const IconPlay = () => (<svg {...base}><path d="M7 5l12 7-12 7z" /></svg>);
 export const IconBoard = () => (<svg {...base}><rect x="3" y="4" width="5" height="16" rx="1.5" /><rect x="9.5" y="4" width="5" height="10" rx="1.5" /><rect x="16" y="4" width="5" height="13" rx="1.5" /></svg>);
 export const IconTarget = () => (<svg {...base}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.2" /></svg>);
+export const IconHome = () => (<svg {...base}><path d="M4 11.5 12 5l8 6.5" /><path d="M6.5 10v9h11v-9" /><path d="M10 19v-5h4v5" /></svg>);
 export const IconMap = () => (<svg {...base}><circle cx="5" cy="12" r="2.2" /><circle cx="19" cy="5.5" r="2.2" /><circle cx="19" cy="12" r="2.2" /><circle cx="19" cy="18.5" r="2.2" /><path d="M7.2 12H11c2 0 2-6.5 4-6.5M11 12h6.8M7.2 12H11c2 0 2 6.5 4 6.5" /></svg>);
 export const IconBulb = () => (<svg {...base}><path d="M9 18h6M10 21h4" /><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3Z" /></svg>);
 export const IconMore = () => (<svg {...base}><circle cx="5.5" cy="12" r="1.6" /><circle cx="12" cy="12" r="1.6" /><circle cx="18.5" cy="12" r="1.6" /></svg>);

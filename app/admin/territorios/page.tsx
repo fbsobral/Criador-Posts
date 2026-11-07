@@ -58,7 +58,7 @@ export default async function TerritoriosPage({ searchParams }: { searchParams: 
     <div className="page tr-page">
       <PageHead
         title="Territórios"
-        description="O mapa de temas da marca. Parta das dores de uma persona ou de um debate macro, ligue as personas aos temas e traduza cada tema para o dia a dia delas antes de virar ideia de conteúdo."
+        description="Os assuntos sobre os quais a marca quer ser lembrada. Monte o mapa (a IA sugere) e, em cada tema, gere ideias de conteúdo: é o próximo passo."
         actions={<><OrgPill name={c.brandName} /><PriorityBar config={priority} scores={nodes.map((n) => n.score ?? null)} total={nodes.length} canEdit={c.isBrandAdmin} hasKey={hasKey} /></>}
       />
       <AboutCard about={about} canEdit={c.isBrandAdmin} />
@@ -68,7 +68,7 @@ export default async function TerritoriosPage({ searchParams }: { searchParams: 
           groups={[...groups.map((g) => ({ key: g.id, label: g.name, color: colorOfGroup(g.id), items: list.filter((x) => x.groupId === g.id) })), { key: 'none', label: 'Sem grupo', color: '#8A857A', items: list.filter((x) => !x.groupId || !gIndex.has(x.groupId)) }]
             .filter((g) => g.items.length > 0).map((g) => ({ ...g, items: g.items.map((x) => ({ id: x.id, name: x.name, color: x.color, count: countOf(x.id) })) }))} />
         <span className="tr-tabs-sep" aria-hidden />
-        <Link href="/admin/territorios?v=matriz" className={`tr-tab geral${matrix ? ' on' : ''}`} aria-current={matrix ? 'page' : undefined} title="Quais temas já foram ligados e traduzidos para cada persona, e onde há lacuna"><span className="tr-tab-name"><b>Matriz</b><small>território × persona</small></span></Link>
+        <Link href="/admin/territorios?v=matriz" className={`tr-tab geral${matrix ? ' on' : ''}`} aria-current={matrix ? 'page' : undefined} title="Quais temas já têm ideias para cada persona, e onde há lacuna"><span className="tr-tab-name"><b>Matriz</b><small>território × persona</small></span></Link>
       </nav>
 
       {matrix ? (

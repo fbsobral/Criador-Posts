@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { IconBoard, IconEdit, IconGrid, IconPlus, IconNewsletter, IconPosts, IconSpark, IconTrash, IconVideo } from '../../icons';
 import { usePan } from '../use-pan';
 import { EmptyState } from '../ui';
+import { Menu } from '../territorios/menu';
 import { IdeaBody, ideaText } from './idea-body';
 import { IdeaConvertModal, type PostTemplateLite, type VideoFormatLite } from './idea-convert-modal';
 import { IdeaDrawer } from './idea-drawer';
@@ -102,7 +103,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
       {ideas.length === 0 ? (
         <EmptyState icon={<IconSpark />} title="Nenhuma ideia ainda"
           action={<div className="row-actions"><button type="button" className="btn primary" onClick={() => setAi({ persona, territory })}><IconSpark /> Gerar com IA</button><button type="button" className="btn" onClick={() => { setRefining(false); setEdit('new'); }}><IconPlus /> Nova ideia</button></div>}>
-          Escolha uma persona e um território e a IA cria ideias com dor, guia, argumentos e CTA indireta. Você revisa antes de salvar.
+          Escolha um tema do mapa (e, se quiser, uma persona) e a IA cria ideias prontas para virar post, roteiro ou artigo. Você revisa antes de salvar. Ainda sem temas? <Link href="/admin/territorios" className="vd-link">Comece pelos Territórios</Link>.
         </EmptyState>
       ) : shown.length === 0 ? (
         <EmptyState title="Nada com esses filtros">Tire algum filtro para ver as ideias.</EmptyState>
@@ -135,9 +136,11 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
                             {IDEA_STATUS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
                           </select>
                           <span className="id-ktools">
-                            <button type="button" className="btn small ghost" onClick={() => setConvert({ idea: i, mode: 'script' })} title="Criar roteiro de vídeo" aria-label="Criar roteiro de vídeo"><IconVideo /></button>
-                            <Link href={`/admin/substack/novo?ideia=${i.id}`} className="btn small ghost" title="Criar artigo para o Substack" aria-label="Criar artigo para o Substack"><IconNewsletter /></Link>
-                            <button type="button" className="btn small ghost" onClick={() => setConvert({ idea: i, mode: 'post' })} title="Criar post de imagem" aria-label="Criar post de imagem"><IconPosts /></button>
+                            <Menu label="Criar conteúdo" align="right" buttonClass="btn small primary">
+                              <button type="button" className="tr-menu-item" data-close onClick={() => setConvert({ idea: i, mode: 'post' })}><IconPosts /> Post ou carrossel</button>
+                              <button type="button" className="tr-menu-item" data-close onClick={() => setConvert({ idea: i, mode: 'script' })}><IconVideo /> Roteiro de vídeo</button>
+                              <Link href={`/admin/substack/novo?ideia=${i.id}`} className="tr-menu-item" data-close><IconNewsletter /> Artigo (Substack)</Link>
+                            </Menu>
                             <button type="button" className="btn small ghost" onClick={() => { setRefining(true); setEdit(i); }} title="Refinar com IA" aria-label="Refinar com IA"><IconSpark /></button>
                             <button type="button" className="btn small ghost danger" onClick={() => remove(i)} title="Excluir" aria-label="Excluir ideia"><IconTrash /></button>
                           </span>

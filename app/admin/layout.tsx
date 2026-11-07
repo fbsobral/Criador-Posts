@@ -21,7 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="auth-brand"><span className="mark"><IconSpark /></span>Criador de Posts</div>
         <h1 style={{ fontSize: 22 }}>Escolha ou crie sua marca</h1>
         <p className="auth-tag">Cada marca tem seus próprios posts, configurações e equipe.</p>
-        <OrganizationList hidePersonal afterCreateOrganizationUrl="/admin/posts" afterSelectOrganizationUrl="/admin/posts" />
+        <OrganizationList hidePersonal afterCreateOrganizationUrl="/admin" afterSelectOrganizationUrl="/admin" />
       </main>
     );
   }
@@ -38,8 +38,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <div className="logo-row"><span className="mark"><IconSpark /></span><span>Criador de Posts</span></div>
           <OrganizationSwitcher
             hidePersonal
-            afterSelectOrganizationUrl="/admin/posts"
-            afterCreateOrganizationUrl="/admin/posts"
+            afterSelectOrganizationUrl="/admin"
+            afterCreateOrganizationUrl="/admin"
             appearance={{ elements: { rootBox: { maxWidth: '100%' }, organizationSwitcherTrigger: { borderRadius: 12, border: '1px solid #E8E3D8', padding: '6px 10px', background: '#fff' } } }}
           />
         </div>
@@ -51,7 +51,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           {NAV.map((g) => (
             <div key={g.label} style={{ display: 'contents' }}>
               <div className="nav-label">{g.label}</div>
-              {g.items.map((it) => <NavLink key={it.href} href={it.href} icon={it.icon} exclude={it.exclude} also={it.also}>{it.label}</NavLink>)}
+              {g.items.map((it) => <NavLink key={it.href} href={it.href} icon={it.icon} exclude={it.exclude} also={it.also} exact={it.exact}>{it.label}</NavLink>)}
             </div>
           ))}
         </nav>
