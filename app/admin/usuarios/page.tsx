@@ -2,6 +2,8 @@ import { auth, clerkClient } from '@clerk/nextjs/server';
 import { getCtx } from '@/lib/ctx';
 import { removeMember } from '@/lib/actions';
 import { InviteForm } from './invite-form';
+import { MemberRole } from './member-role';
+import { PlatformUsers, type POrg, type PUser } from './platform-users';
 import { initials } from '@/lib/format';
 import { PageHead } from '../ui';
 
@@ -18,11 +20,29 @@ export default async function UsersPage() {
     clerk.organizations.getOrganizationMembershipList({ organizationId: orgId!, limit: 100 }),
     clerk.organizations.getOrganizationInvitationList({ organizationId: orgId!, status: ['pending'], limit: 100 }),
   ]);
-  const all = c.isPlatformAdmin ? await clerk.users.getUserList({ limit: 100, orderBy: '-created_at' }) : null;
+  // super-admin: todos os usuários, com as organizações e o nível de cada um (lido por organização, que são poucas)
+  let platform: { users: PUser[]; orgs: POrg[] } | null = null;
+  if (c.isPlatformAdmin) {
+    const [all, orgList] = await Promise.all([
+      clerk.users.getUserList({ limit: 200, orderBy: '-created_at' }),
+      clerk.organizations.getOrganizationList({ limit: 100 }),
+    ]);
+    const orgs = orgList.data.map((o) => ({ id: o.id, name: o.name })).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    const lists = await Promise.all(orgs.map((o) => clerk.organizations.getOrganizationMembershipList({ organizationId: o.id, limit: 200 })));
+    const byUser = new Map<string, PUser['memberships']>();
+    lists.forEach((l, k) => l.data.forEach((m) => {
+      const uid = m.publicUserData?.userId;
+      if (uid) byUser.set(uid, [...(byUser.get(uid) ?? []), { orgId: orgs[k].id, role: m.role === 'org:admin' ? 'org:admin' : 'org:member' }]);
+    }));
+    platform = {
+      orgs,
+      users: all.data.map((u) => ({ id: u.id, name: [u.firstName, u.lastName].filter(Boolean).join(' '), email: u.primaryEmailAddress?.emailAddress ?? '', createdAt: u.createdAt, memberships: byUser.get(u.id) ?? [] })),
+    };
+  }
 
   return (
     <div className="page">
-      <PageHead title="Usuários" description={`Quem tem acesso a ${c.brandName}. Administradores convidam e removem pessoas.`} />
+      <PageHead title="Usuários" description={`Quem tem acesso a ${c.brandName}. Administradores convidam, removem e mudam o nível das pessoas.`} />
 
       <div className="card-surface table-card users-t">
         <table>
@@ -34,7 +54,9 @@ export default async function UsersPage() {
                 <tr key={m.id}>
                   <td><div className="person"><span className="av">{initials(name || m.publicUserData?.identifier)}</span><div><b>{name || '—'}</b><small className="show-s">{m.publicUserData?.identifier}</small></div></div></td>
                   <td className="hide-s muted">{m.publicUserData?.identifier}</td>
-                  <td><span className={`pill ${m.role === 'org:admin' ? 'dark' : ''}`}>{roleName(m.role)}</span></td>
+                  <td>{c.isBrandAdmin && m.publicUserData?.userId && m.publicUserData.userId !== c.userId
+                    ? <MemberRole userId={m.publicUserData.userId} role={m.role === 'org:admin' ? 'org:admin' : 'org:member'} />
+                    : <span className={`pill ${m.role === 'org:admin' ? 'dark' : ''}`}>{roleName(m.role)}</span>}</td>
                   <td className="right">
                     {c.isBrandAdmin && m.publicUserData?.userId !== c.userId && (
                       <form action={removeMember}><input type="hidden" name="userId" value={m.publicUserData?.userId} /><button className="btn small danger">Remover</button></form>
@@ -59,28 +81,7 @@ export default async function UsersPage() {
         <InviteForm />
       )}
 
-      {all && (
-        <>
-          <div className="section-title"><h2>Todos os usuários da plataforma</h2><span className="pill dark">super-admin</span></div>
-          <div className="card-surface table-card">
-            <table>
-              <thead><tr><th>Pessoa</th><th className="hide-s">E-mail</th><th className="hide-s">Criado em</th></tr></thead>
-              <tbody>
-                {all.data.map((u) => {
-                  const name = [u.firstName, u.lastName].filter(Boolean).join(' ');
-                  return (
-                    <tr key={u.id}>
-                      <td><div className="person"><span className="av">{initials(name || u.primaryEmailAddress?.emailAddress)}</span><div><b>{name || '—'}</b><small className="show-s">{u.primaryEmailAddress?.emailAddress}</small></div></div></td>
-                      <td className="hide-s muted">{u.primaryEmailAddress?.emailAddress}</td>
-                      <td className="hide-s muted">{new Date(u.createdAt).toLocaleDateString('pt-BR')}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </>
-      )}
+      {platform && <PlatformUsers users={platform.users} orgs={platform.orgs} me={c.userId} />}
     </div>
   );
 }
