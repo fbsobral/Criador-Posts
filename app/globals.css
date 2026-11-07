@@ -1330,3 +1330,18 @@ ul.id-ftext { padding-left: 20px; white-space: normal; } ul.id-ftext li { margin
 .sb-refine-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .sb-refine-row input { flex: 1; min-width: 200px; }
 .sb-undo { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+
+/* Usuários · super-admin */
+.pu-new { margin-left: auto; }
+.pu-loose { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.pu-orgs { display: flex; flex-wrap: wrap; gap: 6px; }
+.pu-none { background: #FDECEA; color: #C8341F; }
+.pu-modal { width: min(560px, 100%); }
+.pu-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pu-mlist { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.pu-m { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pu-m b { flex: 1; min-width: 140px; }
+.pu-add { margin-top: 10px; }
+.pu-add select:first-child { flex: 1; min-width: 180px; }
+.pu-role { display: inline-flex; flex-direction: column; gap: 4px; }
+@media (max-width: 640px) { .pu-row { grid-template-columns: 1fr; } }
