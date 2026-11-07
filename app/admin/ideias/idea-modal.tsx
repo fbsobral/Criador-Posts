@@ -20,7 +20,9 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
   const router = useRouter();
   const [pending, start] = useTransition();
   const all = [...personas, { id: PUBLICO_ID, name: 'Público geral' }];
-  const [persona, setPersona] = useState(initialPersona || all[0]?.id || PUBLICO_ID);
+  // tema sem nenhuma persona ligada: já começa com o público geral
+  const noPersonaTheme = (id: string) => { const o = options.find((x) => x.id === id); return !!o && !o.personaIds.length; };
+  const [persona, setPersona] = useState(initialPersona || (noPersonaTheme(initialTerritory) ? PUBLICO_ID : all[0]?.id || PUBLICO_ID));
   const [territory, setTerritory] = useState(initialTerritory);
   const [count, setCount] = useState(3);
   const [instructions, setInstructions] = useState('');
@@ -31,20 +33,22 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
   const [off, setOff] = useState<Set<number>>(new Set());
   const [from, setFrom] = useState<'persona' | 'territory'>(initialTerritory && !initialPersona ? 'territory' : 'persona');
   const cur = options.find((o) => o.id === territory);
-  const pair = pairStatus(cur, persona);
+  // partindo de um tema do mapa, a ideia é sempre para o público geral (sem persona)
+  const who = from === 'territory' ? PUBLICO_ID : persona;
+  const pair = pairStatus(cur, who);
   const selected = ideas.filter((_, i) => !off.has(i)).length;
 
   async function suggest() {
     setBusy(true); setErr('');
     try {
-      const r = await fetch('/api/ideas/suggest', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ personaId: persona, territoryId: territory || null, count, instructions }) });
+      const r = await fetch('/api/ideas/suggest', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ personaId: who, territoryId: territory || null, count, instructions }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Não foi possível sugerir ideias.');
       setIdeas(j.ideas); setOff(new Set()); setStep('review');
     } catch (e) { setErr(e instanceof Error ? e.message : 'Erro inesperado.'); } finally { setBusy(false); }
   }
   const add = () => start(async () => {
-    const r = await addSuggestedIdeas(persona, territory || null, ideas.filter((_, i) => !off.has(i)));
+    const r = await addSuggestedIdeas(who, territory || null, ideas.filter((_, i) => !off.has(i)));
     if (r.error) { setErr(r.error); return; }
     router.refresh(); onClose();
   });
@@ -63,10 +67,10 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
                 <label>Por onde começar?</label>
                 <div className="tr-choices" role="radiogroup" aria-label="Por onde começar">
                   <button type="button" role="radio" aria-checked={from === 'persona'} className={`tr-choice${from === 'persona' ? ' on' : ''}`} onClick={() => setFrom('persona')}><b>Por quem vai ler</b><small>Você já sabe com quem quer falar. Escolha a persona; o tema é opcional. Bom para criar ideias variadas para o mesmo público.</small></button>
-                  <button type="button" role="radio" aria-checked={from === 'territory'} className={`tr-choice${from === 'territory' ? ' on' : ''}`} onClick={() => setFrom('territory')}><b>Por um tema do mapa</b><small>Você tem um assunto (até um debate amplo, como desemprego jovem). Escolha o tema e depois a persona para quem a IA vai traduzi-lo no dia a dia.</small></button>
+                  <button type="button" role="radio" aria-checked={from === 'territory'} className={`tr-choice${from === 'territory' ? ' on' : ''}`} onClick={() => setFrom('territory')}><b>Por um tema do mapa</b><small>Você tem um assunto (até um debate amplo, como desemprego jovem). Escolha o tema: as ideias saem para o público geral, sem persona.</small></button>
                 </div>
               </div>
-              {(from === 'persona' ? ['persona', 'territory'] : ['territory', 'persona']).map((k) => k === 'persona' ? (
+              {(from === 'persona' ? ['persona', 'territory'] : ['territory']).map((k) => k === 'persona' ? (
                 <div className="field" key="p">
                   <label htmlFor="ip">Persona</label>
                   <select id="ip" value={persona} onChange={(e) => setPersona(e.target.value)}>
@@ -82,8 +86,10 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
               ) : (
                 <div className="field" key="t">
                   <label htmlFor="it">Território {from === 'persona' && <span className="muted">(opcional)</span>}</label>
-                  <TerritorySelect id="it" options={options} persona={persona} value={territory} onChange={setTerritory} empty="Sem território específico" />
+                  <TerritorySelect id="it" options={options} persona={who} value={territory} onChange={(t) => { setTerritory(t); if (noPersonaTheme(t)) setPersona(PUBLICO_ID); }} empty="Sem território específico" />
                   {options.length === 0 && <small className="muted">O mapa ainda não tem territórios.</small>}
+                  {from === 'persona' && territory && noPersonaTheme(territory) && persona === PUBLICO_ID && <small className="muted">Nenhuma persona está ligada a este tema, por isso a ideia já vem para o <b>público geral</b>. Você pode escolher uma persona acima.</small>}
+                  {from === 'territory' && <small className="muted">Sem persona, a dor sai como <b>afirmação sobre o tema</b> (um fato do mercado ou do território), não como fala em primeira pessoa.</small>}
                   {pair === 'translated' && <small className="muted">✓ Já existe a tradução deste tema para esta persona; a IA vai usá-la como ponte.</small>}
                   {pair === 'linked' && <small className="muted">Esta persona já enxerga o tema, mas ainda não há tradução dele para o dia a dia dela. <Link href={`/admin/territorios?p=${persona}&n=${territory}`} className="vd-link">Traduzir no mapa →</Link></small>}
                   {pair === 'new' && <small className="muted">Esta persona ainda não está ligada ao tema: ao salvar, a ligação é criada. Para a ponte ficar melhor, <Link href={`/admin/territorios?p=${persona}&n=${territory}`} className="vd-link">traduza o tema para ela →</Link></small>}
@@ -105,7 +111,7 @@ export function IdeaModal({ personas, options, initialPersona, initialTerritory,
             </div>
             <footer>
               <span className="muted">≈ {fmtUsd(ESTIMATED_COST_IDEA_BASE + count * ESTIMATED_COST_PER_IDEA)} · nada é salvo antes da sua aprovação</span>
-              <button type="button" className="btn primary" onClick={suggest} disabled={busy || !hasKey}>{busy ? 'Gerando…' : <><IconSpark /> Gerar ideias</>}</button>
+              <button type="button" className="btn primary" onClick={suggest} disabled={busy || !hasKey || (from === 'territory' && !territory)}>{busy ? 'Gerando…' : <><IconSpark /> Gerar ideias</>}</button>
             </footer>
           </>
         ) : (
