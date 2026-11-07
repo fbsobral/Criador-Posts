@@ -208,8 +208,6 @@ const SCREENS: Record<ScreenKey, () => React.ReactElement> = {
   'idea-gen': () => (
     <Card className="gs-form"><Row className="gs-seg"><span className="on">Partir da persona</span><span>Partir do território</span></Row>
       <div className="gs-sel"><Ln w={50} /></div><div className="gs-sel"><Ln w={65} /></div>
-      <Tag>Objetivo destas ideias</Tag>
-      <Row className="gs-wrap"><Chip on>A IA escolhe</Chip><Chip>Conscientizar</Chip><Chip>Engajar</Chip><Chip>Aproximar</Chip><Chip>Apoiar</Chip></Row>
     </Card>
   ),
   'ideas-board': () => (
