@@ -259,6 +259,8 @@
   .nw .circ.fill img { width: 100%; height: 100%; object-fit: cover; }
   .nw .circ span { color: rgba(255,255,255,.55); font-weight: 700; font-size: 30px; letter-spacing: .1em; }
   .stage .nw [data-f] { cursor: text; }
+  .stage .nw [data-f]:empty::before { content: attr(data-ph); opacity: .38; font-style: italic; pointer-events: none; }
+  .stage .nw [data-f]:empty { outline: 3px dashed rgba(255,255,255,.28); outline-offset: 6px; }
   .stage .nw [data-f]:hover { outline: 3px dashed rgba(255,255,255,.35); outline-offset: 6px; }
   .stage .nw [data-f]:focus { outline: 3px solid rgba(249,115,53,.9); outline-offset: 6px; }
   #expTarget, label[for=expTarget], #expTargetTop { display: none; }
@@ -268,19 +270,35 @@
   .nw .body { position: absolute !important; inset: 0; padding: 170px 80px 96px; z-index: 3 !important; display: flex; flex-direction: column; align-items: flex-start; }
   .nw .rule { width: 120px; height: 10px; border-radius: 6px; background: var(--tagbg); margin: 0 0 40px; }
   .nw .sub.small { font-size: var(--tx, 40px); font-weight: 600; opacity: .92; }
-  .nw.f-texto .sub { line-height: 1.38; margin-top: 34px; font-weight: 500; }
-  .nw.f-foto-texto .photo { position: absolute; left: 0; right: 0; top: 0; height: 700px; overflow: hidden; z-index: 0; }
-  .nw.f-foto-texto .body { top: 700px; padding: 56px 80px 80px; }
-  .nw.f-foto-texto .sub { line-height: 1.35; margin-top: 20px; }
+  /* Texto: conteúdo no centro da página, título forte e corpo com barra de destaque (sem o vazio embaixo) */
+  .nw.f-texto .body { justify-content: center; padding: 200px 84px 120px; }
+  .nw.f-texto .rule { display: none; }
+  .nw.f-texto .ttl { line-height: 1.08; }
+  .nw.f-texto .sub { line-height: 1.45; margin-top: 40px; font-weight: 500; border-left: 8px solid var(--tagbg); padding-left: 34px; opacity: .95; }
+  /* Foto + texto: a foto se funde no fundo e a etiqueta "morde" a borda da foto */
+  .nw.f-foto-texto .photo { position: absolute; left: 0; right: 0; top: 0; height: 780px; overflow: hidden; z-index: 0; }
+  .nw.f-foto-texto .photo .nw-img { background: var(--bg); }
+  .nw.f-foto-texto .photo::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 360px; background: linear-gradient(to bottom, transparent, var(--bg) 70%); pointer-events: none; z-index: 5; }
+  .nw.f-foto-texto .body { top: 600px; padding: 0 84px 90px; }
+  .nw.f-foto-texto .ttl { line-height: 1.1; }
+  .nw.f-foto-texto .sub { line-height: 1.42; margin-top: 24px; opacity: .92; }
   .nw.f-foto-texto .nw-ph { padding: 0 80px; font-size: 30px; }
-  .nw.f-citacao .body, .nw.f-numero .body { justify-content: center; }
-  .nw .qmark { font-family: Georgia, 'Times New Roman', serif; font-weight: 700; font-size: 340px; line-height: .55; height: 170px; color: var(--tagbg); margin-bottom: 20px; }
-  .nw .quote { font-weight: 700; font-size: var(--tt, 65px); line-height: 1.2; letter-spacing: -.015em; color: var(--title); outline: none; white-space: pre-wrap; word-wrap: break-word; min-height: 1.2em; }
-  .nw .author { margin-top: 44px; font-weight: 600; font-size: var(--tx, 40px); color: var(--text); opacity: .85; outline: none; white-space: pre-wrap; }
-  .nw .big { font-weight: 800; font-size: var(--tt, 280px); line-height: .95; letter-spacing: -.04em; color: var(--title); outline: none; white-space: pre-wrap; word-break: break-word; min-height: 1em; }
-  .nw.f-numero .sub { margin-top: 28px; }
-  .nw.f-cta .body { align-items: center; text-align: center; justify-content: center; padding: 160px 90px 120px; }
-  .nw.f-cta .ttl { text-align: center; } .nw.f-cta .sub { text-align: center; margin-top: 22px; }
+  /* Citação e Número: centralizados na vertical; a etiqueta vem primeiro */
+  .nw.f-citacao .body, .nw.f-numero .body { justify-content: center; padding: 200px 84px 120px; }
+  .nw.f-citacao .tag, .nw.f-numero .tag { order: -1; margin-bottom: 44px; }
+  .nw .qmark { font-family: Georgia, 'Times New Roman', serif; font-weight: 700; font-size: 380px; line-height: .55; height: 150px; color: var(--tagbg); margin: 10px 0 34px -12px; }
+  .nw .quote { font-weight: 700; font-size: var(--tt, 77px); line-height: 1.16; letter-spacing: -.02em; color: var(--title); outline: none; white-space: pre-wrap; word-wrap: break-word; min-height: 1.2em; }
+  .nw .author { margin-top: 56px; font-weight: 600; font-size: var(--tx, 40px); color: var(--text); opacity: .9; outline: none; white-space: pre-wrap; display: flex; align-items: center; gap: 22px; }
+  .nw .author::before { content: ''; flex: none; width: 56px; height: 6px; border-radius: 3px; background: var(--tagbg); }
+  .nw .big { font-weight: 800; font-size: var(--tt, 360px); line-height: .9; letter-spacing: -.045em; color: var(--title); outline: none; white-space: pre-wrap; word-break: break-word; min-height: 1em; }
+  .nw.f-numero .big::after { content: ''; display: block; width: 170px; height: 16px; border-radius: 8px; background: var(--tagbg); margin-top: 38px; }
+  .nw.f-numero .sub { margin-top: 40px; max-width: 880px; font-weight: 600; line-height: 1.3; }
+  /* Só foto: legenda mais legível */
+  .nw.f-imagem .sub.small { font-weight: 600; line-height: 1.35; max-width: 900px; }
+  /* Chamada final: título grande e a ação como um botão */
+  .nw.f-cta .body { align-items: center; text-align: center; justify-content: center; padding: 330px 90px 120px; }
+  .nw.f-cta .ttl { text-align: center; line-height: 1.08; max-width: 900px; }
+  .nw.f-cta .sub { text-align: center; margin-top: 56px; display: inline-block; background: var(--tagbg); color: var(--tagtext); font-weight: 700; line-height: 1.25; padding: 30px 60px; border-radius: 99px; max-width: 900px; }
   .nw .circ.center { right: auto; left: 50%; top: 190px; transform: translateX(-50%); width: calc(var(--bs, 160px) * 1.5); height: calc(var(--bs, 160px) * 1.5); }
   .fmt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .fmt { border: 1.5px solid #E8E3D8; background: #fff; border-radius: 12px; padding: 8px 6px 6px; display: flex; flex-direction: column; gap: 4px; align-items: center; font-size: 12px; font-weight: 600; cursor: pointer; }
@@ -530,7 +548,7 @@ const logoFitOf = () => { const f = LOGO_FITS.includes(g.logoFit) ? g.logoFit : 
 const FS_LIMITS = { tt: [28, 320], tx: [20, 120], tg: [16, 60] };
 function defaultSizes(f, base) {
   const b = Number(base) || 62;
-  const m = { capa: [b, b], imagem: [b, 40], texto: [b, b * .68], 'foto-texto': [b * .9, b * .62], citacao: [b * 1.05, 40], numero: [280, b * .9], cta: [b, b] }[f] || [b, b];
+  const m = { capa: [b, b], imagem: [b, 44], texto: [b * 1.3, b * .8], 'foto-texto': [b * 1.05, b * .72], citacao: [b * 1.24, 40], numero: [360, b * .85], cta: [b * 1.45, b * .72] }[f] || [b, b];
   return { tt: Math.round(m[0]), tx: Math.round(m[1]), tg: 30 };
 }
 const clampFs = (k, v) => Math.min(FS_LIMITS[k][1], Math.max(FS_LIMITS[k][0], Math.round(Number(v))));
@@ -563,7 +581,10 @@ function buildSlide(s, editable) {
   if (g.logo) detectLogoFit(g.logo);
   const badge = s.showBadge === false ? '' : `<div class="circ${f === 'cta' ? ' center' : ''}${g.logo && logoFitOf() === 'fill' ? ' fill' : ''}" ${editable ? 'data-logo' : ''}>${g.logo ? `<img src="${g.logo}" alt="">` : (editable ? '<span>LOGO</span>' : '')}</div>`;
   const tag = s.showTag !== false && (s.tag || editable) ? `<span class="tag" data-f="tag" ${ce}>${esc(s.tag || '')}</span>` : '';
-  const F = (k, cls) => `<div class="${cls}" data-f="${k}" ${ce}>${esc(s[k] || '')}</div>`;
+  // campo vazio: no editor mostra uma dica clicável (dá para voltar a preencher); no post final e nas miniaturas não aparece
+  const PH = { title: { citacao: 'Quem disse (nome · cargo)', numero: 'O número', default: 'Título' }, text: { citacao: 'A frase, entre aspas', imagem: 'Legenda (opcional)', default: 'Subtítulo (opcional)' } };
+  const ph = k => (PH[k] ? PH[k][f] || PH[k].default : '');
+  const F = (k, cls) => (!editable && !String(s[k] || '').trim()) ? '' : `<div class="${cls}" data-f="${k}" ${ce}${editable ? ` data-ph="${esc(ph(k))}"` : ''}>${esc(s[k] || '')}</div>`;
   let html;
   if (f === 'capa') html = `${imgBox}<div class="grad"></div>${badge}<div class="txt">${tag}${F('title', 'ttl')}${F('text', 'sub')}</div>`;
   else if (f === 'imagem') html = `${imgBox}<div class="grad"></div>${badge}<div class="txt">${tag}${s.text || editable ? F('text', 'sub small') : ''}</div>`;
@@ -583,7 +604,7 @@ function renderCurrent() {
     const k = n.dataset.f;
     n.addEventListener('keydown', e => { if (e.key === 'Enter' && k === 'tag') { e.preventDefault(); n.blur(); } });
     n.addEventListener('paste', e => { e.preventDefault(); const t = (e.clipboardData || window.clipboardData).getData('text/plain'); document.execCommand('insertText', false, k === 'tag' ? t.replace(/\s+/g, ' ') : t.replace(/\r/g, '')); });
-    n.addEventListener('input', () => { cur()[k] = n.textContent; checkOverflow(); scheduleThumb(); scheduleSave(); });
+    n.addEventListener('input', () => { if (!n.textContent.trim()) n.innerHTML = ''; cur()[k] = n.textContent; checkOverflow(); scheduleThumb(); scheduleSave(); });
   });
   el.querySelector('[data-logo]')?.addEventListener('click', () => openPicker('logo'));
   bindAiPlaceholder(el);
