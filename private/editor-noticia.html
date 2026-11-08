@@ -254,7 +254,8 @@
   .nw .ttl { font-weight: 800; font-size: var(--fs, 62px); line-height: 1.1; letter-spacing: -.01em; color: var(--title); outline: none; white-space: pre-wrap; word-wrap: break-word; min-height: 1.1em; }
   .nw .sub { font-weight: 500; font-size: var(--fs, 62px); line-height: 1.18; letter-spacing: -.01em; color: var(--text); outline: none; white-space: pre-wrap; word-wrap: break-word; margin-top: 4px; min-height: 1.2em; }
   .nw .circ { position: absolute !important; top: 64px; right: 64px; width: var(--bs, 160px); height: var(--bs, 160px); border-radius: 50%; background: var(--badge); display: flex; align-items: center; justify-content: center; overflow: hidden; z-index: 2 !important; cursor: pointer; }
-  .nw .circ img { width: 74%; height: 74%; object-fit: contain; display: block; }
+  .nw .circ img { width: 66%; height: 66%; object-fit: contain; display: block; }
+  .nw .circ.fill img { width: 100%; height: 100%; object-fit: cover; }
   .nw .circ span { color: rgba(255,255,255,.55); font-weight: 700; font-size: 30px; letter-spacing: .1em; }
   .stage .nw [data-f] { cursor: text; }
   .stage .nw [data-f]:hover { outline: 3px dashed rgba(255,255,255,.35); outline-offset: 6px; }
@@ -368,7 +369,8 @@
         <button class="btn small" id="btnLogo">Enviar logo</button>
         <button class="btn small" id="btnLogoRm">Remover logo</button>
       </div>
-      <p class="hint" style="margin-top:10px">Por padrão usa a foto da marca (Configurações). Vale para todos os slides. O logo fica num círculo; use "Fundo do logo" em Cores para combinar.</p>
+      <div class="field" style="margin-top:12px"><label for="optLogoFit">Encaixe no círculo</label><select id="optLogoFit"><option value="auto">Automático</option><option value="fill">Preencher o círculo (logo com fundo)</option><option value="inside">Dentro do círculo (logo sem fundo)</option></select></div>
+      <p class="hint" style="margin-top:10px">Por padrão usa a foto da marca (Configurações). Vale para todos os slides. No automático, logo com fundo (quadrado) preenche o círculo e logo sem fundo fica dentro dele; use "Fundo do logo" em Cores para combinar.</p>
       <div class="field" style="margin-top:12px"><label for="inFont">Fonte</label><select id="inFont"></select></div>
       <div hidden>
         <input type="text" id="inName">
@@ -478,13 +480,13 @@ const newSlideOf = f => newSlide(Object.assign({ format: f }, FMT_DEF[f] || FMT_
 
 const KEY = 'editor-noticia-v1';
 const HOST = window.CARROSSEL || null;
-let g = { name: '', handle: '', avatar: null, logo: null, font: 'Montserrat', colors: { ...DEF_COLORS } };
+let g = { name: '', handle: '', avatar: null, logo: null, logoFit: 'auto', font: 'Montserrat', colors: { ...DEF_COLORS } };
 let slides = [newSlide()];
 let idx = 0;
 try {
   const saved = HOST ? HOST.initial : JSON.parse(localStorage.getItem(KEY) || 'null');
   if (saved && saved.g) {
-    ['name', 'avatar', 'logo', 'font', 'imageBrief'].forEach(k => { if (saved.g[k] != null && !(k === 'font' && !FONTS.includes(saved.g[k]))) g[k] = saved.g[k]; });
+    ['name', 'avatar', 'logo', 'logoFit', 'font', 'imageBrief'].forEach(k => { if (saved.g[k] != null && !(k === 'font' && !FONTS.includes(saved.g[k]))) g[k] = saved.g[k]; });
     if (saved.g.colors) g.colors = Object.assign({ ...DEF_COLORS }, saved.g.colors);
   }
   if (!g.logo && g.avatar) g.logo = g.avatar; // a foto de perfil da marca vira o logo do selo
@@ -495,6 +497,28 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const cur = () => slides[idx];
 const scaler = $('scaler');
+
+/* =============== encaixe do logo no círculo =============== */
+// logo com fundo sólido (quadrado, cantos opacos) preenche o círculo; logo transparente fica dentro dele, com margem e sem cortar
+const LOGO_FITS = ['auto', 'fill', 'inside'];
+const logoAuto = {}; // src → 'fill' | 'inside'
+function detectLogoFit(src) {
+  if (!src || logoAuto[src]) return;
+  logoAuto[src] = 'inside';
+  const img = new Image();
+  img.onload = () => {
+    try {
+      const c = document.createElement('canvas'); const w = c.width = 40, h = c.height = 40;
+      const x = c.getContext('2d'); x.drawImage(img, 0, 0, w, h);
+      const pts = [[1, 1], [w - 2, 1], [1, h - 2], [w - 2, h - 2], [Math.floor(w / 2), 1], [1, Math.floor(h / 2)]];
+      const opaque = pts.every(([px, py]) => x.getImageData(px, py, 1, 1).data[3] > 240);
+      const r = opaque ? 'fill' : 'inside';
+      if (r !== logoAuto[src]) { logoAuto[src] = r; if (g.logo === src) { renderCurrent(); renderThumbs(); } }
+    } catch (e) { /* imagem de outro domínio: fica dentro do círculo */ }
+  };
+  img.src = src;
+}
+const logoFitOf = () => { const f = LOGO_FITS.includes(g.logoFit) ? g.logoFit : 'auto'; return f === 'auto' ? (logoAuto[g.logo] || 'inside') : f; };
 
 /* =============== slide =============== */
 function buildSlide(s, editable) {
@@ -514,7 +538,8 @@ function buildSlide(s, editable) {
     ? `<div class="nw-img" data-pic><div class="slot-bg" style="${bgCss(s)}"></div></div>`
     : (editable && needsPhoto ? `<div class="nw-img" data-pic><div class="nw-ph">${f === 'foto-texto' ? 'Foto' : 'Imagem de fundo'}<small>Clique ou arraste uma imagem</small>${phBtns}</div></div>` : (needsPhoto ? '<div class="nw-img"></div>' : ''));
   const veil = s.image ? '<div class="veil"></div>' : '';
-  const badge = s.showBadge === false ? '' : `<div class="circ${f === 'cta' ? ' center' : ''}" ${editable ? 'data-logo' : ''}>${g.logo ? `<img src="${g.logo}" alt="">` : (editable ? '<span>LOGO</span>' : '')}</div>`;
+  if (g.logo) detectLogoFit(g.logo);
+  const badge = s.showBadge === false ? '' : `<div class="circ${f === 'cta' ? ' center' : ''}${g.logo && logoFitOf() === 'fill' ? ' fill' : ''}" ${editable ? 'data-logo' : ''}>${g.logo ? `<img src="${g.logo}" alt="">` : (editable ? '<span>LOGO</span>' : '')}</div>`;
   const tag = s.showTag !== false && (s.tag || editable) ? `<span class="tag" data-f="tag" ${ce}>${esc(s.tag || '')}</span>` : '';
   const F = (k, cls) => `<div class="${cls}" data-f="${k}" ${ce}>${esc(s[k] || '')}</div>`;
   let html;
@@ -595,6 +620,7 @@ function updatePanel() {
   $('optBadge').checked = s.showBadge !== false; $('badgeField').style.display = s.showBadge !== false ? 'flex' : 'none'; $('optBadgeSize').value = s.badgeSize ?? 160; $('badgeSizeVal').textContent = s.badgeSize ?? 160;
   updateAiGen();
   $('btnLogoRm').disabled = !g.logo;
+  $('optLogoFit').value = LOGO_FITS.includes(g.logoFit) ? g.logoFit : 'auto';
   $('inName').value = g.name; syncAccInputs(); $('inFont').value = g.font;
   document.querySelectorAll('#colors input').forEach(i => { i.value = g.colors[i.dataset.key]; });
   markPresets();
@@ -721,6 +747,7 @@ $('btnAvatar').addEventListener('click', () => openPicker('avatar'));
 $('btnLogo').addEventListener('click', () => openPicker('logo'));
 $('btnAvatarRm').addEventListener('click', () => { g.avatar = null; change(); });
 $('btnLogoRm').addEventListener('click', () => { g.logo = null; change(); });
+$('optLogoFit').addEventListener('change', e => { g.logoFit = LOGO_FITS.includes(e.target.value) ? e.target.value : 'auto'; change(); renderThumbs(); });
 
 /* =============== escala =============== */
 const stage = $('stage'), desktop = window.matchMedia('(min-width: 960px)');
