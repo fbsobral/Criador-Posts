@@ -250,9 +250,9 @@
   .nw .nw-ph small { font-size: 26px; opacity: .8; }
   .nw .grad { position: absolute !important; left: 0; right: 0; bottom: 0; height: 64%; background: linear-gradient(to top, var(--bg) 0%, var(--bg) 22%, rgba(0,0,0,0) 100%); opacity: var(--go, .6); z-index: 1 !important; pointer-events: none; }
   .nw .txt { position: absolute !important; left: 0; right: 0; bottom: 0; padding: 0 70px 96px; z-index: 3 !important; display: flex; flex-direction: column; align-items: flex-start; }
-  .nw .tag { display: inline-block; background: var(--tagbg); color: var(--tagtext); font-weight: 600; font-size: 30px; letter-spacing: .16em; text-transform: uppercase; padding: 14px 36px; border-radius: 99px; margin-bottom: 30px; outline: none; min-width: 80px; }
-  .nw .ttl { font-weight: 800; font-size: var(--fs, 62px); line-height: 1.1; letter-spacing: -.01em; color: var(--title); outline: none; white-space: pre-wrap; word-wrap: break-word; min-height: 1.1em; }
-  .nw .sub { font-weight: 500; font-size: var(--fs, 62px); line-height: 1.18; letter-spacing: -.01em; color: var(--text); outline: none; white-space: pre-wrap; word-wrap: break-word; margin-top: 4px; min-height: 1.2em; }
+  .nw .tag { display: inline-block; background: var(--tagbg); color: var(--tagtext); font-weight: 600; font-size: var(--tg, 30px); letter-spacing: .16em; text-transform: uppercase; padding: calc(var(--tg, 30px) * .47) calc(var(--tg, 30px) * 1.2); border-radius: 99px; margin-bottom: 30px; outline: none; min-width: 80px; }
+  .nw .ttl { font-weight: 800; font-size: var(--tt, 62px); line-height: 1.1; letter-spacing: -.01em; color: var(--title); outline: none; white-space: pre-wrap; word-wrap: break-word; min-height: 1.1em; }
+  .nw .sub { font-weight: 500; font-size: var(--tx, 62px); line-height: 1.18; letter-spacing: -.01em; color: var(--text); outline: none; white-space: pre-wrap; word-wrap: break-word; margin-top: 4px; min-height: 1.2em; }
   .nw .circ { position: absolute !important; top: 64px; right: 64px; width: var(--bs, 160px); height: var(--bs, 160px); border-radius: 50%; background: var(--badge); display: flex; align-items: center; justify-content: center; overflow: hidden; z-index: 2 !important; cursor: pointer; }
   .nw .circ img { width: 66%; height: 66%; object-fit: contain; display: block; }
   .nw .circ.fill img { width: 100%; height: 100%; object-fit: cover; }
@@ -266,20 +266,18 @@
   .nw .veil { position: absolute !important; inset: 0; background: var(--bg); opacity: var(--go, .8); z-index: 1 !important; pointer-events: none; }
   .nw .body { position: absolute !important; inset: 0; padding: 170px 80px 96px; z-index: 3 !important; display: flex; flex-direction: column; align-items: flex-start; }
   .nw .rule { width: 120px; height: 10px; border-radius: 6px; background: var(--tagbg); margin: 0 0 40px; }
-  .nw .sub.small { font-size: 40px; font-weight: 600; opacity: .92; }
-  .nw.f-texto .ttl { font-size: var(--fs, 62px); }
-  .nw.f-texto .sub { font-size: calc(var(--fs, 62px) * .68); line-height: 1.38; margin-top: 34px; font-weight: 500; }
+  .nw .sub.small { font-size: var(--tx, 40px); font-weight: 600; opacity: .92; }
+  .nw.f-texto .sub { line-height: 1.38; margin-top: 34px; font-weight: 500; }
   .nw.f-foto-texto .photo { position: absolute; left: 0; right: 0; top: 0; height: 700px; overflow: hidden; z-index: 0; }
   .nw.f-foto-texto .body { top: 700px; padding: 56px 80px 80px; }
-  .nw.f-foto-texto .ttl { font-size: calc(var(--fs, 62px) * .9); }
-  .nw.f-foto-texto .sub { font-size: calc(var(--fs, 62px) * .62); line-height: 1.35; margin-top: 20px; }
+  .nw.f-foto-texto .sub { line-height: 1.35; margin-top: 20px; }
   .nw.f-foto-texto .nw-ph { padding: 0 80px; font-size: 30px; }
   .nw.f-citacao .body, .nw.f-numero .body { justify-content: center; }
   .nw .qmark { font-family: Georgia, 'Times New Roman', serif; font-weight: 700; font-size: 340px; line-height: .55; height: 170px; color: var(--tagbg); margin-bottom: 20px; }
-  .nw .quote { font-weight: 700; font-size: calc(var(--fs, 62px) * 1.05); line-height: 1.2; letter-spacing: -.015em; color: var(--title); outline: none; white-space: pre-wrap; word-wrap: break-word; min-height: 1.2em; }
-  .nw .author { margin-top: 44px; font-weight: 600; font-size: 40px; color: var(--text); opacity: .85; outline: none; white-space: pre-wrap; }
-  .nw .big { font-weight: 800; font-size: 280px; line-height: .95; letter-spacing: -.04em; color: var(--title); outline: none; white-space: pre-wrap; word-break: break-word; min-height: 1em; }
-  .nw.f-numero .sub { font-size: calc(var(--fs, 62px) * .9); margin-top: 28px; }
+  .nw .quote { font-weight: 700; font-size: var(--tt, 65px); line-height: 1.2; letter-spacing: -.015em; color: var(--title); outline: none; white-space: pre-wrap; word-wrap: break-word; min-height: 1.2em; }
+  .nw .author { margin-top: 44px; font-weight: 600; font-size: var(--tx, 40px); color: var(--text); opacity: .85; outline: none; white-space: pre-wrap; }
+  .nw .big { font-weight: 800; font-size: var(--tt, 280px); line-height: .95; letter-spacing: -.04em; color: var(--title); outline: none; white-space: pre-wrap; word-break: break-word; min-height: 1em; }
+  .nw.f-numero .sub { margin-top: 28px; }
   .nw.f-cta .body { align-items: center; text-align: center; justify-content: center; padding: 160px 90px 120px; }
   .nw.f-cta .ttl { text-align: center; } .nw.f-cta .sub { text-align: center; margin-top: 22px; }
   .nw .circ.center { right: auto; left: 50%; top: 190px; transform: translateX(-50%); width: calc(var(--bs, 160px) * 1.5); height: calc(var(--bs, 160px) * 1.5); }
@@ -327,9 +325,11 @@
       <p class="hint">Clique na etiqueta, no título e no texto direto no slide para editar.</p>
       <label class="check"><input type="checkbox" id="optTag"> Mostrar etiqueta</label>
       <div class="field" id="tagField"><label for="inTag">Etiqueta</label><input type="text" id="inTag" maxlength="40" placeholder="ECONOMIA"></div>
-      <div class="field"><label for="optSize">Tamanho do texto</label>
-        <select id="optSize" data-seg><option value="54" data-short="Pequeno">Pequeno</option><option value="62" data-short="Padrão">Padrão</option><option value="72" data-short="Grande">Grande</option><option value="82" data-short="Extra">Extra grande</option></select>
-      </div>
+      <div class="sub">Tamanho da fonte</div>
+      <div class="field"><label for="fsTt"><span id="fsTtLbl">Título</span>: <b id="fsTtVal"></b> px</label><input type="range" id="fsTt" min="28" max="320" step="1"></div>
+      <div class="field"><label for="fsTx"><span id="fsTxLbl">Texto</span>: <b id="fsTxVal"></b> px</label><input type="range" id="fsTx" min="20" max="120" step="1"></div>
+      <div class="field" id="fsTgField"><label for="fsTg">Etiqueta: <b id="fsTgVal"></b> px</label><input type="range" id="fsTg" min="16" max="60" step="1"></div>
+      <div class="row"><button type="button" class="btn small" id="fsReset">Voltar ao padrão</button><button type="button" class="btn small" id="fsAll" title="Usa estes tamanhos em todos os slides do mesmo formato">Aplicar a todos deste formato</button></div>
       <div id="grpImage"><div class="sub">Imagem</div>
       <div class="row" style="margin-bottom:10px">
         <button class="btn small" id="btnPic">Enviar imagem</button>
@@ -520,6 +520,22 @@ function detectLogoFit(src) {
 }
 const logoFitOf = () => { const f = LOGO_FITS.includes(g.logoFit) ? g.logoFit : 'auto'; return f === 'auto' ? (logoAuto[g.logo] || 'inside') : f; };
 
+/* =============== tamanhos do texto =============== */
+// padrão = as proporções de antes, a partir do "tamanho base" (s.size); titleSize/textSize/tagSize são ajustes finos do slide
+const FS_LIMITS = { tt: [28, 320], tx: [20, 120], tg: [16, 60] };
+function defaultSizes(f, base) {
+  const b = Number(base) || 62;
+  const m = { capa: [b, b], imagem: [b, 40], texto: [b, b * .68], 'foto-texto': [b * .9, b * .62], citacao: [b * 1.05, 40], numero: [280, b * .9], cta: [b, b] }[f] || [b, b];
+  return { tt: Math.round(m[0]), tx: Math.round(m[1]), tg: 30 };
+}
+const clampFs = (k, v) => Math.min(FS_LIMITS[k][1], Math.max(FS_LIMITS[k][0], Math.round(Number(v))));
+function sizesOf(s) {
+  const d = defaultSizes(s.format, s.size);
+  const pick = (k, v) => (Number.isFinite(Number(v)) && v !== null && v !== '' ? clampFs(k, v) : d[k]);
+  return { tt: pick('tt', s.titleSize), tx: pick('tx', s.textSize), tg: pick('tg', s.tagSize) };
+}
+const SIZE_LABELS = { citacao: ['Citação', 'Autor'], numero: ['Número', 'Texto'], imagem: ['Título', 'Legenda'] };
+
 /* =============== slide =============== */
 function buildSlide(s, editable) {
   const f = FMT_DEF[s.format] ? s.format : 'capa';
@@ -529,6 +545,7 @@ function buildSlide(s, editable) {
   el.style.setProperty('--font', '"' + g.font + '"');
   ['bg', 'title', 'text', 'tagbg', 'tagtext', 'badge', 'ph'].forEach(k => el.style.setProperty('--' + k, c[k]));
   el.style.setProperty('--fs', s.size + 'px');
+  { const z = sizesOf(s); el.style.setProperty('--tt', z.tt + 'px'); el.style.setProperty('--tx', z.tx + 'px'); el.style.setProperty('--tg', z.tg + 'px'); }
   el.style.setProperty('--go', String((s.fade ?? 60) / 100));
   el.style.setProperty('--bs', (s.badgeSize ?? 160) + 'px');
   const ce = editable ? 'contenteditable="plaintext-only" spellcheck="false"' : '';
@@ -615,7 +632,7 @@ function updatePanel() {
   $('fadeField').style.display = ['capa', 'imagem', 'citacao', 'numero', 'cta'].includes(f) ? '' : 'none';
   $('fadeLbl').textContent = (f === 'capa' || f === 'imagem') ? 'Escurecimento embaixo' : 'Véu sobre a foto';
   $('optTag').checked = s.showTag !== false; $('tagField').style.display = s.showTag !== false ? 'flex' : 'none'; $('inTag').value = s.tag || '';
-  $('optSize').value = s.size; $('btnPicRm').disabled = !s.image; $('optFit').value = s.fit || 'cover'; updateAdjPanel();
+  syncSizes(s); $('btnPicRm').disabled = !s.image; $('optFit').value = s.fit || 'cover'; updateAdjPanel();
   $('optFade').value = s.fade ?? 60; $('fadeVal').textContent = s.fade ?? 60;
   $('optBadge').checked = s.showBadge !== false; $('badgeField').style.display = s.showBadge !== false ? 'flex' : 'none'; $('optBadgeSize').value = s.badgeSize ?? 160; $('badgeSizeVal').textContent = s.badgeSize ?? 160;
   updateAiGen();
@@ -634,7 +651,26 @@ $('optBadge').addEventListener('change', e => { cur().showBadge = e.target.check
 $('optBadgeSize').addEventListener('input', e => { cur().badgeSize = +e.target.value; $('badgeSizeVal').textContent = e.target.value; const sl = scaler.querySelector('.slide'); if (sl) sl.style.setProperty('--bs', e.target.value + 'px'); scheduleThumb(); scheduleSave(); });
 $('btnPic').addEventListener('click', () => openPicker('pic'));
 $('btnPicRm').addEventListener('click', () => { cur().image = null; cur().imgAdj = null; change(); });
-$('optSize').addEventListener('change', e => { cur().size = e.target.value; change(); });
+function syncSizes(s) {
+  const z = sizesOf(s); const L = SIZE_LABELS[s.format] || ['Título', 'Texto'];
+  $('fsTtLbl').textContent = L[0]; $('fsTxLbl').textContent = L[1];
+  [['Tt', 'tt'], ['Tx', 'tx'], ['Tg', 'tg']].forEach(([id, k]) => { $('fs' + id).value = z[k]; $('fs' + id + 'Val').textContent = z[k]; });
+  $('fsTgField').style.display = s.showTag !== false ? '' : 'none';
+}
+// arrastar a régua atualiza o slide na hora (sem redesenhar tudo); salvar e miniaturas vêm em seguida
+[['Tt', 'tt', 'titleSize'], ['Tx', 'tx', 'textSize'], ['Tg', 'tg', 'tagSize']].forEach(([id, k, key]) => {
+  $('fs' + id).addEventListener('input', e => {
+    const v = clampFs(k, e.target.value); cur()[key] = v; $('fs' + id + 'Val').textContent = v;
+    const sl = scaler.querySelector('.slide'); if (sl) sl.style.setProperty('--' + k, v + 'px');
+    scheduleThumb(); scheduleSave();
+  });
+});
+$('fsReset').addEventListener('click', () => { const s = cur(); delete s.titleSize; delete s.textSize; delete s.tagSize; s.size = '62'; syncSizes(s); change(); });
+$('fsAll').addEventListener('click', () => {
+  const s = cur(); let n = 0;
+  slides.forEach(o => { if (o !== s && o.format === s.format) { o.size = s.size; ['titleSize', 'textSize', 'tagSize'].forEach(k => { if (s[k] == null) delete o[k]; else o[k] = s[k]; }); n++; } });
+  change(); renderThumbs(); status(n ? `Tamanhos aplicados a mais ${n} slide${n > 1 ? 's' : ''}.` : 'Não há outros slides deste formato.');
+});
 [['inName', 'name']].forEach(([id, k]) => $(id).addEventListener('input', e => {
   g[k] = e.target.value; scaler.querySelectorAll(`[data-bind="${k}"]`).forEach(n => n.textContent = g[k]); renderThumbs(); scheduleSave();
 }));
