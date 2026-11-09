@@ -1,6 +1,7 @@
 'use server';
 
 import { auth, clerkClient } from '@clerk/nextjs/server';
+import { headers } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { users } from '@/db/schema';
@@ -145,3 +146,50 @@ export async function setMemberRole(input: { userId: string; role: Role }): Prom
   } catch (e) { return { error: msg(e, 'Não foi possível mudar o nível.') }; }
 }
 
+
+/* ---------------- convites pendentes (admin da marca, na organização atual) ---------------- */
+
+/** Endereço do app para o link do convite levar à tela de cadastro (mesma regra do convite original). */
+async function signUpUrl() {
+  const h = await headers();
+  const rawHost = h.get('x-forwarded-host') ?? h.get('host');
+  const host = rawHost && /^[a-z0-9.-]+(:\d{1,5})?$/i.test(rawHost) ? rawHost : null; // nunca monta o link com um host estranho
+  const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https');
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || (host ? `${proto}://${host}` : '');
+  return base ? `${base}/sign-up` : undefined;
+}
+
+async function ownInvitation(invitationId: string) {
+  const { userId, orgId, has } = await auth();
+  if (!userId || !orgId || !has({ role: 'org:admin' })) return { error: 'Apenas administradores da marca podem gerenciar convites.' as const };
+  try {
+    const inv = await (await clerkClient()).organizations.getOrganizationInvitation({ organizationId: orgId, invitationId });
+    if (inv.status && inv.status !== 'pending') return { error: 'Este convite não está mais pendente (já foi aceito ou cancelado).' as const };
+    return { inv, userId, orgId };
+  } catch { return { error: 'Convite não encontrado. Recarregue a página.' as const }; }
+}
+
+/** Reenvia um convite: o Clerk não tem "reenviar", então cancela o atual e cria um novo igual (sai um e-mail novo, com novo prazo). */
+export async function resendInvitation(invitationId: string): Promise<Result & { url?: string | null }> {
+  const o = await ownInvitation(invitationId);
+  if ('error' in o) return { error: o.error };
+  const clerk = await clerkClient();
+  try {
+    await clerk.organizations.revokeOrganizationInvitation({ organizationId: o.orgId, invitationId, requestingUserId: o.userId });
+    const redirectUrl = await signUpUrl();
+    const inv = await clerk.organizations.createOrganizationInvitation({ organizationId: o.orgId, emailAddress: o.inv.emailAddress, role: o.inv.role, inviterUserId: o.userId, ...(redirectUrl ? { redirectUrl } : {}) });
+    done();
+    return { ok: `Convite reenviado para ${o.inv.emailAddress}.`, url: inv.url };
+  } catch (e) { return { error: msg(e, 'Não foi possível reenviar o convite.') }; }
+}
+
+/** Cancela um convite pendente (o link do e-mail deixa de funcionar). */
+export async function revokeInvitation(invitationId: string): Promise<Result> {
+  const o = await ownInvitation(invitationId);
+  if ('error' in o) return { error: o.error };
+  try {
+    await (await clerkClient()).organizations.revokeOrganizationInvitation({ organizationId: o.orgId, invitationId, requestingUserId: o.userId });
+    done();
+    return { ok: 'Convite cancelado.' };
+  } catch (e) { return { error: msg(e, 'Não foi possível cancelar o convite.') }; }
+}

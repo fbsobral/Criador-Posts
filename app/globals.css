@@ -1377,3 +1377,9 @@ ul.id-ftext { padding-left: 20px; white-space: normal; } ul.id-ftext li { margin
 .tr-next small { color: var(--muted); font-size: 12px; }
 .tr-tools a.tr-tb-main { display: inline-flex; align-items: center; gap: 4px; padding: 5px 10px; border-radius: 8px; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; white-space: nowrap; text-decoration: none; }
 .tr-mbar a.tr-mb-main { background: var(--primary); }
+
+/* Usuários · convites pendentes */
+.inv-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.inv-msg { margin: 6px 0 0; font-size: 12.5px; }
+.inv-msg.ok { color: #11724A; } .inv-msg.err { color: var(--danger); }
+.inv-link { margin-top: 6px; width: 100%; font-size: 12px; }

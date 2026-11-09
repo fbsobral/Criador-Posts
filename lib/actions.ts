@@ -192,7 +192,7 @@ export async function deleteTemplate(formData: FormData) {
   revalidatePath('/admin/templates');
 }
 
-export type InviteState = { ok?: string; error?: string } | null;
+export type InviteState = { error?: string; ok?: string; url?: string | null } | null;
 
 /** Mensagem legível de um erro do Clerk (as mensagens de erro de Server Actions são escondidas em produção). */
 function clerkMessage(e: unknown): string {
@@ -217,17 +217,19 @@ export async function inviteMember(_prev: InviteState, formData: FormData): Prom
   const host = rawHost && /^[a-z0-9.-]+(:\d{1,5})?$/i.test(rawHost) ? rawHost : null; // nunca monta o link do convite com um host estranho
   const proto = h.get('x-forwarded-proto') ?? (host?.startsWith('localhost') ? 'http' : 'https');
   const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || (host ? `${proto}://${host}` : '');
+  let url: string | null = null;
   try {
-    await (await clerkClient()).organizations.createOrganizationInvitation({
+    const inv = await (await clerkClient()).organizations.createOrganizationInvitation({
       organizationId: orgId, emailAddress: email, role, inviterUserId: userId,
       ...(base ? { redirectUrl: `${base}/sign-up` } : {}),
     });
+    url = inv.url ?? null;
   } catch (e) {
     console.error('[convite] falhou:', JSON.stringify((e as { errors?: unknown }).errors ?? String(e)));
     return { error: clerkMessage(e) };
   }
   revalidatePath('/admin/usuarios');
-  return { ok: `Convite enviado para ${email}.` };
+  return { ok: `Convite enviado para ${email}.`, url };
 }
 
 export async function removeMember(formData: FormData) {

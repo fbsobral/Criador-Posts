@@ -3,6 +3,7 @@ import { getCtx } from '@/lib/ctx';
 import { removeMember } from '@/lib/actions';
 import { InviteForm } from './invite-form';
 import { MemberRole } from './member-role';
+import { InviteRow } from './invite-row';
 import { PlatformUsers, type POrg, type PUser } from './platform-users';
 import { initials } from '@/lib/format';
 import { PageHead } from '../ui';
@@ -66,12 +67,7 @@ export default async function UsersPage() {
               );
             })}
             {invites.data.map((i) => (
-              <tr key={i.id}>
-                <td><div className="person"><span className="av" style={{ background: '#d8d2c3' }}>@</span><div><b className="muted">Convite enviado</b></div></div></td>
-                <td className="hide-s muted">{i.emailAddress}</td>
-                <td><span className="pill">{roleName(i.role)}</span></td>
-                <td className="right"><span className="pill draft">Pendente</span></td>
-              </tr>
+              <InviteRow key={i.emailAddress} id={i.id} email={i.emailAddress} roleLabel={roleName(i.role)} createdAt={i.createdAt} expiresAt={i.expiresAt ?? 0} url={i.url ?? null} canManage={c.isBrandAdmin} />
             ))}
           </tbody>
         </table>
