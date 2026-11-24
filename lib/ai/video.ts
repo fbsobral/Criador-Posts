@@ -204,7 +204,8 @@ ${i.personaBrief}` : ''}`;
   const ideaText = i.idea.title.trim()
     ? `IDEIA DESTE VÍDEO\nTítulo: ${i.idea.title}\nÂngulo: ${i.idea.angle}${i.idea.points.length ? `\nPontos a usar:\n${i.idea.points.map((p) => `- ${p}`).join('\n')}` : ''}`
     : 'IDEIA DESTE VÍDEO: não foi definida. Faça um vídeo só, com o recorte mais forte do conteúdo-fonte (o que mais faz quem assiste parar, entender e agir).';
-  try {
+  type Raw = { structure?: string; title?: string; parts?: RawPart[]; production?: { rhythm?: string; sources?: string[]; short_version?: string }; caption?: string; hashtags?: string[]; to_verify?: string[] };
+  const call = async () => {
     const res = await new Anthropic().beta.messages.create({
       model: AI_MODEL, max_tokens: 10000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
       system: systemBlocks(i, role, extra),
@@ -213,7 +214,17 @@ ${i.personaBrief}` : ''}`;
     });
     if (res.stop_reason === 'refusal') throw new AiError('A IA recusou escrever este roteiro.');
     if (res.stop_reason === 'max_tokens') throw new AiError('A resposta ficou grande demais. Tente de novo.', true);
-    const raw = JSON.parse(textOf(res)) as { structure?: string; title?: string; parts?: RawPart[]; production?: { rhythm?: string; sources?: string[]; short_version?: string }; caption?: string; hashtags?: string[]; to_verify?: string[] };
+    return { raw: JSON.parse(textOf(res)) as Raw, usage: usageOf(res.usage) };
+  };
+  // às vezes a resposta volta com a legenda (ou a versão curta) em branco: tenta mais uma vez antes de entregar incompleto
+  const incomplete = (r: Raw) => !Array.isArray(r.parts) || !r.parts.length || !String(r.caption ?? '').trim() || (free && !String(r.production?.short_version ?? '').trim());
+  try {
+    let { raw, usage } = await call();
+    if (incomplete(raw)) {
+      const again = await call();
+      usage = { inputTokens: usage.inputTokens + again.usage.inputTokens, outputTokens: usage.outputTokens + again.usage.outputTokens };
+      if (!incomplete(again.raw) || (Array.isArray(again.raw.parts) && again.raw.parts.length)) raw = again.raw;
+    }
     if (!Array.isArray(raw.parts) || raw.parts.length < 1) throw new AiError('A IA devolveu um roteiro vazio.', true);
     const data = toData(raw.parts, raw.caption ?? '', raw.hashtags ?? [], [], free ? raw.production : undefined);
     // palavras demais para o tempo de um bloco: avisa (o editor mostra a contagem)
@@ -224,7 +235,7 @@ ${i.personaBrief}` : ''}`;
       ...(over.length ? [`Fala acima do tempo em: ${over.join(', ')}. Encurte ou aumente a duração.`] : []),
       ...(raw.to_verify ?? []).map((t) => `Conferir: ${t}`),
     ].map((n) => clean(n, 320)).filter(Boolean).slice(0, 10);
-    return { title: clean(raw.title, 80) || i.idea.title.slice(0, 80) || 'Roteiro', data, ...usageOf(res.usage) };
+    return { title: clean(raw.title, 80) || i.idea.title.slice(0, 80) || 'Roteiro', data, ...usage };
   } catch (e) {
     if (e instanceof SyntaxError) throw new AiError('A IA devolveu uma resposta inválida.', true);
     return fail(e);

@@ -176,6 +176,45 @@ As 4 barreiras que os jovens enfrentam depois da escola:
 
 A D.C.T-Youths oferece orientação profissional e mentoria para ajudar os jovens a ter clareza e dar o primeiro passo.`,
   },
+  // o texto exato que o dono colou no Claude (8: marca moçambicana; 9: perfil sem menção a Moçambique)
+  { name: 'mz-colado-perfil-mz', kind: 'material', persona: null, territory: '', videoFormat: 'auto', seconds: 60, brand: { niche: 'Orientação profissional e mentoria para jovens em Moçambique', audience: 'Jovens moçambicanos de 16 a 25 anos e potenciais mentores', about: 'Organização moçambicana, de Maputo, que oferece orientação profissional e mentoria a jovens. Lema: Dreams are not discussed.', cta: '' }, text: `Contexto · Moçambique
+A falta de orientação profissional dificulta caminhos para o futuro
+65%
+tentaram encontrar emprego sem sucesso
+Afrobarometer · 2025
+30%
+não estudam, não trabalham, não se formam
+UN Women · 2022
+32%
+conclui o ensino secundário — 1 em cada 3
+World Bank / UNESCO · 2023
+Direção
+Não sabem o que fazer após o ensino médio ou início da universidade.
+Clareza
+Falta-lhes clareza sobre talentos e possibilidades reais de carreira.
+Decisão
+Têm medo de errar na escolha e se arrepender pelo caminho que seguiram.
+Foco
+Têm dificuldade para organizar o tempo e tirar os planos do papel.` },
+  { name: 'mz-colado-perfil-br', kind: 'material', persona: null, territory: '', videoFormat: 'auto', seconds: 60, brand: { cta: '' }, text: `Contexto · Moçambique
+A falta de orientação profissional dificulta caminhos para o futuro
+65%
+tentaram encontrar emprego sem sucesso
+Afrobarometer · 2025
+30%
+não estudam, não trabalham, não se formam
+UN Women · 2022
+32%
+conclui o ensino secundário — 1 em cada 3
+World Bank / UNESCO · 2023
+Direção
+Não sabem o que fazer após o ensino médio ou início da universidade.
+Clareza
+Falta-lhes clareza sobre talentos e possibilidades reais de carreira.
+Decisão
+Têm medo de errar na escolha e se arrepender pelo caminho que seguiram.
+Foco
+Têm dificuldade para organizar o tempo e tirar os planos do papel.` },
 ];
 
 const whoOf = (c: Case) => (c.personas?.length ? c.personas : c.persona ? [c.persona] : []);
@@ -197,7 +236,7 @@ const channelCheck = (c: Case, t: string) => (c.expect ? flag(c.expect.test(t), 
 const HOURS = /\b(?:seis|sete|oito|nove|dez|onze|meio-dia)(?: e (?:meia|quinze|vinte|quarenta))?(?: da (?:manh[ãa]|noite|tarde))\b|\b\d{1,2}h\d{0,2}\b/gi;
 const invented = (c: Case, t: string) => {
   t = t.replace(/^\s*\d+[.)]\s/gm, ''); // numeração de lista não é dado
-  const src = `${c.text ?? ''} ${JSON.stringify(c.idea ?? {})} ${JSON.stringify(whoOf(c))} ${c.channels ?? ''}`;
+  const src = `${c.text ?? ''} ${JSON.stringify(c.idea ?? {})} ${JSON.stringify(whoOf(c))} ${c.channels ?? ''} ${JSON.stringify(brandOf(c))}`;
   const nums = [...new Set(t.match(/\b\d+\b/g) ?? [])].filter((n) => !src.includes(n));
   return [...nums, ...(t.match(HOURS) ?? [])];
 };
