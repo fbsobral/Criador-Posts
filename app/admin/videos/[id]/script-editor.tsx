@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { actionErrorMessage } from '@/lib/action-error';
 import { deleteScript, duplicateScript, saveScript } from '@/lib/video-actions';
-import { MAX_PART_SECONDS, MIN_PART_SECONDS, PART_COLORS, STAGES, countWords, fmtSecs, scriptToText, speakSeconds, stageOf, totalSeconds, wordsFor, type ScriptData, type Stage } from '@/lib/video';
+import { MAX_PART_SECONDS, MIN_PART_SECONDS, PART_COLORS, STAGES, countWords, fmtSecs, scriptToText, speakSeconds, speechToText, stageOf, totalSeconds, wordsFor, type ScriptData, type Stage } from '@/lib/video';
 import { IconCopy, IconPlay, IconSpark, IconTrash } from '../../../icons';
 import { PartsBar } from '../parts-bar';
 
@@ -19,6 +19,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   const [save, setSave] = useState<SaveState>('saved');
   const [saveMsg, setSaveMsg] = useState('');
   const [copied, setCopied] = useState(false);
+  const [copiedSpeech, setCopiedSpeech] = useState(false);
   const [prompter, setPrompter] = useState(false);
   // refinar com IA: pedir → comparar → aplicar (com opção de desfazer, porque o editor salva sozinho)
   const [refine, setRefine] = useState(false);
@@ -147,6 +148,8 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   };
   const undoRefine = () => { if (!undo) return; setTitle(undo.title); setData(undo.data); saveNow(undo.title, undo.data); setUndo(null); };
 
+  // só a fala: um bloco por parágrafo, sem tela, visual, tempos nem legenda
+  const copySpeech = async () => { try { await navigator.clipboard.writeText(speechToText(data)); setCopiedSpeech(true); setTimeout(() => setCopiedSpeech(false), 1800); } catch { /* sem permissão de área de transferência */ } };
   const copy = async () => { try { await navigator.clipboard.writeText(scriptToText(title, data)); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* sem permissão de área de transferência */ } };
   // duplicar e excluir mostram o que deu errado (antes, uma ação que falhava, por exemplo com a página aberta de antes de uma atualização do app, não fazia nada e não avisava)
   const [busy, setBusy] = useState(false);
@@ -184,6 +187,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
             {STAGES.map((st) => <option key={st.id} value={st.id}>{st.label}</option>)}
           </select>
           <button type="button" className="btn small" onClick={copy}><IconCopy /> {copied ? 'Copiado!' : 'Copiar'}</button>
+          <button type="button" className="btn small" onClick={copySpeech} title="Copia só o texto da fala, um bloco por parágrafo (sem tela, visual, tempos nem legenda)"><IconCopy /> {copiedSpeech ? 'Fala copiada!' : 'Copiar só a fala'}</button>
           <button type="button" className="btn small" onClick={() => setRefine((o) => !o)} disabled={!hasKey} aria-expanded={refine}><IconSpark /> Refinar com IA</button>
           <button type="button" className="btn small" onClick={() => setPrompter(true)}><IconPlay /> Teleprompter</button>
           <button type="button" className="btn small" onClick={dup} disabled={busy}>Duplicar</button>

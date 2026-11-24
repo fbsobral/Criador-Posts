@@ -73,6 +73,9 @@ export const fmtSecs = (s: number) => (s >= 60 ? `${Math.floor(s / 60)}min${s % 
 /** Cores das partes na linha do tempo (repetem se houver mais partes que cores). */
 export const PART_COLORS = ['#F97335', '#FFB02E', '#1D9BF0', '#1F9D63', '#8B5CF6', '#E5484D', '#0EA5A4', '#B8481C', '#6D6962', '#C2410C'];
 
+/** Só a fala do roteiro (sem tela, visual, tempos nem legenda), um bloco por parágrafo: para colar num teleprompter, no CapCut ou numa locução. */
+export const speechToText = (d: { parts: { speech: string }[] }) => d.parts.map((p) => p.speech.trim()).filter(Boolean).join('\n\n');
+
 /** Roteiro em texto corrido (para copiar). */
 export function scriptToText(title: string, d: ScriptData): string {
   const lines = [title, ''];
