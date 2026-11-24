@@ -59,8 +59,8 @@ export function Wizard({ hasKey, remaining }: { hasKey: boolean; remaining: numb
           <small className="muted">≈ {wordsFor(seconds)} palavras de fala</small>
         </div>
         <details className="vd-more">
-          <summary>Pedido extra <span className="muted">(opcional)</span></summary>
-          <textarea rows={3} value={instructions} onChange={(e) => setInstructions(e.target.value)} maxLength={1500} disabled={busy} placeholder="Ex.: tom mais emocional; termine convidando a se inscrever; fale com os pais dos jovens." />
+          <summary>Para quem é e qual o foco? <span className="muted">(opcional)</span></summary>
+          <textarea rows={3} value={instructions} onChange={(e) => setInstructions(e.target.value)} maxLength={1500} disabled={busy} placeholder="Ex.: o vídeo é para doadores e patrocinadores; fale com os pais dos jovens; tom mais emocional; termine convidando a se inscrever." />
         </details>
       </div>
 

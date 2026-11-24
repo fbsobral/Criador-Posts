@@ -48,14 +48,16 @@ export type WriteScriptInput = {
   personaBrief?: string;
 };
 
-/** O pedido, quase igual ao que se faria num chat: o material, a duração, o perfil da marca e uma regra dura (não inventar). */
-function writerPrompt(i: WriteScriptInput) {
+/** O pedido, quase igual ao que se faria num chat: o material, a duração, o perfil da marca, o pedido do usuário e uma regra dura (não inventar). */
+export function writerPrompt(i: WriteScriptInput) {
   const system = ['Você escreve roteiros de vídeos curtos (Reels, TikTok e Shorts) para a marca abaixo.', brandBlock(i.brand)].filter(Boolean).join('\n\n');
+  const max = wordsFor(i.seconds), min = Math.round(max * 0.85);
   const user = [
-    `Faça o roteiro de um vídeo de ${i.seconds} segundos (no máximo ${wordsFor(i.seconds)} palavras de fala, para caber no tempo), com a legenda para publicar, sobre isto:\n\n${i.content.trim().slice(0, MAX_CONTENT_CHARS)}`,
+    `Faça o roteiro de um vídeo de ${i.seconds} segundos (entre ${min} e ${max} palavras de fala: use o tempo todo, sem passar dele), com a legenda para publicar, sobre isto:\n\n${i.content.trim().slice(0, MAX_CONTENT_CHARS)}`,
+    // o pedido do usuário (público, foco, tom) vale para o vídeo inteiro, do gancho ao convite, não só para o final
+    i.instructions.trim() ? `O PEDIDO PARA ESTE VÍDEO (vale do gancho ao convite: para quem é, o foco e o tom). Se ele muda para quem o vídeo fala (por exemplo, doadores em vez dos jovens do material), o vídeo inteiro fala com essa pessoa, e o material vira o argumento:\n${i.instructions.trim()}` : '',
     i.personaBrief ? `Para quem é o vídeo:\n${i.personaBrief}` : '',
-    i.instructions.trim() ? `Pedido extra: ${i.instructions.trim()}` : '',
-    'Use só os fatos do material e do perfil da marca: não invente números, fontes, nomes nem citações.',
+    'Use só os fatos do material e do perfil da marca: não invente números, fontes, nomes nem citações. Se faltar no material algo que deixaria o vídeo mais forte (por exemplo, o que o apoio de um doador torna possível, ou o canal para contato), não invente: avise no fim, numa nota para quem vai gravar.',
   ].filter(Boolean).join('\n\n');
   return { system, user };
 }
@@ -77,8 +79,8 @@ const EXTRACT_SYSTEM = `Você recebe um roteiro de vídeo curto escrito em texto
 - "title": o título do roteiro (se não houver, um título curto tirado do próprio texto).
 - "parts": um item por bloco/cena do roteiro, na ordem. "name": o rótulo do bloco como aparece (ex.: "Gancho", "Lista 1/4"); sem rótulo, um nome curto que diga o que o bloco faz. "seconds": a duração do bloco pela minutagem (ex.: 0:05–0:20 = 15). "speech": a fala/locução, sem as aspas de fora. "on_screen": o texto na tela. "visual": a imagem/o que mostrar. Campo que o bloco não tem fica "".
 - "caption": a legenda sugerida, sem as hashtags. "hashtags": as hashtags, sem "#".
-- "production": "rhythm" = as notas de ritmo, edição, legendas, música e locução, copiadas (pode juntar em parágrafos); "sources" = cada fonte citada para os números; "short_version" = a versão curta, se houver (se for tabela, uma linha por bloco: "tempo · texto na tela · fala").
-- "to_verify": cada número, fonte, nome ou afirmação factual do roteiro que alguém deve conferir antes de publicar, em frases curtas.`;
+- "production": "rhythm" = as notas de ritmo, edição, legendas, música e locução que o roteiro trouxer, copiadas (pode juntar em parágrafos); se o roteiro não trouxer essas notas, deixe "" (não preencha com duração, foco nem outras informações); "sources" = cada fonte citada para os números; "short_version" = a versão curta, se houver (se for tabela, uma linha por bloco: "tempo · texto na tela · fala").
+- "to_verify": cada número, fonte ou afirmação factual do roteiro que alguém deve conferir antes de publicar, mais o que o próprio roteiro avisa que falta no material, em frases curtas. Não liste o nome da marca nem informações triviais.`;
 
 type Extracted = { title?: string; parts?: { name?: string; seconds?: number; speech?: string; on_screen?: string; visual?: string }[]; caption?: string; hashtags?: string[]; production?: { rhythm?: string; sources?: string[]; short_version?: string }; to_verify?: string[] };
 
