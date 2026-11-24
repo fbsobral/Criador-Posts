@@ -529,8 +529,28 @@ textarea:disabled { background: var(--surface-2); color: var(--muted); cursor: n
 .vd-timing { padding: 14px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
 .vd-timing-msg { font-size: 13px; color: var(--ink-2); } .vd-timing-msg.over { color: #9A5B00; } .vd-timing-msg.over b { color: #B45309; } .vd-timing-msg.ok b { color: var(--ok); }
 .vd-notes ul { margin: 6px 0 0 18px; font-size: 13px; }
-.vd-script-parts { display: flex; flex-direction: column; gap: 12px; margin: 16px 0; }
-.vd-sp { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.vd-script-parts { display: flex; flex-direction: column; margin: 16px 0; padding: 0; overflow: hidden; }
+/* cada bloco: a fala numa coluna (uma embaixo da outra, para ler o roteiro como um todo) e, ao lado, o texto na tela e o visual */
+.vd-sp { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 10px 28px; align-items: start; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+.vd-sp:last-child { border-bottom: 0; }
+.vd-sp-main { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.vd-sp-side { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding-top: 32px; }
+.vd-sp-side label, .vd-rev-l { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.vd-sp-side textarea { font: inherit; font-size: 13.5px; line-height: 1.45; color: var(--ink-2); padding: 7px 10px; }
+.vd-sp-side label:not(:first-child) { margin-top: 6px; }
+.vd-sp-ref { grid-column: 1 / -1; }
+.vd-speech { width: 100%; padding: 8px 10px; }
+@media (max-width: 900px) { .vd-sp { grid-template-columns: 1fr; padding: 16px; } .vd-sp-side { padding-top: 0; }
+  .vd-sp header { flex-wrap: wrap; row-gap: 6px; } .vd-sp header b { flex: 1 1 calc(100% - 44px); } .vd-sp header .id-fai { margin-left: auto; } }
+/* comparação do ajuste: o roteiro sugerido inteiro, com o que mudou marcado */
+.vd-rev { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.vd-rev .vd-script-parts { margin: 0; }
+.vd-rev-help { margin: 0; font-size: 13px; }
+.vd-rev-top { padding: 12px 16px; border-radius: 12px; background: var(--surface-2); }
+.vd-rev-t { margin: 0; font-size: 15px; line-height: 1.55; white-space: pre-wrap; }
+.vd-sp-side .vd-rev-t { font-size: 13.5px; color: var(--ink-2); line-height: 1.45; }
+.vd-rev-t.ch { background: #FFF3C9; border-radius: 6px; padding: 3px 7px; margin-left: -7px; }
+.vd-rev-was { margin: 0; font-size: 12.5px; line-height: 1.4; color: var(--muted); text-decoration: line-through; white-space: pre-wrap; }
 .vd-sp header { display: flex; align-items: center; gap: 10px; } .vd-sp header b { font-family: var(--font-head); font-size: 15px; flex: 1; }
 .vd-sp-time { color: var(--muted); font-size: 12.5px; }
 .vd-words { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; background: #EFEBE2; color: var(--ink-2); } .vd-words.over { background: #FDECCB; color: #9A5B00; }
