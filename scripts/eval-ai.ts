@@ -277,7 +277,7 @@ async function video(c: Case) {
   // como no app: o material (ou a ideia de conteúdo), a duração, o perfil da marca e, se houver, o perfil da persona. Sem formato.
   const seconds = c.seconds;
   const content = c.kind === 'ideia' ? ideaBrief(c.idea!, whoOf(c).map((p) => p.name).join(', '), c.territory) : c.text!;
-  const r = await writeVideoScript({ content, seconds, instructions: '', brand: brandOf(c), personaBrief: whoOf(c).map((p) => personaBriefOf(p)).join('\n\n') || undefined });
+  const r = await writeVideoScript({ content, seconds, instructions: '', brand: brandOf(c), personaBrief: whoOf(c).map((p) => personaBriefOf(p)).join('\n\n') || undefined, multiPersona: whoOf(c).length > 1 });
   const body = r.data.parts.map((p) => `**${p.name}** (${p.seconds}s · fala tem ${countWords(p.speech)} palavras)\n- Fala: ${p.speech}\n- Tela: ${p.onScreen}\n- Visual: ${p.visual}`).join('\n\n');
   const all = r.data.parts.map((p) => p.speech).join(' ');
   const spoken = countWords(all);
