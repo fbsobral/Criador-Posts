@@ -4,7 +4,7 @@ import { videoScripts } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { AiError } from '@/lib/ai/generate';
 import { refineVideoScript } from '@/lib/ai/video';
-import type { ScriptData } from '@/lib/video';
+import { totalSeconds, withPartSeconds, wordsFor, type ScriptData } from '@/lib/video';
 import { cleanPlatform, loadBrandProfile } from '@/lib/video-server';
 import { TOO_MANY, rateLimit } from '@/lib/rate-limit';
 
@@ -35,16 +35,24 @@ export async function POST(req: Request) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return Response.json({ error: 'Roteiro inválido.' }, { status: 400 });
   const [row] = await db.select().from(videoScripts).where(and(eq(videoScripts.id, id), eq(videoScripts.brandId, c.brandId)));
   if (!row) return Response.json({ error: 'Roteiro não encontrado.' }, { status: 404 });
-  const current = toData(b?.current, row.data);
+  let current = toData(b?.current, row.data);
   if (!current) return Response.json({ error: 'O roteiro mudou de estrutura. Recarregue a página.' }, { status: 400 });
   const prev = b?.previous as { title?: unknown; data?: unknown } | undefined;
-  const previousData = prev ? toData(prev.data, row.data) : null;
+  let previousData = prev ? toData(prev.data, row.data) : null;
   const scope: number | 'caption' | null = b?.scope === 'caption' ? 'caption' : Number.isInteger(b?.scope) && Number(b?.scope) >= 0 && Number(b?.scope) < current.parts.length ? Number(b?.scope) : null;
+  // duração do bloco escolhida pelo usuário: vale para o pedido (limite de palavras) e é avisada à IA
+  let ask = feedback;
+  const chg = typeof scope === 'number' ? withPartSeconds(current, scope, b?.partSeconds) : null;
+  if (chg && typeof scope === 'number') {
+    current = chg.data;
+    if (previousData) previousData = withPartSeconds(previousData, scope, chg.to)?.data ?? previousData;
+    ask = `${feedback}\nA duração desta parte muda de ${chg.from} s para ${chg.to} s: ajuste a fala para ocupar esse tempo (até ${wordsFor(chg.to)} palavras).`;
+  }
   try {
     const r = await refineVideoScript({
       title: s(b?.title, 120) || row.title, data: current, previous: previousData ? { title: s(prev?.title, 120), data: previousData } : undefined,
-      instructions: current.parts.map(() => ''), formatName: row.formatName, seconds: row.seconds, platform: cleanPlatform(row.platform), angle: row.angle,
-      feedback, scope, brand: await loadBrandProfile(c.brandId),
+      instructions: current.parts.map(() => ''), formatName: row.formatName, seconds: totalSeconds(current), platform: cleanPlatform(row.platform), angle: row.angle,
+      feedback: ask, scope, brand: await loadBrandProfile(c.brandId),
     });
     return Response.json({ title: r.title, data: r.data, note: r.note });
   } catch (e) {

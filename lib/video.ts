@@ -50,6 +50,19 @@ export function allocate(parts: { percent: number }[], total: number): number[] 
   return secs;
 }
 
+/** Duração de um bloco que o usuário pode escolher ao refinar. */
+export const MIN_PART_SECONDS = 2;
+export const MAX_PART_SECONDS = 90;
+/** O vídeo dura a soma dos blocos. */
+export const totalSeconds = (d: { parts: { seconds: number }[] }) => d.parts.reduce((a, p) => a + p.seconds, 0);
+/** Muda a duração de um bloco. Devolve o roteiro novo e a mudança (de, para), ou null se o valor é inválido ou igual ao atual. */
+export function withPartSeconds(d: ScriptData, i: number, sec: unknown): { data: ScriptData; from: number; to: number } | null {
+  const to = Math.round(Number(sec));
+  const cur = d.parts[i];
+  if (!cur || !Number.isFinite(to) || to < MIN_PART_SECONDS || to > MAX_PART_SECONDS || cur.seconds === to) return null;
+  return { data: { ...d, parts: d.parts.map((p, k) => (k === i ? { ...p, seconds: to } : p)) }, from: cur.seconds, to };
+}
+
 export const wordsFor = (seconds: number) => Math.max(3, Math.round(seconds * WORDS_PER_SEC));
 export const countWords = (t: string) => (t.trim() ? t.trim().split(/\s+/).length : 0);
 /** Tempo estimado para falar o texto. */
