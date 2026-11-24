@@ -10,7 +10,7 @@ export type PersonaIn = { id: string; name: string; tagline: string; role: strin
 
 /** Carrega as personas da marca na ordem pedida (ignora ids que não existem ou de outra marca). */
 export async function loadPersonas(brandId: string, ids: string[]): Promise<PersonaIn[]> {
-  const clean = [...new Set(ids.filter((x) => x && x !== PUBLICO_ID && /^[0-9a-f-]{36}$/i.test(x)))].slice(0, 6);
+  const clean = [...new Set(ids.filter((x) => x && x !== PUBLICO_ID && /^[0-9a-f-]{36}$/i.test(x)))].slice(0, 10);
   if (!clean.length) return [];
   const rows = await db.select().from(personas).where(and(eq(personas.brandId, brandId), inArray(personas.id, clean)));
   return clean.map((id) => rows.find((r) => r.id === id)).filter((r): r is NonNullable<typeof r> => !!r)

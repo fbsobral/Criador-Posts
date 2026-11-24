@@ -29,7 +29,8 @@ export async function POST(req: Request) {
   try {
     const r = await writeVideoScript({
       content: content.slice(0, MAX_CONTENT_CHARS), seconds, instructions: String(b?.instructions ?? '').slice(0, 1500),
-      brand: await loadBrandProfile(c.brandId), personaBrief: personaBrief || undefined,
+      // com personas escolhidas, o público padrão da marca sai de cena: quem assiste são elas
+      brand: { ...(await loadBrandProfile(c.brandId)), ...(persons.length ? { audience: '' } : {}) }, personaBrief: personaBrief || undefined, multiPersona: persons.length > 1,
     });
     const [row] = await db.insert(videoScripts).values({
       brandId: c.brandId, formatId: null, formatName: '', batchId: null, title: r.title, platform, seconds, angle: '',

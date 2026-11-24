@@ -44,8 +44,10 @@ export type WriteScriptInput = {
   /** Pedido extra do usuário (opcional). */
   instructions: string;
   brand: BrandProfile;
-  /** Perfil da(s) persona(s), quando o roteiro nasce de uma ideia com persona. */
+  /** Perfil da(s) persona(s) escolhidas (ou da ideia de conteúdo). */
   personaBrief?: string;
+  /** Duas ou mais personas: o vídeo fala com o grupo. */
+  multiPersona?: boolean;
 };
 
 /** O pedido, quase igual ao que se faria num chat: o material, a duração, o perfil da marca, o pedido do usuário e uma regra dura (não inventar). */
@@ -58,7 +60,9 @@ export function writerPrompt(i: WriteScriptInput) {
     'O gancho decide se alguém para de rolar: abra com a informação mais forte do material (se houver um dado que impacta, ele), com uma virada ou uma pergunta que prende, e não com uma pergunta genérica como "E agora?".',
     // o pedido do usuário (público, foco, tom) vale para o vídeo inteiro, do gancho ao convite, não só para o final
     i.instructions.trim() ? `O PEDIDO PARA ESTE VÍDEO (vale do gancho ao convite: para quem é, o foco e o tom). Se ele muda para quem o vídeo fala (por exemplo, doadores em vez dos jovens do material), o vídeo inteiro fala com essa pessoa, e o material vira o argumento:\n${i.instructions.trim()}` : '',
-    i.personaBrief ? `Para quem é o vídeo:\n${i.personaBrief}` : '',
+    i.personaBrief ? (i.multiPersona
+      ? `Para quem é o vídeo (várias personas: fale com o grupo pelo que elas têm em comum, usando os perfis como referência para cenas e palavras; os nomes dos perfis são internos, não os use no vídeo):\n${i.personaBrief}`
+      : `Para quem é o vídeo (o nome do perfil é interno, não o use no vídeo):\n${i.personaBrief}`) : '',
     'Use só os fatos do material e do perfil da marca: não invente números, fontes, nomes nem citações. Se faltar no material algo que deixaria o vídeo mais forte (por exemplo, o que o apoio de um doador torna possível, ou o canal para contato), não invente: avise no fim, numa nota para quem vai gravar.',
   ].filter(Boolean).join('\n\n');
   return { system, user };

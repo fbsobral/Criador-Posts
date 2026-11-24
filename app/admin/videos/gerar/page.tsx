@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { brandSettings } from '@/db/schema';
+import { brandSettings, personaGroups, personas } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { VIDEO_DAILY_LIMIT, scriptsToday } from '@/lib/video-server';
 import { PageHead } from '../../ui';
@@ -11,9 +11,11 @@ export const metadata = { title: 'Gerar roteiros' };
 
 export default async function GerarVideosPage() {
   const c = (await getCtx())!;
-  const [[s], today] = await Promise.all([
+  const [[s], today, people, groups] = await Promise.all([
     db.select().from(brandSettings).where(eq(brandSettings.brandId, c.brandId)),
     scriptsToday(c.brandId),
+    db.select({ id: personas.id, name: personas.name, groupId: personas.groupId }).from(personas).where(eq(personas.brandId, c.brandId)).orderBy(personas.position, personas.createdAt),
+    db.select({ id: personaGroups.id, name: personaGroups.name }).from(personaGroups).where(eq(personaGroups.brandId, c.brandId)).orderBy(personaGroups.position),
   ]);
   const profileEmpty = ![s?.aiNiche, s?.aiAudience, s?.aiVoice, s?.aiRules, s?.aiCta].some((v) => v?.trim());
   return (
@@ -29,6 +31,7 @@ export default async function GerarVideosPage() {
         </div>
       )}
       <Wizard
+        personas={people} groups={groups}
         hasKey={!!process.env.ANTHROPIC_API_KEY || process.env.AI_MOCK === '1'}
         remaining={Math.max(0, VIDEO_DAILY_LIMIT - today)}
       />

@@ -5,15 +5,17 @@ import { useRouter } from 'next/navigation';
 import { fmtUsd } from '@/lib/ai/constants';
 import { DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, MAX_CONTENT_CHARS, MAX_SECONDS, MIN_SECONDS, countWords, wordsFor } from '@/lib/video';
 import { IconSpark } from '../../../icons';
+import { PersonaPicker, type PickGroup, type PickPersona } from '../../persona-picker';
 
 const WRITING = ['Lendo o material…', 'Escolhendo como o vídeo começa…', 'Escrevendo a fala…', 'Pensando no que aparece na tela…', 'Afinando o convite final…', 'Organizando os blocos…'];
 
 /** Gerar roteiro: o material, a duração e (opcional) um pedido. A IA escreve livre, como num chat; sem formatos. */
-export function Wizard({ hasKey, remaining }: { hasKey: boolean; remaining: number }) {
+export function Wizard({ hasKey, remaining, personas, groups }: { hasKey: boolean; remaining: number; personas: PickPersona[]; groups: PickGroup[] }) {
   const router = useRouter();
   const [content, setContent] = useState('');
   const [seconds, setSeconds] = useState(60);
   const [instructions, setInstructions] = useState('');
+  const [personaIds, setPersonaIds] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [tick, setTick] = useState(0);
@@ -31,7 +33,7 @@ export function Wizard({ hasKey, remaining }: { hasKey: boolean; remaining: numb
   async function write() {
     setBusy(true); setErr(''); setTick(0);
     try {
-      const r = await fetch('/api/videos/generate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content, seconds, instructions, platform: 'all' }) });
+      const r = await fetch('/api/videos/generate', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ content, seconds, instructions, platform: 'all', personaIds }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Não foi possível escrever o roteiro.');
       router.push(`/admin/videos/${j.id}`);
@@ -49,6 +51,10 @@ export function Wizard({ hasKey, remaining }: { hasKey: boolean; remaining: numb
           <textarea id="vc" rows={14} value={content} onChange={(e) => setContent(e.target.value)} disabled={busy}
             placeholder="Cole o material ou escreva o assunto: dados, anotações, um texto, uma ideia. Números e fontes que estiverem aqui podem entrar no vídeo." />
           <div className="vd-count"><span>{words.toLocaleString('pt-BR')} palavras</span>{content.length > MAX_CONTENT_CHARS && <span className="vd-err">· passa de {MAX_CONTENT_CHARS.toLocaleString('pt-BR')} caracteres; o excesso será ignorado</span>}</div>
+        </div>
+        <div className="field">
+          <div className="lbl">Quem vai assistir? <span className="muted">(opcional · pode marcar várias personas ou grupos)</span></div>
+          <PersonaPicker personas={personas} groups={groups} value={personaIds} onChange={setPersonaIds} disabled={busy} />
         </div>
         <div className="field">
           <div className="lbl">Duração</div>
