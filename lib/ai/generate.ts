@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { MAX_SLIDES } from './constants';
-import { CAROUSEL_ANGLES, CAROUSEL_CRAFT, IDEA_TO_SLIDES, planBlock, reviewCarousel, slidesRule } from './carousel-rules';
+import { CAROUSEL_ANGLES, planBlock, reviewCarousel, slidesRule } from './carousel-rules';
 
 /** Modelo escolhido para a geração (maior qualidade de copy). */
 export const AI_MODEL = 'claude-opus-5-5';
@@ -114,38 +114,21 @@ export function brandBlock(b: BrandProfile): string {
 }
 
 const CAPTION_BASE = `LEGENDA ("caption")
-Escreva também a legenda para publicar junto com o post (padrão: Instagram):
-- 1ª linha: um gancho curto que mostra o que a pessoa ganha ao ler.
-- 2 a 4 parágrafos curtos que COMPLEMENTAM os slides (não os repita), terminando com a chamada para ação da marca, se houver.
-- Hashtags no fim: siga as "Regras das legendas" da marca; se não houver, use 3 a 5 relevantes.
-- No máximo ~900 caracteres. Não invente fatos, números ou fontes.`;
+Escreva também a legenda para publicar junto com o post (padrão: Instagram), com hashtags no fim (siga as "Regras das legendas" da marca, se houver). No máximo ~900 caracteres.`;
+const CAPTION_CARROSSEL = CAPTION_BASE;
 
-const CAPTION_CARROSSEL = `LEGENDA ("caption")
-Escreva também a legenda para publicar junto com o carrossel (padrão: Instagram):
-- Ela COMPLEMENTA os slides, não os repete. 1ª linha: um gancho DIFERENTE do título da capa (outro ângulo da mesma promessa) que, sozinho, já justifica abrir o "ver mais".
-- 2 ou 3 parágrafos curtos (uma ou duas frases cada) com uma ideia nova ou um exemplo que não está nos slides.
-- Fecho: UMA chamada à ação (uma ação só, sem somar "mande para alguém" com "fale com a gente"), a mesma do último slide (quando o post nasce de uma ideia, a CTA da ideia, com o mesmo destinatário), dita de outro jeito e só com o que a organização realmente oferece. "Salve" ou "mande para quem…" só se combinarem com essa ação; nada de "siga a página" se a ideia não pediu.
-- Hashtags no fim: siga as "Regras das legendas" da marca; se não houver, use 3 a 5 relevantes.
-- No máximo ~900 caracteres. Não invente fatos, números ou fontes.`;
-
-/** Vícios de texto de IA que valem para carrossel, roteiro e artigo (vistos nos testes reais). */
-export const STYLE_TICS = `VÍCIOS DE TEXTO DE IA (evite; o leitor percebe na hora)
-- "Não é X, é Y" e variações ("O problema não é X, é Y", "Não é falta de X. É falta de Y", "não foi X, foi Y"): no máximo UMA vez na peça inteira (corpo e legenda juntos), no momento da virada. Nas outras vezes, afirme o Y direto.
-- Frases feitas: "muda tudo", "mudou tudo", "muda o jogo", "não é luxo", "encontrar seu propósito", "partir pra ação", "fazer a diferença", "faz toda a diferença", "a boa notícia é que", "ninguém nasce sabendo", "o empurrão que faltava", "encurtar o caminho/a estrada", "sair da zona de conforto", "e aqui está o nó", "no fim das contas", "mais do que nunca".
-- Não fale sobre o próprio texto nem sobre a estrutura dele ("são três razões", "cada uma de pé sozinha", "este post vai mostrar", "neste carrossel"). Mostre.
-- Isso inclui descrever as partes da solução como "peças", "frentes", "pilares" ou dizer que elas são independentes ou que "cada uma faz sentido sozinha".
-- Não copie frases dos campos do briefing ao pé da letra ("ver o bastão passado", "orgulho de se firmar", "responsabilidade de uns com os outros"): diga a mesma coisa com as palavras de quem lê, numa cena ou num fato.
-- Personagem: o mesmo do começo ao fim (mesmo gênero, mesma idade, mesma situação). Se abriu com "uma jovem", não vira "ele" depois.
-- DETALHES INVENTADOS: proibidos. Uma cena hipotética ("imagina um jovem que…") pode existir, mas só com o que está no briefing, na ideia, no perfil da persona ou no material: nada de idade, horário ("7h40", "oito e meia da noite"), prazo ("um ano depois", "três semanas"), lugar ("lan house", "segundo ônibus"), objeto ou fala que não veio de lá. Use ações comuns sem precisão inventada ("de manhã", "na primeira semana", "depois da primeira bronca"). Citações só se forem literais da fonte. Se a fonte não dá o detalhe, a cena fica mais simples, não inventada.
-- CANAL DE CONTATO: só cite um canal (direct, WhatsApp, e-mail, telefone, link na bio, site, formulário) se ele estiver em "Chamada para ação (CTA) padrão e canais de contato", nas regras da marca ou na fonte, e use o canal indicado para aquele público (o que vale para empresas não vale para voluntários). Sem canal informado, escreva a ação sem canal ("fale com a gente", "converse com a gente") e não invente um. A CTA da ideia diz a AÇÃO; o perfil da marca diz POR ONDE.
-- O QUE A ORGANIZAÇÃO FAZ: só afirme que a marca faz algo se isso estiver em "O que a organização faz" ou no material-fonte. Os argumentos de uma ideia são a PROPOSTA (o que funciona), não um relatório do que a organização já faz: mostre-os como o que acontece quando existe aquele apoio ("quando o jovem tem um mentor de fora, ele liga antes de desistir"), sem "Na [marca], o jovem faz X" com detalhes que não foram confirmados (série escolar, frequência, formato).
-- Não use os nomes internos do briefing: o nome da persona é um perfil de planejamento, não uma pessoa real nem um personagem (nunca escreva "Shelton" ou o nome que vier no perfil; fale com "você" ou crie um personagem genérico). Também não escreva "dor", "ganho", "desejo", "argumento", "guia" ou "enquadramento" como rótulos.`;
+/** Regras de CONTEÚDO (decididas pelo dono do app), comuns a carrossel e artigo. Nada de regra de estilo: o texto é livre. */
+export const CONTENT_RULES = `REGRAS DE CONTEÚDO
+- Use só os fatos do briefing, do material e do perfil da marca: não invente números, fontes, datas, nomes, citações nem detalhes de cena (idade, horário, lugar) que não estejam lá.
+- Canal de contato (direct, WhatsApp, link na bio, site…) só se estiver no perfil da marca; sem canal informado, a chamada sai sem canal ("fale com a gente").
+- Só afirme que a organização faz algo se estiver em "O que a organização faz" ou no material.
+- O nome da persona é um perfil interno: nunca o use no texto.`;
 
 const COMMON_RULES = `REGRAS GERAIS
 - Escreva em português (do Brasil, salvo se houver "IDIOMA DO PÚBLICO" acima ou o briefing estiver em outro idioma).
 - NÃO invente fatos, números, estatísticas, datas, nomes ou fontes. Use apenas o que estiver no briefing ou em "FATOS PERMITIDOS". Se um dado seria necessário e não foi fornecido, escreva sem ele.
 - Qualquer afirmação factual que você incluir e que o revisor deva conferir antes de publicar deve ser listada em "to_verify" (frases curtas). Se não houver nenhuma, devolva lista vazia.
-- Respeite as regras e o tom de voz da marca. Evite clichês de IA ("mergulhe", "desvende", "no mundo de hoje").
+- Respeite as regras e o tom de voz da marca.
 - "title" é um nome interno curto para o post (até 60 caracteres), não um slide.
 - Máximo de ${MAX_SLIDES} slides.`;
 
@@ -158,18 +141,12 @@ O briefing é um roteiro já escrito. Preserve o texto e o tom dele; apenas orga
     const ang = CAROUSEL_ANGLES.find((a) => a.id === angle && a.id !== 'auto');
     const angleText = editor !== 'carrossel' ? '' : ang
       ? `\n\nÂNGULO NARRATIVO ESCOLHIDO (siga):\n${ang.guide}`
-      : `\n\nÂNGULO NARRATIVO: escolha o que melhor serve a esta ideia e registre em "strategy.angle". Opções: ${CAROUSEL_ANGLES.filter((a) => a.id !== 'auto').map((a) => `${a.id} (${a.label})`).join(', ')}.`;
-    return `MODO: CRIAR A PARTIR DE UMA IDEIA ESTRUTURADA
-O briefing é uma ideia de conteúdo com campos (dor, impacto, causa, guia, argumentos, ganho, desejo e CTA). Crie o post inteiro a partir dela. ${slidesRule(slides)}
-
-${IDEA_TO_SLIDES}${angleText}`;
+      : '';
+    return `MODO: CRIAR A PARTIR DE UMA IDEIA
+O briefing é uma ideia de conteúdo (dor, impacto, causa, guia, argumentos, ganho, desejo e CTA). Faça o post a partir dela; a CTA da ideia é a ação do fim. ${slidesRule(slides)}${angleText}`;
   }
   return `MODO: ESCREVER A PARTIR DE UM TEMA
-O briefing é um tema. Escreva o post inteiro. ${slidesRule(slides)}
-- Slide 1: gancho forte (promessa, pergunta ou contradição). Curto.
-- Slides do meio: uma ideia por slide, com progressão lógica (do problema à explicação e à solução).
-- Último slide: fechamento com a chamada para ação da marca, se houver; senão, uma síntese.
-- Prefira frases curtas e concretas. Nada de enchimento.`;
+O briefing é um tema. Escreva o post inteiro. ${slidesRule(slides)}`;
 }
 
 const CARROSSEL_FORMAT = `FORMATO: CARROSSEL DE INSTAGRAM
@@ -182,12 +159,11 @@ Cada slide tem um "format":
 - "pergunta": uma pergunta direta à persona, em <h2> (até 14 palavras), sem <p>. Para espelhar quem lê.
 
 "html" aceita somente estas tags: <h2> título, <p> parágrafo, <ul class="check"> lista com ✔, <ul class="arrow"> lista com →, <ul class="dot"> lista com marcadores, <li>, <b>, <i>, <u>, <br>. Nenhum outro atributo. Em "image" use html vazio.
-Tamanho: de 15 a 28 palavras por slide de texto (nunca mais de 35; ~20 quando for "text-image"). Use <h2> em quase todo slide de texto e listas só para enumerar 3 itens curtos.
+Tamanho: a fonte é grande e ocupa a tela do celular, então cada slide de texto tem no máximo ~35 palavras (~20 em "text-image").
 "show_more": true em todos os slides, exceto no último (false).
 Use "text-image"/"image" só quando um dado, gráfico ou foto ajudar de verdade, e descreva o que entra em "image_note". Caso contrário "image_note" é "".
 "topic": o assunto curto do carrossel em caixa normal (ex.: "Dívida pública"), até 40 caracteres.
-"strategy": ANTES de escrever os slides, defina: o ângulo; o leitor ("reader": com quem os slides falam e o que essa pessoa precisa sentir ou fazer); a promessa (o que a pessoa leva ao terminar); a tensão (a pergunta CONCRETA que mantém a pessoa virando os slides, não um tease); a ação final ("cta": a ação do último slide, tirada da CTA da ideia quando houver); e a estrutura (uma linha por slide: "formato · função · mensagem · leve|denso"; denso = parágrafo com mais de ~25 palavras; nunca dois "denso" seguidos). Os slides seguem essa estrutura.
-Ordem de escrita: estratégia, slides, depois as capas alternativas e a legenda (que complementam os slides prontos).`;
+"strategy": antes dos slides, anote o seu plano em poucas palavras (ângulo, para quem, a promessa, o que prende, a ação final e uma linha por slide).`;
 
 const TWEET_FORMAT = `FORMATO: TWEET CARD
 Cada slide é um card branco, estilo post de rede social, com o texto do post (como uma thread).
@@ -226,12 +202,11 @@ function systemPrompt(i: GenerateInput): string {
     'Você é um redator sênior de conteúdo para redes sociais. Você produz posts prontos para um editor de slides, em JSON estrito.',
     brandBlock(i.brand),
     i.editor === 'carrossel' ? CARROSSEL_FORMAT : i.editor === 'noticia' ? NOTICIA_FORMAT : TWEET_FORMAT,
-    i.editor === 'carrossel' ? CAROUSEL_CRAFT : '',
     modeBlock(i.mode, i.slidesTarget, i.editor, i.angle),
     i.withImages ? (i.editor === 'carrossel' ? IMAGES_CARROSSEL : i.editor === 'noticia' ? IMAGES_NOTICIA : IMAGES_TWEET) : '',
     i.editor === 'carrossel' ? CAPTION_CARROSSEL : CAPTION_BASE,
     COMMON_RULES,
-    STYLE_TICS,
+    CONTENT_RULES,
   ].filter(Boolean).join('\n\n');
 }
 

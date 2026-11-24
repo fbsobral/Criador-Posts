@@ -3,7 +3,7 @@ import { AI_MODEL, AiError, brandBlock, type BrandProfile } from './generate';
 import { personaBlock } from './idea';
 import type { PersonaData } from '../persona';
 import type { IdeaFields } from '../idea';
-import { CAROUSEL_ANGLES, IDEA_TO_SLIDES, slidesRule, type CarouselAngleId } from './carousel-rules';
+import { CAROUSEL_ANGLES, slidesRule, type CarouselAngleId } from './carousel-rules';
 
 /** Carrossel a partir de ideia: bloco estruturado da ideia e planejamento do roteiro dos slides (com IA). As regras puras estão em carousel-rules.ts. */
 
@@ -64,9 +64,7 @@ SAÍDA
 - "promise": a promessa do carrossel em uma frase: o que a persona leva ao terminar de ler.
 - "slides": um item por slide, na ordem. "role": a função do slide (ex.: "Capa", "Identificação", "Virada", "Prova 1", "Exemplo", "Futuro", "CTA"). "message": a mensagem do slide em UMA frase curta e concreta (até 18 palavras), já no tom final, que pode virar o título do slide. A mensagem do slide 1 é o título da capa.
 - "covers": 3 alternativas de título de capa, com abordagens diferentes (tensão/contradição, pergunta, promessa), até 10 palavras cada, diferentes da mensagem do slide 1 e ESPECÍFICAS (usam elementos concretos da ideia; nada genérico como "Por que tantos jovens…?").
-- A sequência precisa ter fio: cada mensagem responde a uma pergunta que a anterior deixou e puxa a seguinte (cena → custo → causa → virada → o que muda, com exemplo → resultado → ação). É uma história com argumento, não uma lista de dicas: nenhuma mensagem de prova começa com verbo no imperativo ou infinitivo ("Comece…", "Conecte…") e no máximo 2 ou 3 slides são de prova.
-- O último slide é a CTA DA IDEIA: a mesma ação e o mesmo destinatário (sem trocar por "siga a página" ou outra CTA genérica).
-- Nada de abstração nem de tease vazio ("E aí tudo muda", "Mas tem um detalhe"); sem inventar números, datas nem nomes.`;
+- Use só fatos da ideia: sem inventar números, datas nem nomes. O último slide é a CTA da ideia.`;
 
 /** Planeja o roteiro dos slides para o usuário aprovar antes da escrita. Não grava nada. */
 export async function planCarousel(a: { idea: string; angle: CarouselAngleId; slides: number; instructions: string; brand: BrandProfile }): Promise<CarouselPlan & { inputTokens: number; outputTokens: number }> {
@@ -91,7 +89,7 @@ export async function planCarousel(a: { idea: string; angle: CarouselAngleId; sl
   try {
     const res = await new Anthropic().beta.messages.create({
       model: AI_MODEL, max_tokens: 3000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
-      system: [PLAN_SYSTEM, IDEA_TO_SLIDES, brandBlock(a.brand)].filter(Boolean).join('\n\n'),
+      system: [PLAN_SYSTEM, brandBlock(a.brand)].filter(Boolean).join('\n\n'),
       output_config: { effort: 'low', format: { type: 'json_schema', schema: PLAN_SCHEMA } },
       messages: [{ role: 'user', content: user }],
     });

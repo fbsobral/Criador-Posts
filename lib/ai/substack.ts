@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import { AI_MODEL, AiError, STYLE_TICS, brandBlock, type BrandProfile } from './generate';
+import { AI_MODEL, AiError, CONTENT_RULES, brandBlock, type BrandProfile } from './generate';
 import { ARTICLE_ANGLES, MAX_BODY_CHARS, countWords, lengthOf, type ArticleAngleId, type ArticleMeta, type ArticlePlan, type OutlineSection } from '../substack';
 
 /** Artigos de newsletter para o Substack: esboço, escrita e refino. Nada é gravado aqui. */
@@ -25,18 +25,12 @@ const ARTICLE_SCHEMA = {
 };
 const REFINE_SCHEMA = { type: 'object', additionalProperties: false, required: ['text', 'note'], properties: { text: STR, note: STR } };
 
-const CRAFT = `OFÍCIO DE NEWSLETTER (siga à risca)
-- Escreva para UMA pessoa (a persona) e UMA tese. Um artigo, uma ideia central. Tudo que não serve à tese sai.
-- ABERTURA: nas duas primeiras frases, uma cena, uma pergunta ou uma afirmação que prende. Nada de "Neste artigo vamos falar sobre". A promessa do texto aparece até o terceiro parágrafo.
-- Parágrafos curtos (1 a 3 frases, no máximo 4 linhas). Frases variadas: uma longa, uma curta. Leitura em tela e no celular.
-- Intertítulos (##) fortes e específicos a cada ~300 a 400 palavras; devem fazer sentido sozinhos e despertar vontade de continuar. Evite "Introdução" e "Conclusão".
-- Concretude: exemplos, cenas, comparações do dia a dia. Zero abstração vazia. NÃO invente números, estudos, datas, nomes de pessoas reais nem citações. Cenas só com detalhes que vieram da fonte (veja "DETALHES INVENTADOS"); um retrato hipotético é aberto como hipótese ("imagine um jovem que…") e não ganha idade, horário, lugar nem fala que a fonte não deu. Liste em "to_verify" o que o revisor deve conferir.
-- Voz da marca e da persona; calor humano; sem sermão. Português do Brasil. Evite clichês de IA ("no mundo de hoje", "mergulhar", "jornada", "em suma", "vale ressaltar", "é importante destacar").
-- Pode usar **negrito** com parcimônia, uma citação (>) forte, listas curtas e um divisor (---). Sem emojis no corpo. Sem título H1 no corpo: o título vai no campo próprio.
-- FECHAMENTO: retome a abertura, entregue a ideia que a pessoa leva e faça UM convite só, natural. Se a fonte traz uma CTA (a CTA da ideia ou um pedido do material), o convite é ESSA ação, para ESSE destinatário; só sem ela use responder ao e-mail, compartilhar com alguém ou assinar. Como é uma newsletter, "responda este e-mail" sempre vale como canal; outro canal, só o que estiver no perfil da marca.
-- PERSONA: escreva PARA ela (o leitor que tem essa vida, essas dúvidas e objeções), nunca SOBRE ela. Para uma cena, use um personagem genérico ("um jovem que…") ou "você", sem o nome do perfil.
+const CRAFT = `REGRAS
+- Com persona, escreva para ela (nunca use o nome interno do perfil no texto).
+- Se a fonte traz uma CTA (a CTA da ideia ou um pedido do material), o convite final é essa ação. Como é uma newsletter, "responda este e-mail" sempre vale como canal.
+- Corpo em Markdown simples (##, ###, **, *, >, listas e ---), sem título H1: o título vai no campo próprio.
 
-${STYLE_TICS}`;
+${CONTENT_RULES}`;
 
 const FIELDS = `CAMPOS
 - "strategy": 2 a 3 frases (não aparece para o leitor): para quem é, a tese central, a emoção da abertura e o convite final.
