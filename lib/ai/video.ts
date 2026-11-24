@@ -53,7 +53,9 @@ export function writerPrompt(i: WriteScriptInput) {
   const system = ['Você escreve roteiros de vídeos curtos (Reels, TikTok e Shorts) para a marca abaixo.', brandBlock(i.brand)].filter(Boolean).join('\n\n');
   const max = wordsFor(i.seconds), min = Math.round(max * 0.85);
   const user = [
-    `Faça o roteiro de um vídeo de ${i.seconds} segundos (entre ${min} e ${max} palavras de fala: use o tempo todo, sem passar dele), com a legenda para publicar, sobre isto:\n\n${i.content.trim().slice(0, MAX_CONTENT_CHARS)}`,
+    `Faça o roteiro de um vídeo de ${i.seconds} segundos (entre ${min} e ${max} palavras de fala: use o tempo todo, sem passar dele), com a legenda para publicar e as notas de produção (ritmo de cortes, legendas na tela, fontes dos números no rodapé e como fazer uma versão de 30 s), sobre isto:\n\n${i.content.trim().slice(0, MAX_CONTENT_CHARS)}`,
+    // o gancho: sem esta pista, a IA abre com uma pergunta genérica ("E agora?") e deixa o dado para depois
+    'O gancho decide se alguém para de rolar: abra com a informação mais forte do material (se houver um dado que impacta, ele), com uma virada ou uma pergunta que prende, e não com uma pergunta genérica como "E agora?".',
     // o pedido do usuário (público, foco, tom) vale para o vídeo inteiro, do gancho ao convite, não só para o final
     i.instructions.trim() ? `O PEDIDO PARA ESTE VÍDEO (vale do gancho ao convite: para quem é, o foco e o tom). Se ele muda para quem o vídeo fala (por exemplo, doadores em vez dos jovens do material), o vídeo inteiro fala com essa pessoa, e o material vira o argumento:\n${i.instructions.trim()}` : '',
     i.personaBrief ? `Para quem é o vídeo:\n${i.personaBrief}` : '',
