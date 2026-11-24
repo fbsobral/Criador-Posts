@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { videoScripts } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
-import { MAX_PARTS, STAGES, type ScriptData, type Stage } from '@/lib/video';
+import { MAX_PARTS, MAX_SECONDS, STAGES, totalSeconds, type ScriptData, type Stage } from '@/lib/video';
 import { cleanSeconds } from '@/lib/video-server';
 
 async function ctx() {
@@ -27,7 +27,10 @@ export async function saveScript(input: { id: string; title: string; data: Scrip
   // notas de produção e o texto original da IA: guardados como vieram (só texto, com limite de tamanho)
   if (d?.production) data.production = { rhythm: str(d.production.rhythm, 1500), sources: (Array.isArray(d.production.sources) ? d.production.sources : []).map((x) => str(x, 200)).filter(Boolean).slice(0, 10), shortVersion: str(d.production.shortVersion, 1500) };
   if (d?.markdown) data.markdown = str(d.markdown, 20000);
+  // o vídeo dura a soma dos blocos (muda quando o usuário aumenta ou diminui um bloco ao refinar)
   const set: Partial<typeof videoScripts.$inferInsert> = { title: str(input.title, 120) || 'Sem título', data, updatedAt: new Date() };
+  const total = totalSeconds(data);
+  if (total > 0) set.seconds = Math.min(MAX_SECONDS, total);
   if (STAGES.some((x) => x.id === input.status)) set.status = input.status;
   await db.update(videoScripts).set(set).where(and(eq(videoScripts.id, input.id), eq(videoScripts.brandId, c.brandId)));
   return {};

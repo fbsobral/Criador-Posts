@@ -1399,3 +1399,9 @@ ul.id-ftext { padding-left: 20px; white-space: normal; } ul.id-ftext li { margin
 .pk { display: flex; flex-direction: column; gap: 8px; }
 .vd-chip.pk-group { font-weight: 700; }
 .vd-chip.half { border-color: var(--primary); background: transparent; box-shadow: inset 0 0 0 1px var(--primary-soft); }
+
+/* Roteiro: duração do bloco ao refinar */
+.vd-secs { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 10px 0; font-size: 13.5px; }
+.vd-secs .vd-stepper { height: 38px; }
+.vd-secs .vd-stepper button { width: 36px; height: 36px; font-size: 18px; }
+.vd-secs .vd-stepper input { width: 52px; text-align: center; padding: 0; border: 0; box-shadow: none; background: transparent; font-weight: 700; }
