@@ -17,6 +17,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   const [status, setStatus] = useState(initialStatus);
   const [data, setData] = useState<ScriptData>(initial);
   const [save, setSave] = useState<SaveState>('saved');
+  const [saveMsg, setSaveMsg] = useState('');
   const [copied, setCopied] = useState(false);
   const [prompter, setPrompter] = useState(false);
   // refinar com IA: pedir → comparar → aplicar (com opção de desfazer, porque o editor salva sozinho)
@@ -35,12 +36,12 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
 
   const flush = useCallback(async () => {
     setSave('saving');
-    try { const r = await saveScript({ id, ...latest.current }); setSave(r.error ? 'error' : 'saved'); } catch { setSave('error'); }
+    try { const r = await saveScript({ id, ...latest.current }); setSave(r.error ? 'error' : 'saved'); setSaveMsg(r.error ?? ''); } catch (e) { setSave('error'); setSaveMsg(actionErrorMessage(e)); }
   }, [id]);
   // aplicar uma sugestão da IA salva na hora, sem esperar o salvamento automático
   const saveNow = useCallback(async (t: string, d: ScriptData) => {
     setSave('saving');
-    try { const r = await saveScript({ id, title: t, status: latest.current.status, data: d }); setSave(r.error ? 'error' : 'saved'); } catch { setSave('error'); }
+    try { const r = await saveScript({ id, title: t, status: latest.current.status, data: d }); setSave(r.error ? 'error' : 'saved'); setSaveMsg(r.error ?? ''); } catch (e) { setSave('error'); setSaveMsg(actionErrorMessage(e)); }
   }, [id]);
   useEffect(() => {
     if (first.current) { first.current = false; return; }
@@ -168,6 +169,12 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   return (
     <div className="vd-script">
       {actErr && <div className="notice err" role="alert" style={{ marginBottom: 12 }}>{actErr}</div>}
+      {save === 'error' && (
+        <div className="notice err" role="alert" style={{ marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          <span><b>Suas alterações ainda não foram salvas.</b> {saveMsg || 'Não foi possível salvar.'} Se for recarregar a página, copie antes o que escreveu.</span>
+          <button type="button" className="btn small" onClick={flush}>Tentar de novo</button>
+        </div>
+      )}
       <div className="vd-script-head">
         <input className="vd-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} aria-label="Título do roteiro" />
         <div className="vd-script-actions">
