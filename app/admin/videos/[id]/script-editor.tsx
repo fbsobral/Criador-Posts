@@ -64,7 +64,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   const starts = data.parts.reduce<number[]>((a, p, k) => [...a, k ? a[k - 1] + data.parts[k - 1].seconds : 0], []);
   const mmss = (x: number) => `${Math.floor(x / 60)}:${String(Math.round(x % 60)).padStart(2, '0')}`;
 
-  const CHIPS = ['Mais curto', 'Gancho mais forte', 'Fala mais natural', 'Visual mais simples de gravar', 'CTA mais suave'];
+  const CHIPS = ['Mais fluido e explicativo', 'Mais curto', 'Gancho mais forte', 'Fala mais natural', 'Visual mais simples de gravar', 'CTA mais suave'];
   async function askRefine(feedback: string, previous?: { title: string; data: ScriptData }) {
     setRbusy(true); setRerr('');
     try {
@@ -77,7 +77,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   // refinar com IA só esta parte (botão em cada bloco): pede, compara antes/depois e aplica só nesta parte (dá para desfazer)
   type PartRefine = { i: number; fb: string; sec: number; busy: boolean; err: string; sugg: { speech: string; onScreen: string; visual: string; seconds: number } | null; note: string };
   const [pr, setPr] = useState<PartRefine | null>(null);
-  const PCHIPS = ['Mais curto', 'Fala mais natural', 'Mais forte', 'Visual mais simples de gravar'];
+  const PCHIPS = ['Mais explicativo', 'Mais fluido', 'Mais curto', 'Fala mais natural', 'Mais forte', 'Visual mais simples de gravar'];
   async function askPart() {
     if (!pr) return;
     const i = pr.i, prev = pr.sugg;

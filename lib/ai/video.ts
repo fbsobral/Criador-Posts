@@ -52,6 +52,9 @@ export type WriteScriptInput = {
 
 /** O pedido, quase igual ao que se faria num chat: o material, a duração, o perfil da marca, o pedido do usuário e uma regra dura (não inventar). */
 /** Preferência do dono: nada de "não é X, é Y" nem de "a solução é simples:" nos roteiros. */
+/** Preferência do dono: o roteiro precisa ser explicativo e fluido, não uma sequência de frases soltas. */
+export const FLUID = 'O texto tem de fluir como uma pessoa explicando de verdade: cada bloco continua o anterior (com transições e conectivos, como "por isso", "e é aí que", "o que acontece é que"), e cada ideia vem explicada, com o porquê, e não só enunciada ou listada em fragmentos.';
+
 export const NO_CRUTCH = 'Não use a construção "não é X, é Y" (nem variações como "o problema não é X, é Y" ou "não é falta de X, é falta de Y"), nem anúncios como "a solução é simples:" ou "a verdade é que…": diga a ideia direto, afirmando o que ela é.';
 
 export function writerPrompt(i: WriteScriptInput) {
@@ -66,6 +69,7 @@ export function writerPrompt(i: WriteScriptInput) {
     i.personaBrief ? (i.multiPersona
       ? `Para quem é o vídeo (várias personas: fale com o grupo pelo que elas têm em comum, usando os perfis como referência para cenas e palavras; os nomes dos perfis são internos, não os use no vídeo):\n${i.personaBrief}`
       : `Para quem é o vídeo (o nome do perfil é interno, não o use no vídeo):\n${i.personaBrief}`) : '',
+    FLUID,
     NO_CRUTCH,
     'Use só os fatos do material e do perfil da marca: não invente números, fontes, nomes nem citações. Se faltar no material algo que deixaria o vídeo mais forte (por exemplo, o que o apoio de um doador torna possível, ou o canal para contato), não invente: avise no fim, numa nota para quem vai gravar.',
   ].filter(Boolean).join('\n\n');
@@ -185,7 +189,7 @@ export async function refineVideoScript(i: RefineScriptInput): Promise<{ title: 
 - Aplique o pedido do usuário. Mude só o que o pedido exige e o que for necessário para manter a coerência; preserve o resto (ideia, fatos, estrutura, o que já estava bom).
 - "parts" deve ter EXATAMENTE ${n} itens, na mesma ordem. ${i.scope === 'caption' ? 'NÃO mude nenhuma parte: devolva todas as partes exatamente como estão. Só a "caption" (legenda) e as "hashtags" devem mudar.' : i.scope !== null ? `Só a PARTE ${i.scope + 1} deve mudar: devolva as outras partes exatamente como estão.` : 'Você pode ajustar qualquer parte que o pedido atingir, mantendo a sequência fluida.'}
 - Respeite o limite de palavras de fala de cada parte (o vídeo tem de caber em ${i.seconds} s) e as instruções da parte, quando houver.
-- Português do Brasil, linguagem FALADA: frases curtas, ritmo de conversa. ${NO_CRUTCH} NÃO invente fatos, números, datas, nomes ou fontes: use só o que já está no roteiro ou no pedido. Respeite o tom e as regras da marca; evite clichês de IA e de vídeo.
+- Português do Brasil, linguagem FALADA, com ritmo de conversa e frases que se ligam (sem fragmentos soltos). ${FLUID} ${NO_CRUTCH} NÃO invente fatos, números, datas, nomes ou fontes: use só o que já está no roteiro ou no pedido. Respeite o tom e as regras da marca; evite clichês de IA e de vídeo.
 - Fala e tela se complementam: não peça para a pessoa "ler" o que a tela já diz. "on_screen": até 6 palavras, ou "" se não houver.
 - Se houver "SUGESTÃO ANTERIOR (não aprovada)", parta dela e aplique o novo pedido, sem desfazer o que já estava bom.
 - "title" (até 70 caracteres), "caption" e "hashtags" (sem "#"): mantenha como estão, a menos que o pedido os atinja.
