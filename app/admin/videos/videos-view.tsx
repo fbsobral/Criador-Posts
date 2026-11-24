@@ -90,14 +90,13 @@ export function VideosView({ rows, mode }: { rows: VideoRow[]; mode: VideosMode 
           </div>
 
           <div className="card-surface vd-list" role="table">
-            <div className="vd-row head" role="row"><span>Roteiro</span><span>Formato</span><span>Duração</span><span>Etapa</span><span>Atualizado</span><span /></div>
+            <div className="vd-row head" role="row"><span>Roteiro</span><span>Duração</span><span>Etapa</span><span>Atualizado</span><span /></div>
             {shown.map((x) => (
               <div key={x.id} className="vd-row" role="row">
                 <Link href={`/admin/videos/${x.id}`} className="vd-row-main">
                   <b>{x.title}</b>
                   {x.hook && <small>“{x.hook.length > 130 ? `${x.hook.slice(0, 130)}…` : x.hook}”</small>}
                 </Link>
-                <span className="vd-cell" data-l="Formato">{x.formatName || '—'}</span>
                 <span className="vd-cell" data-l="Duração">{fmtSecs(x.seconds)}</span>
                 <span className="vd-cell"><StageSelect value={x.status} onChange={(s) => move(x.id, s)} /></span>
                 <span className="vd-cell muted" data-l="Atualizado">{x.ago}</span>

@@ -15,7 +15,8 @@ export const PLATFORMS: { id: Platform; label: string; hint: string }[] = [
 export const DURATION_PRESETS = [45, 60, 90, 120];
 export const MIN_SECONDS = 45;
 export const MAX_SECONDS = 180;
-export const MAX_PARTS = 10;
+/** Blocos de um roteiro: a IA escreve livre e um vídeo de lista rápida pode ter muitos cortes. */
+export const MAX_PARTS = 16;
 export const MAX_VIDEO_IDEAS = 10;
 export const MAX_CONTENT_CHARS = 30000;
 /** Fala natural em português: ~150 palavras por minuto. */
@@ -28,11 +29,9 @@ export const ESTIMATED_COST_PLAN = 0.04;
 export type ScriptPart = { name: string; seconds: number; speech: string; onScreen: string; visual: string };
 /** Orientações de produção (roteiros com estrutura livre): ritmo de cortes, fontes dos números e como fazer a versão curta. */
 export type ScriptProduction = { rhythm: string; sources: string[]; shortVersion: string };
-export type ScriptData = { parts: ScriptPart[]; caption: string; hashtags: string[]; notes: string[]; production?: ScriptProduction };
+/** markdown: o roteiro como a IA escreveu, inteiro (os campos são uma cópia dele, para editar). */
+export type ScriptData = { parts: ScriptPart[]; caption: string; hashtags: string[]; notes: string[]; production?: ScriptProduction; markdown?: string };
 
-/** Formato virtual (não existe no banco): a IA escolhe a estrutura, os blocos e os tempos a partir do conteúdo. É o padrão. */
-export const AUTO_FORMAT_ID = 'auto';
-export const AUTO_FORMAT = { id: AUTO_FORMAT_ID, name: 'A IA escolhe a estrutura', description: 'Lê o conteúdo e escolhe a forma que melhor o conta: dados, lista rápida, história, mito x verdade…', defaultSeconds: 60, parts: [] as VideoPart[] };
 
 export type VideoIdea = { title: string; angle: string; points: string[] };
 

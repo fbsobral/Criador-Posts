@@ -1,6 +1,6 @@
 import { eq, desc, isNull, or } from 'drizzle-orm';
 import { db } from '@/db';
-import { contentIdeas, personaGroups, personas, templates, videoFormats } from '@/db/schema';
+import { contentIdeas, personaGroups, personas, templates } from '@/db/schema';
 import { supportsAi } from '@/lib/ai/generate';
 import { getCtx } from '@/lib/ctx';
 import { brandSettings } from '@/db/schema';
@@ -16,12 +16,11 @@ export const metadata = { title: 'Ideias de conteúdo' };
 export default async function IdeiasPage({ searchParams }: { searchParams: Promise<{ p?: string; t?: string; gerar?: string; ver?: string }> }) {
   const c = (await getCtx())!;
   const sp = await searchParams;
-  const [rows, people, nodes, [bs], vformats, tpls] = await Promise.all([
+  const [rows, people, nodes, [bs], tpls] = await Promise.all([
     db.select().from(contentIdeas).where(eq(contentIdeas.brandId, c.brandId)).orderBy(desc(contentIdeas.createdAt)),
     db.select({ id: personas.id, name: personas.name, groupId: personas.groupId }).from(personas).where(eq(personas.brandId, c.brandId)).orderBy(personas.position, personas.createdAt),
     loadTerritoryNodes(c.brandId),
     db.select({ about: brandSettings.aiAbout }).from(brandSettings).where(eq(brandSettings.brandId, c.brandId)),
-    db.select().from(videoFormats).where(or(isNull(videoFormats.brandId), eq(videoFormats.brandId, c.brandId))).orderBy(videoFormats.name),
     db.select().from(templates).where(or(isNull(templates.brandId), eq(templates.brandId, c.brandId))).orderBy(templates.name),
   ]);
   const groups = await db.select({ id: personaGroups.id, name: personaGroups.name }).from(personaGroups).where(eq(personaGroups.brandId, c.brandId));
@@ -35,7 +34,6 @@ export default async function IdeiasPage({ searchParams }: { searchParams: Promi
     <div className="page id-page">
       <PageHead actions={<OrgPill name={c.brandName} />} title="Ideias de conteúdo" description="Cada ideia já traz a história completa: a dor, o que está em jogo, os argumentos e o convite final. Aprove as melhores e use “Criar conteúdo” para virar post, roteiro de vídeo ou artigo." />
       <IdeasView ideas={ideas} personas={people.map((p) => ({ id: p.id, name: p.name, group: p.groupId ? gname.get(p.groupId) : undefined }))} nodes={tnodes} hasKey={!!process.env.ANTHROPIC_API_KEY || process.env.AI_MOCK === '1'} hasAbout={!!(bs?.about ?? '').trim()}
-        formats={vformats.map((f) => ({ id: f.id, name: f.name, description: f.description, defaultSeconds: f.defaultSeconds, parts: f.parts }))}
         templates={tpls.filter((t) => supportsAi(t.editor)).map((t) => ({ id: t.id, name: t.name, description: t.description, editor: t.editor }))}
         initial={{ persona: sp.p ?? '', territory: sp.t ?? '', generate: sp.gerar === '1' || (!!sp.t && sp.ver !== '1') }} />
     </div>

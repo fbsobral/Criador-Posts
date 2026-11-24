@@ -5,7 +5,7 @@ import { videoScripts } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { timeAgo } from '@/lib/format';
 import { normStage } from '@/lib/video';
-import { IconSpark, IconTemplates, IconVideo } from '../../icons';
+import { IconSpark, IconVideo } from '../../icons';
 import { PageHead, EmptyState } from '../ui';
 import { ModeToggle, VideosView, type VideosMode } from './videos-view';
 
@@ -20,7 +20,6 @@ export async function VideosPageContent({ mode }: { mode: VideosMode }) {
         description={mode === 'kanban' ? 'Acompanhe cada vídeo do rascunho até a publicação. Arraste os roteiros entre as etapas.' : 'Roteiros para Reels, TikTok e Shorts, escritos parte por parte. Acompanhe cada vídeo do rascunho até a publicação.'}
         actions={<>
           {rows.length > 0 && <ModeToggle mode={mode} />}
-          <Link href="/admin/videos/formatos" className="btn"><IconTemplates /> Formatos</Link>
           <Link href="/admin/videos/gerar" className="btn primary"><IconSpark /> Gerar roteiros</Link>
         </>}
       />

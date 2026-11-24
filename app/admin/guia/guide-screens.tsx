@@ -129,9 +129,9 @@ const SCREENS: Record<ScreenKey, () => React.ReactElement> = {
   ),
   'video-gen': () => (
     <div className="gs-vg">
-      <Row><Pill c="dk">1 Conteúdo</Pill><Pill>2 Ideias</Pill><Pill>3 Roteiros</Pill></Row>
+      <Tag>Sobre o que é o vídeo?</Tag>
       <div className="gs-ta hl"><Ln /><Ln w={90} /><Ln w={70} /></div>
-      <Row><Chip>Gancho + dica + CTA</Chip><Chip on>30s</Chip><Chip>45s</Chip><Chip>60s</Chip></Row>
+      <Row><Chip>45s</Chip><Chip on>60s</Chip><Chip>90s</Chip><Pill c="dk">✨ Escrever o roteiro</Pill></Row>
     </div>
   ),
   script: () => (

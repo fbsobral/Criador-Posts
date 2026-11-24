@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { eq, isNull, or } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '@/db';
-import { brandSettings, videoFormats } from '@/db/schema';
+import { brandSettings } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { VIDEO_DAILY_LIMIT, scriptsToday } from '@/lib/video-server';
 import { PageHead } from '../../ui';
@@ -11,8 +11,7 @@ export const metadata = { title: 'Gerar roteiros' };
 
 export default async function GerarVideosPage() {
   const c = (await getCtx())!;
-  const [formats, [s], today] = await Promise.all([
-    db.select().from(videoFormats).where(or(isNull(videoFormats.brandId), eq(videoFormats.brandId, c.brandId))).orderBy(videoFormats.name),
+  const [[s], today] = await Promise.all([
     db.select().from(brandSettings).where(eq(brandSettings.brandId, c.brandId)),
     scriptsToday(c.brandId),
   ]);
@@ -21,8 +20,8 @@ export default async function GerarVideosPage() {
     <div className="page">
       <PageHead
         back={{ href: '/admin/videos', label: 'Roteiros de vídeo' }}
-        title="Gerar roteiros"
-        description="Cole o material e escolha a duração. A IA escolhe a melhor estrutura e escreve o roteiro pronto para gravar, com tempos, texto na tela e dicas de edição."
+        title="Gerar roteiro"
+        description="Diga sobre o que é o vídeo e a duração. A IA escreve o roteiro pronto para gravar, no tom da sua marca."
       />
       {profileEmpty && (
         <div className="notice info" style={{ marginBottom: 20 }}>
@@ -30,10 +29,8 @@ export default async function GerarVideosPage() {
         </div>
       )}
       <Wizard
-        formats={formats.map((f) => ({ id: f.id, name: f.name, description: f.description, defaultSeconds: f.defaultSeconds, parts: f.parts, own: !!f.brandId }))}
         hasKey={!!process.env.ANTHROPIC_API_KEY || process.env.AI_MOCK === '1'}
         remaining={Math.max(0, VIDEO_DAILY_LIMIT - today)}
-        canEditFormats={c.isBrandAdmin}
       />
     </div>
   );

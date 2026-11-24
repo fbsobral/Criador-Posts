@@ -223,7 +223,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
         </div>
       )}
 
-      <div className="vd-meta big"><span>{meta.formatName || 'Formato'}</span><i>·</i><span>{fmtSecs(meta.seconds)}</span></div>
+      <div className="vd-meta big">{meta.formatName && <><span>{meta.formatName}</span><i>·</i></>}<span>{fmtSecs(meta.seconds)}</span></div>
       {meta.angle && <p className="vd-angle"><b>Ideia:</b> {meta.angle}</p>}
 
       <div className="card-surface vd-timing">
@@ -293,6 +293,14 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
           {data.production.sources.length > 0 && <div><span className="muted">Fontes para o rodapé dos números:</span><ul>{data.production.sources.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
           {data.production.shortVersion && <p><span className="muted">Versão de 30 s:</span> {data.production.shortVersion}</p>}
         </section>
+      )}
+
+      {data.markdown && (
+        <details className="card-surface vd-orig">
+          <summary><b>Roteiro original da IA</b> <span className="muted">(o texto inteiro, como foi escrito; os blocos acima são uma cópia para editar)</span></summary>
+          <div className="row-actions" style={{ margin: '10px 0' }}><button type="button" className="btn small" onClick={() => { navigator.clipboard?.writeText(data.markdown!).catch(() => {}); }}>Copiar o texto original</button></div>
+          <div className="vd-orig-text">{data.markdown}</div>
+        </details>
       )}
 
       <div className="card-surface form-card vd-cap">

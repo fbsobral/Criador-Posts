@@ -4,25 +4,21 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { actionErrorMessage } from '@/lib/action-error';
 import { fmtUsd } from '@/lib/ai/constants';
-import { IDEA_INSTRUCTIONS, ideaAngle, ideaBrief, ideaPoints, ideaTitle, type Idea } from '@/lib/idea';
+import { ideaBrief, ideaTitle, type Idea } from '@/lib/idea';
 import { createPostFromIdea } from '@/lib/idea-actions';
-import { AUTO_FORMAT, DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, MIN_SECONDS, fmtSecs, type Platform, type VideoPart } from '@/lib/video';
+import { DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, fmtSecs, type Platform } from '@/lib/video';
 import { CAROUSEL_ANGLES, type CarouselAngleId } from '@/lib/ai/carousel-rules';
 import { IconSpark } from '../../icons';
 
-export type VideoFormatLite = { id: string; name: string; description: string; defaultSeconds: number; parts: VideoPart[] };
 export type PostTemplateLite = { id: string; name: string; description: string; editor: string };
 
 /** Transforma uma ideia em roteiro de vídeo ou em post de imagem, já com a história da ideia como base. */
-export function IdeaConvertModal({ idea, mode, formats: own, templates, hasKey, onClose }: {
-  idea: Idea; mode: 'script' | 'post'; formats: VideoFormatLite[]; templates: PostTemplateLite[]; hasKey: boolean; onClose: () => void;
+export function IdeaConvertModal({ idea, mode, templates, hasKey, onClose }: {
+  idea: Idea; mode: 'script' | 'post'; templates: PostTemplateLite[]; hasKey: boolean; onClose: () => void;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  // "A IA escolhe a estrutura" vem primeiro e é o padrão; os formatos de partes fixas continuam como opção
-  const formats: VideoFormatLite[] = [{ id: AUTO_FORMAT.id, name: AUTO_FORMAT.name, description: AUTO_FORMAT.description, defaultSeconds: AUTO_FORMAT.defaultSeconds, parts: [] }, ...own];
-  const [formatId, setFormatId] = useState(formats[0]?.id ?? '');
-  const [seconds, setSeconds] = useState(Math.max(MIN_SECONDS, formats[0]?.defaultSeconds ?? 45));
+  const [seconds, setSeconds] = useState(60);
   const platform: Platform = 'all'; // sem escolha de plataforma
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? '');
   const [slides, setSlides] = useState(0); // 0 = a IA decide pelo conteúdo
@@ -33,7 +29,7 @@ export function IdeaConvertModal({ idea, mode, formats: own, templates, hasKey, 
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const isScript = mode === 'script';
-  const ready = isScript ? !!formatId : !!templateId;
+  const ready = isScript ? true : !!templateId;
   const tpl = templates.find((t) => t.id === templateId);
   const isCarousel = tpl?.editor === 'carrossel';
 
@@ -43,7 +39,7 @@ export function IdeaConvertModal({ idea, mode, formats: own, templates, hasKey, 
       const content = ideaBrief(idea, idea.personaName, idea.territory);
       const r = await fetch('/api/videos/generate', {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ content, ideaId: idea.id, personaIds: idea.personaIds, formatId, seconds, platform, instructions: [IDEA_INSTRUCTIONS, extra].filter(Boolean).join('\n'), idea: { title: ideaTitle(idea.pain), angle: ideaAngle(idea), points: ideaPoints(idea) } }),
+        body: JSON.stringify({ content, ideaId: idea.id, personaIds: idea.personaIds, seconds, platform, instructions: extra }),
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Não foi possível gerar o roteiro.');
@@ -85,12 +81,6 @@ export function IdeaConvertModal({ idea, mode, formats: own, templates, hasKey, 
 
           {isScript ? (
             <>
-              <div className="field">
-                <label>Formato do vídeo</label>
-                <div className="tr-choices">
-                  {formats.map((f) => <button key={f.id} type="button" className={`tr-choice${f.id === formatId ? ' on' : ''}`} aria-pressed={f.id === formatId} onClick={() => { setFormatId(f.id); setSeconds(Math.max(MIN_SECONDS, f.defaultSeconds)); }}><b>{f.name}</b><small>{f.description || `${f.parts.length} partes`}</small></button>)}
-                </div>
-              </div>
               <div className="field">
                 <label>Duração</label>
                 <div className="vd-chips">{DURATION_PRESETS.map((s) => <button key={s} type="button" className={`vd-chip${seconds === s ? ' on' : ''}`} onClick={() => setSeconds(s)}>{fmtSecs(s)}</button>)}</div>

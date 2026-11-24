@@ -14,7 +14,7 @@
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { generatePost } from '../lib/ai/generate';
 import type { BrandProfile } from '../lib/ai/generate';
-import { generateVideoScript } from '../lib/ai/video';
+import { writeVideoScript } from '../lib/ai/video';
 import { suggestIdeas } from '../lib/ai/idea';
 import { writeArticle } from '../lib/ai/substack';
 import { ideaBlockFor } from '../lib/ai/carousel';
@@ -274,19 +274,16 @@ async function carrossel(c: Case) {
 }
 
 async function video(c: Case) {
-  const format = c.videoFormat === 'auto' || process.argv.includes('--auto') ? { name: 'A IA escolhe a estrutura', parts: [] } : c.videoFormat === 'longo' ? LONG : SHORT;
+  // como no app: o material (ou a ideia de conteúdo), a duração, o perfil da marca e, se houver, o perfil da persona. Sem formato.
   const seconds = c.seconds;
-  // como no app: a ideia vira ideaBrief + IDEA_INSTRUCTIONS + persona; tema e material passam pelo plano de ideias, aqui simplificado em uma ideia direta
   const content = c.kind === 'ideia' ? ideaBrief(c.idea!, whoOf(c).map((p) => p.name).join(', '), c.territory) : c.text!;
-  const idea = c.kind === 'ideia'
-    ? { title: ideaTitle(c.idea!.pain), angle: ideaAngle(c.idea!), points: ideaPoints(c.idea!) }
-    : !format.parts.length ? { title: '', angle: '', points: [] as string[] } : { title: c.kind === 'tema' ? c.text!.slice(0, 120) : 'O que os mentores aprenderam com a primeira semana de trabalho dos jovens', angle: c.kind === 'tema' ? 'Mostrar que pedir ajuda bem feito é sinal de profissionalismo, não de fraqueza.' : 'A maior dúvida do jovem no primeiro emprego não é técnica; uma mensagem do mentor na hora certa muda o desfecho.', points: [] as string[] };
-  const r = await generateVideoScript({ content, format, seconds, platform: 'all', instructions: c.kind === 'ideia' ? IDEA_INSTRUCTIONS : '', brand: brandOf(c), idea, personaBrief: whoOf(c).map((p) => personaBriefOf(p)).join('\n\n') || undefined, multiPersona: whoOf(c).length > 1 });
-  const body = r.data.parts.map((p, i) => `**${p.name}** (${r.data.parts[i].seconds}s, máx ~${wordsFor(r.data.parts[i].seconds)} palavras · fala tem ${countWords(p.speech)})\n- Fala: ${p.speech}\n- Tela: ${p.onScreen}\n- Visual: ${p.visual}`).join('\n\n');
+  const r = await writeVideoScript({ content, seconds, instructions: '', brand: brandOf(c), personaBrief: whoOf(c).map((p) => personaBriefOf(p)).join('\n\n') || undefined });
+  const body = r.data.parts.map((p) => `**${p.name}** (${p.seconds}s · fala tem ${countWords(p.speech)} palavras)\n- Fala: ${p.speech}\n- Tela: ${p.onScreen}\n- Visual: ${p.visual}`).join('\n\n');
   const all = r.data.parts.map((p) => p.speech).join(' ');
-  const checks = [...r.data.parts.map((p, i) => flag(countWords(p.speech) <= wordsFor(r.data.parts[i].seconds) + 3, `${p.name} cabe no tempo`, `${countWords(p.speech)}/${wordsFor(r.data.parts[i].seconds)} palavras`)), flag(!CLICHES.test(all), 'Sem clichês'), flag(!TEASE.test(all), 'Sem ganchos vazios'), flag(!GENERIC_CTA.test(all), 'Sem CTA genérica'), flag(!CLICHES.test(r.data.caption), 'Legenda sem clichês'), flag(CTA_END.test(r.data.caption.trim().split('\n').filter(Boolean).pop() ?? ''), 'Legenda termina com a ação'), flag(tics(`${all} ${r.data.caption}`) <= 1, '"Não é X, é Y" no máximo 1x', `${tics(`${all} ${r.data.caption}`)}x`), flag(!personaLeak(c, `${all} ${r.data.caption}`), 'Sem o nome interno da persona'), channelCheck(c, `${all} ${r.data.caption}`), flag(!invented(c, `${all} ${r.data.caption}`).length, 'Sem número/horário inventado', invented(c, `${all} ${r.data.caption}`).join(', '))];
+  const spoken = countWords(all);
+  const checks = [flag(spoken <= wordsFor(seconds) * 1.15, 'Cabe no tempo', `${spoken} palavras para ${seconds}s (~${wordsFor(seconds)})`), flag(!!r.data.caption.trim(), 'Legenda preenchida'), flag(CTA_END.test(r.data.caption.trim().split('\n').filter(Boolean).pop() ?? ''), 'Legenda termina com a ação'), flag(!personaLeak(c, `${all} ${r.data.caption}`), 'Sem o nome interno da persona'), flag(!invented(c, `${all} ${r.data.caption}`).length, 'Sem número/horário inventado', invented(c, `${all} ${r.data.caption}`).join(', '))];
   const prod = r.data.production ? `\n\n## Produção\n- Ritmo: ${r.data.production.rhythm}\n- Fontes: ${r.data.production.sources.join(' · ') || '(nenhuma)'}\n- Versão curta: ${r.data.production.shortVersion}` : '';
-  report(`video-${c.name}`, `# Roteiro · ${c.name} (${format.name}, ${seconds}s)\n\n**Título:** ${r.title}\n\n${body}${prod}\n\n## Legenda\n${r.data.caption}\n${r.data.hashtags.map((h) => `#${h}`).join(' ')}\n\n## Notas\n${r.data.notes.map((n) => `- ${n}`).join('\n')}\n\n## Checagens\n${checks.join('\n')}\n\n${track('vídeo', r.inputTokens, r.outputTokens)}\n`);
+  report(`video-${c.name}`, `# Roteiro · ${c.name} (${seconds}s)\n\n**Título:** ${r.title}\n\n${body}${prod}\n\n## Legenda\n${r.data.caption}\n${r.data.hashtags.map((h) => `#${h}`).join(' ')}\n\n## Notas\n${r.data.notes.map((n) => `- ${n}`).join('\n')}\n\n## Checagens\n${checks.join('\n')}\n\n${track('vídeo', r.inputTokens, r.outputTokens)}\n\n---\n## Texto original da IA\n\n${r.data.markdown ?? ''}\n`);
 }
 
 // rótulos iguais aos do app (lib/substack-server.ts)

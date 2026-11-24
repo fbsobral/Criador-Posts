@@ -13,15 +13,15 @@ import { usePan } from '../use-pan';
 import { EmptyState } from '../ui';
 import { Menu } from '../territorios/menu';
 import { IdeaBody, ideaText } from './idea-body';
-import { IdeaConvertModal, type PostTemplateLite, type VideoFormatLite } from './idea-convert-modal';
+import { IdeaConvertModal, type PostTemplateLite } from './idea-convert-modal';
 import { IdeaDrawer } from './idea-drawer';
 import { IdeaModal } from './idea-modal';
 
 import { PersonaOptions, type PersonaOpt } from './persona-options';
 type P = PersonaOpt;
 
-export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, formats, templates }: {
-  ideas: Idea[]; personas: P[]; nodes: TNode[]; hasKey: boolean; hasAbout: boolean; formats: VideoFormatLite[]; templates: PostTemplateLite[]; initial: { persona: string; territory: string; generate: boolean };
+export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, templates }: {
+  ideas: Idea[]; personas: P[]; nodes: TNode[]; hasKey: boolean; hasAbout: boolean; templates: PostTemplateLite[]; initial: { persona: string; territory: string; generate: boolean };
 }) {
   const router = useRouter();
   const [, start] = useTransition();
@@ -189,7 +189,7 @@ export function IdeasView({ ideas, personas, nodes, hasKey, hasAbout, initial, f
       )}
 
       {ai && <IdeaModal personas={personas} options={opts} initialPersona={ai.persona} initialTerritory={ai.territory} hasKey={hasKey} hasAbout={hasAbout} onClose={() => setAi(null)} />}
-      {convert && <IdeaConvertModal idea={convert.idea} mode={convert.mode} formats={formats} templates={templates} hasKey={hasKey} onClose={() => setConvert(null)} />}
+      {convert && <IdeaConvertModal idea={convert.idea} mode={convert.mode} templates={templates} hasKey={hasKey} onClose={() => setConvert(null)} />}
       {edit && <IdeaDrawer key={`${edit === 'new' ? 'new' : edit.id}${refining ? '-r' : ''}`} startRefine={refining} hasKey={hasKey} idea={edit === 'new' ? null : edit} personas={personas} options={opts} defaults={{ persona, territory }} onClose={() => setEdit(null)} />}
     </>
   );

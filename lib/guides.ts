@@ -107,12 +107,11 @@ export const GUIDES: Record<string, Guide> = {
     key: 'roteiros',
     title: 'Roteiros de vídeo',
     subtitle: 'Roteiros para vídeos curtos (Reels, TikTok e Shorts), parte por parte.',
-    cta: { label: 'Gerar roteiros', href: '/admin/videos/gerar' },
+    cta: { label: 'Gerar roteiro', href: '/admin/videos/gerar' },
     steps: [
-      { icon: 'video', screen: 'video-gen', title: 'Gere a partir de um conteúdo', text: 'Cole um artigo, uma transcrição ou anotações, escolha o formato (as partes do vídeo, como gancho, dica e CTA) e a duração. A IA sugere ideias de vídeo, você aprova e ela escreve um roteiro para cada uma.' },
+      { icon: 'video', screen: 'video-gen', title: 'Gere a partir de um conteúdo', text: 'Cole o material ou escreva o assunto (dados, anotações, um texto, uma ideia) e escolha a duração. A IA escreve o roteiro pronto para gravar, no tom da sua marca: blocos com tempo, fala, texto na tela, o que mostrar, legenda e notas de produção.' },
       { icon: 'templates', screen: 'script', title: 'Edite parte por parte', text: 'Cada parte tem a fala, o texto na tela e o que mostrar. O editor conta as palavras e avisa se cabe no tempo.', bullets: ['Refinar com IA existe em cada parte, na legenda e no roteiro inteiro, sempre com antes e depois.', 'O Teleprompter mostra a fala em tela cheia para gravar.'] },
       { icon: 'board', screen: 'esteira', title: 'Acompanhe a produção', text: 'Cada roteiro tem uma etapa: Rascunho, Revisado, Gravado, Editado e Publicado. Mude pela lista ou arraste na Esteira de produção.', tip: 'No celular, use o seletor de etapa de cada cartão da Esteira.' },
-      { icon: 'settings', screen: 'video-format', title: 'Formatos próprios', text: 'Em Formatos, crie ou ajuste os modelos de vídeo: as partes, o peso de tempo de cada uma e as instruções que a IA segue.' },
     ],
   },
 
@@ -197,7 +196,7 @@ export function guideKeyForPath(path: string): string | null {
   if (p === '/admin/gerar') return 'gerar';
   if (p === '/admin/galeria') return 'galeria';
   if (p === '/admin/templates') return 'templates';
-  if (p === '/admin/videos' || p === '/admin/videos/esteira' || p === '/admin/videos/quadro' || p === '/admin/videos/formatos' || p === '/admin/videos/gerar') return 'roteiros';
+  if (p === '/admin/videos' || p === '/admin/videos/esteira' || p === '/admin/videos/quadro' || p === '/admin/videos/gerar') return 'roteiros';
   if (p === '/admin/substack' || p === '/admin/substack/novo') return 'substack';
   if (p === '/admin/personas') return 'personas';
   if (p === '/admin/territorios') return 'territorios';
