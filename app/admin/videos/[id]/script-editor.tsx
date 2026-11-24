@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { actionErrorMessage } from '@/lib/action-error';
 import { deleteScript, duplicateScript, saveScript } from '@/lib/video-actions';
 import { MAX_PART_SECONDS, MIN_PART_SECONDS, PART_COLORS, STAGES, countWords, fmtSecs, scriptToText, speakSeconds, speechToText, stageOf, totalSeconds, wordsFor, type ScriptData, type Stage } from '@/lib/video';
@@ -216,9 +216,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
             <>
               {sugg.note && <p className="pe-note">{sugg.note}</p>}
               {changes.length === 0 ? <p className="muted">A IA não mudou nada. Tente pedir de outro jeito.</p> : (
-                <div className="pe-diff">
-                  {changes.map((c, i) => <div key={i} className="pe-diff-row"><b>{c.label}</b>{c.before && <s>{c.before}</s>}<span>{c.after || '(vazio)'}</span></div>)}
-                </div>
+                <Review title={title} data={data} sugg={sugg} />
               )}
               {rerr && <div className="notice err">{rerr}</div>}
               <div className="pe-refine-actions">
@@ -250,20 +248,29 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
         <div className="notice warn vd-notes"><b>Conferir antes de gravar</b><ul>{data.notes.map((n, i) => <li key={i}>{n}</li>)}</ul></div>
       )}
 
-      <div className="vd-script-parts">
+      <div className="vd-script-parts card-surface">
         {data.parts.map((p, i) => {
           const w = countWords(p.speech), lim = wordsFor(p.seconds);
           return (
-            <section key={i} className="card-surface vd-sp">
-              <header>
+            <section key={i} className="vd-sp">
+              <div className="vd-sp-main">
+                <header>
                 <span className="vd-num" style={{ background: PART_COLORS[i % PART_COLORS.length] }}>{i + 1}</span>
                 <b>{p.name}</b>
                 <span className="vd-sp-time" title={fmtSecs(p.seconds)}>{mmss(starts[i])}–{mmss(starts[i] + p.seconds)}</span>
                 <span className={`vd-words${w > lim * 1.15 ? ' over' : ''}`}>{w}/{lim} palavras</span>
                 <button type="button" className="btn small ghost id-fai" onClick={() => setPr(pr?.i === i ? null : { i, fb: '', sec: p.seconds, busy: false, err: '', sugg: null, note: '' })} disabled={!hasKey || !p.speech.trim()} aria-expanded={pr?.i === i} title={!hasKey ? 'A IA não está configurada neste servidor' : `Refinar “${p.name}” com IA`}><IconSpark /> Refinar</button>
               </header>
+                <Auto id={`s${i}`} className="vd-speech" value={p.speech} onChange={(e) => setPart(i, { speech: e.target.value })} aria-label={`Fala: ${p.name}`} />
+              </div>
+              <div className="vd-sp-side">
+                <label htmlFor={`o${i}`}>Texto na tela</label>
+                <Auto id={`o${i}`} value={p.onScreen} maxLength={200} onChange={(e) => setPart(i, { onScreen: e.target.value })} />
+                <label htmlFor={`v${i}`}>Visual / o que mostrar</label>
+                <Auto id={`v${i}`} value={p.visual} onChange={(e) => setPart(i, { visual: e.target.value })} />
+              </div>
               {pr?.i === i && (
-                <div className="id-fref" style={{ marginBottom: 12 }}>
+                <div className="id-fref vd-sp-ref">
                   {pr.sugg === null ? (
                     <>
                       <textarea rows={2} autoFocus value={pr.fb} onChange={(e) => setPr({ ...pr, fb: e.target.value })} maxLength={800} placeholder={`O que mudar em “${p.name}”? Ex.: comece pela dor, corte as frases longas, deixe a fala mais natural…`} />
@@ -296,12 +303,6 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
                   </div>
                 </div>
               )}
-              <div className="field"><label htmlFor={`s${i}`}>Fala</label>
-                <textarea id={`s${i}`} className="vd-speech" rows={Math.max(3, Math.ceil(p.speech.length / 70))} value={p.speech} onChange={(e) => setPart(i, { speech: e.target.value })} /></div>
-              <div className="vd-sp-row">
-                <div className="field"><label htmlFor={`o${i}`}>Texto na tela</label><input id={`o${i}`} value={p.onScreen} onChange={(e) => setPart(i, { onScreen: e.target.value })} maxLength={200} /></div>
-                <div className="field"><label htmlFor={`v${i}`}>Visual / o que mostrar</label><textarea id={`v${i}`} rows={2} value={p.visual} onChange={(e) => setPart(i, { visual: e.target.value })} /></div>
-              </div>
             </section>
           );
         })}
@@ -410,6 +411,59 @@ function Teleprompter({ parts, onClose }: { parts: ScriptData['parts']; onClose:
         ))}
         <div className="vd-prompter-pad" />
       </div>
+    </div>
+  );
+}
+
+
+/** Caixa de texto que cresce com o conteúdo (sem barra de rolagem dentro dela), para ler o roteiro como um todo. */
+const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
+export function Auto({ value, className, ...rest }: Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'rows' | 'style'> & { value: string }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const fit = useCallback(() => { const el = ref.current; if (el) { el.style.height = 'auto'; el.style.height = `${el.scrollHeight + (el.offsetHeight - el.clientHeight)}px`; } }, []);
+  useIsoLayoutEffect(fit, [value, fit]);
+  useEffect(() => { window.addEventListener('resize', fit); return () => window.removeEventListener('resize', fit); }, [fit]);
+  return <textarea ref={ref} rows={1} value={value} className={className} style={{ overflow: 'hidden', resize: 'none' }} {...rest} />;
+}
+
+/** O roteiro sugerido por inteiro, no mesmo formato do editor (falas uma embaixo da outra, tela e visual ao lado). O que mudou fica marcado e o texto antigo aparece logo abaixo. */
+export function Review({ title, data, sugg }: { title: string; data: ScriptData; sugg: { title: string; data: ScriptData } }) {
+  const diff = (b: string, a: string) => b.trim() !== a.trim();
+  const mmss = (x: number) => `${Math.floor(x / 60)}:${String(Math.round(x % 60)).padStart(2, '0')}`;
+  let t = 0;
+  const rows = sugg.data.parts.map((p, k) => { const start = t; t += p.seconds; return { p, k, c: data.parts[k], start }; });
+  const changed = rows.filter(({ p, c }) => c && (diff(c.speech, p.speech) || diff(c.onScreen, p.onScreen) || diff(c.visual, p.visual) || c.seconds !== p.seconds)).length;
+  const Field = ({ label, before, after }: { label?: string; before: string; after: string }) => (
+    <>
+      {label && <span className="vd-rev-l">{label}</span>}
+      <p className={`vd-rev-t${diff(before, after) ? ' ch' : ''}`}>{after || '—'}</p>
+      {diff(before, after) && before.trim() && <p className="vd-rev-was">Antes: {before}</p>}
+    </>
+  );
+  return (
+    <div className="vd-rev">
+      <p className="muted vd-rev-help">{changed ? `${changed} ${changed === 1 ? 'bloco mudou' : 'blocos mudaram'}.` : 'Nenhum bloco mudou.'} O roteiro abaixo é a versão sugerida, inteira: o que mudou fica marcado, e o texto antigo aparece logo abaixo.</p>
+      {diff(title, sugg.title) && <div className="vd-rev-top"><span className="vd-rev-l">Título</span><p className="vd-rev-t ch">{sugg.title}</p><p className="vd-rev-was">Antes: {title}</p></div>}
+      <div className="vd-script-parts card-surface">
+        {rows.map(({ p, k, c, start }) => (
+          <section key={k} className="vd-sp">
+            <div className="vd-sp-main">
+              <header>
+                <span className="vd-num" style={{ background: PART_COLORS[k % PART_COLORS.length] }}>{k + 1}</span>
+                <b>{p.name}</b>
+                <span className="vd-sp-time">{mmss(start)}–{mmss(start + p.seconds)}{c && c.seconds !== p.seconds ? ` (era ${c.seconds} s)` : ''}</span>
+              </header>
+              <Field before={c?.speech ?? ''} after={p.speech} />
+            </div>
+            <div className="vd-sp-side">
+              <Field label="Texto na tela" before={c?.onScreen ?? ''} after={p.onScreen} />
+              <Field label="Visual / o que mostrar" before={c?.visual ?? ''} after={p.visual} />
+            </div>
+          </section>
+        ))}
+      </div>
+      {diff(data.caption, sugg.data.caption) && <div className="vd-rev-top"><span className="vd-rev-l">Legenda</span><p className="vd-rev-t ch">{sugg.data.caption}</p>{data.caption.trim() && <p className="vd-rev-was">Antes: {data.caption}</p>}</div>}
+      {data.hashtags.join(' ') !== sugg.data.hashtags.join(' ') && <div className="vd-rev-top"><span className="vd-rev-l">Hashtags</span><p className="vd-rev-t ch">{sugg.data.hashtags.map((h) => `#${h}`).join(' ')}</p><p className="vd-rev-was">Antes: {data.hashtags.map((h) => `#${h}`).join(' ')}</p></div>}
     </div>
   );
 }
