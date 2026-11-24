@@ -4,21 +4,24 @@ import { videoScripts } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { AiError } from '@/lib/ai/generate';
 import { refineVideoScript } from '@/lib/ai/video';
-import { totalSeconds, withPartSeconds, wordsFor, type ScriptData } from '@/lib/video';
+import { MAX_PARTS, MAX_PART_SECONDS, MIN_PART_SECONDS, totalSeconds, withPartSeconds, wordsFor, type ScriptData } from '@/lib/video';
 import { cleanPlatform, loadBrandProfile } from '@/lib/video-server';
 import { TOO_MANY, rateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 120;
 
 const s = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n);
-/** Aceita o roteiro da tela só se tiver as mesmas partes do salvo (nomes e tempos vêm do banco). */
+/** Aceita o roteiro da tela (mesmo sem salvar, com blocos criados, apagados ou renomeados). Só texto, com limites; notas de produção e texto original vêm do salvo. */
 function toData(v: unknown, base: ScriptData): ScriptData | null {
-  const d = (v ?? {}) as { parts?: { speech?: unknown; onScreen?: unknown; visual?: unknown }[]; caption?: unknown; hashtags?: unknown };
-  if (!Array.isArray(d.parts) || d.parts.length !== base.parts.length) return null;
+  const d = (v ?? {}) as { parts?: { name?: unknown; seconds?: unknown; speech?: unknown; onScreen?: unknown; visual?: unknown }[]; caption?: unknown; hashtags?: unknown };
+  if (!Array.isArray(d.parts) || d.parts.length < 1 || d.parts.length > MAX_PARTS) return null;
   return {
-    parts: base.parts.map((p, k) => ({ ...p, speech: s(d.parts![k]?.speech, 1200), onScreen: s(d.parts![k]?.onScreen, 200), visual: s(d.parts![k]?.visual, 500) })),
+    parts: d.parts.map((p, k) => ({
+      name: s(p?.name, 60) || base.parts[k]?.name || `Bloco ${k + 1}`,
+      seconds: Math.min(MAX_PART_SECONDS, Math.max(MIN_PART_SECONDS, Math.round(Number(p?.seconds)) || base.parts[k]?.seconds || 10)),
+      speech: s(p?.speech, 1200), onScreen: s(p?.onScreen, 200), visual: s(p?.visual, 500),
+    })),
     caption: s(d.caption, 2200), hashtags: (Array.isArray(d.hashtags) ? d.hashtags : []).map((h) => s(h, 40).replace(/^#/, '')).filter(Boolean).slice(0, 12), notes: base.notes,
-    // as notas de produção e o texto original da IA não são editados aqui: ficam como estão
     ...(base.production ? { production: base.production } : {}), ...(base.markdown ? { markdown: base.markdown } : {}),
   };
 }
@@ -36,7 +39,7 @@ export async function POST(req: Request) {
   const [row] = await db.select().from(videoScripts).where(and(eq(videoScripts.id, id), eq(videoScripts.brandId, c.brandId)));
   if (!row) return Response.json({ error: 'Roteiro não encontrado.' }, { status: 404 });
   let current = toData(b?.current, row.data);
-  if (!current) return Response.json({ error: 'O roteiro mudou de estrutura. Recarregue a página.' }, { status: 400 });
+  if (!current) return Response.json({ error: 'Roteiro inválido. Recarregue a página.' }, { status: 400 });
   const prev = b?.previous as { title?: unknown; data?: unknown } | undefined;
   let previousData = prev ? toData(prev.data, row.data) : null;
   const scope: number | 'caption' | null = b?.scope === 'caption' ? 'caption' : Number.isInteger(b?.scope) && Number(b?.scope) >= 0 && Number(b?.scope) < current.parts.length ? Number(b?.scope) : null;
