@@ -4,9 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { actionErrorMessage } from '@/lib/action-error';
 import { deleteScript, duplicateScript, saveScript } from '@/lib/video-actions';
-import { MAX_PARTS, MAX_PART_SECONDS, MIN_PART_SECONDS, PART_COLORS, STAGES, countWords, fmtSecs, scriptToText, speakSeconds, speechToText, stageOf, totalSeconds, wordsFor, type ScriptData, type Stage } from '@/lib/video';
+import { MAX_PARTS, MAX_PART_SECONDS, MIN_PART_SECONDS, STAGES, countWords, fmtSecs, scriptToText, speakSeconds, speechToText, stageOf, totalSeconds, wordsFor, type ScriptData, type Stage } from '@/lib/video';
 import { IconCopy, IconPlay, IconSpark, IconTrash } from '../../../icons';
-import { PartsBar } from '../parts-bar';
 import { wordDiff } from '@/lib/diff';
 
 type Meta = { formatName: string; seconds: number; platform: string; angle: string };
@@ -89,23 +88,52 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   }, [save]);
 
   const setPart = (i: number, patch: Partial<ScriptData['parts'][number]>) => setData((d) => ({ ...d, parts: d.parts.map((p, k) => (k === i ? { ...p, ...patch } : p)) }));
-  // estrutura: renomear, mover, apagar e criar blocos (qualquer um fecha o painel de refino aberto, porque os números mudam)
-  const mutate = (fn: (parts: ScriptData['parts']) => ScriptData['parts']) => { setPr(null); setSel(null); setData((d) => ({ ...d, parts: fn(d.parts) })); };
-  const movePart = (i: number, to: number) => mutate((ps) => { if (to < 0 || to >= ps.length) return ps; const c = [...ps]; const [x] = c.splice(i, 1); c.splice(to, 0, x); return c; });
-  const removePart = (i: number) => {
-    if (data.parts.length <= 1) return;
-    const p = data.parts[i];
-    if ((p.speech.trim() || p.onScreen.trim() || p.visual.trim()) && !confirm(`Apagar o bloco “${p.name}”? Dá para voltar com Desfazer (Ctrl+Z).`)) return;
-    mutate((ps) => ps.filter((_, k) => k !== i));
+  // o roteiro é um texto contínuo: cada parágrafo é um trecho. Enter divide, Backspace no início (ou Delete no fim) junta, colar texto com vários parágrafos cria os trechos.
+  const pend = useRef<{ i: number; off: number } | null>(null);
+  useEffect(() => {
+    const f = pend.current; if (!f) return; pend.current = null;
+    const el = document.getElementById(`s${f.i}`) as HTMLTextAreaElement | null;
+    if (el) { el.focus(); el.setSelectionRange(f.off, f.off); }
+  });
+  const editSpeech = (i: number, e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const v = e.target.value;
+    if (!v.includes('\n')) { setPart(i, { speech: v }); return; }
+    const caret = e.target.selectionStart;
+    const pieces: { t: string; s: number; e: number }[] = [];
+    if (v.startsWith('\n')) pieces.push({ t: '', s: 0, e: 0 });
+    for (const m of v.matchAll(/[^\n]+/g)) pieces.push({ t: m[0].trim(), s: m.index ?? 0, e: (m.index ?? 0) + m[0].length });
+    if (v.endsWith('\n') && pieces.length) pieces.push({ t: '', s: v.length, e: v.length });
+    if (!pieces.length) { setPart(i, { speech: '' }); return; }
+    let k = pieces.findIndex((x) => caret <= x.e); if (k < 0) k = pieces.length - 1;
+    const off = Math.max(0, Math.min(pieces[k].t.length, caret - pieces[k].s));
+    const room = MAX_PARTS - (data.parts.length - 1);
+    while (pieces.length > room) { const l = pieces.pop()!, q = pieces[pieces.length - 1]; q.t = `${q.t} ${l.t}`.trim(); if (k >= pieces.length) k = pieces.length - 1; }
+    const cur = data.parts[i], sum = pieces.reduce((a, x) => a + Math.max(1, countWords(x.t)), 0);
+    const made = pieces.map((x, n) => ({
+      name: n === 0 ? cur.name : 'Trecho', seconds: Math.min(MAX_PART_SECONDS, Math.max(MIN_PART_SECONDS, Math.round((cur.seconds * Math.max(1, countWords(x.t))) / sum))),
+      speech: x.t, onScreen: n === 0 ? cur.onScreen : '', visual: n === 0 ? cur.visual : '',
+    }));
+    pend.current = { i: i + k, off }; setPr(null); setSel(null);
+    setData((d) => ({ ...d, parts: [...d.parts.slice(0, i), ...made, ...d.parts.slice(i + 1)] }));
   };
-  const addPart = (after: number) => {
-    if (data.parts.length >= MAX_PARTS) return;
-    mutate((ps) => [...ps.slice(0, after + 1), { name: 'Novo bloco', seconds: 10, speech: '', onScreen: '', visual: '' }, ...ps.slice(after + 1)]);
-    setTimeout(() => document.getElementById(`s${after + 1}`)?.focus(), 60);
+  const joinParts = (i: number) => { // junta o trecho i+1 ao trecho i
+    const a = data.parts[i], b = data.parts[i + 1]; if (!a || !b) return;
+    const at = a.speech.trimEnd(), merged = b.speech.trim() ? `${at}${at ? ' ' : ''}${b.speech.trim()}` : at;
+    pend.current = { i, off: b.speech.trim() && at ? at.length + 1 : at.length }; setPr(null); setSel(null);
+    setData((d) => ({ ...d, parts: [...d.parts.slice(0, i), { ...a, speech: merged, seconds: Math.min(MAX_PART_SECONDS, a.seconds + b.seconds), onScreen: [a.onScreen, b.onScreen].filter(Boolean).join(' · ').slice(0, 200), visual: [a.visual, b.visual].filter(Boolean).join(' ').slice(0, 500) }, ...d.parts.slice(i + 2)] }));
+  };
+  const keySpeech = (i: number, e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const el = e.currentTarget, collapsed = el.selectionStart === el.selectionEnd;
+    if (!collapsed || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+    const go = (to: number, off: number | 'end') => { const n = document.getElementById(`s${to}`) as HTMLTextAreaElement | null; if (!n) return; e.preventDefault(); n.focus(); const o = off === 'end' ? n.value.length : off; n.setSelectionRange(o, o); };
+    if (e.key === 'Backspace' && el.selectionStart === 0 && i > 0) { e.preventDefault(); joinParts(i - 1); }
+    else if (e.key === 'Delete' && el.selectionStart === el.value.length && i < data.parts.length - 1) { e.preventDefault(); joinParts(i); }
+    else if (e.key === 'ArrowUp' && el.selectionStart === 0 && i > 0) go(i - 1, 'end');
+    else if (e.key === 'ArrowDown' && el.selectionStart === el.value.length && i < data.parts.length - 1) go(i + 1, 0);
   };
   // trecho selecionado na fala: vira um pedido de refino só daquele trecho
   const [sel, setSel] = useState<{ i: number; text: string } | null>(null);
-  const [focusMode, setFocusMode] = useState(false);
+  const [showNotes, setShowNotes] = useState(false); // tela e visual ficam escondidos: o roteiro aparece como texto corrido
   const onSelectSpeech = (i: number) => (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
     const el = e.currentTarget, text = el.value.slice(el.selectionStart, el.selectionEnd).trim();
     setSel(text.length >= 6 ? { i, text: text.slice(0, 400) } : null);
@@ -120,8 +148,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   const total = totalSeconds(data) || meta.seconds; // o vídeo dura a soma dos blocos
   const ratio = spoken / total;
   const timing = ratio > 1.12 ? 'over' : ratio < 0.7 ? 'under' : 'ok';
-  const starts = data.parts.reduce<number[]>((a, p, k) => [...a, k ? a[k - 1] + data.parts[k - 1].seconds : 0], []);
-  const mmss = (x: number) => `${Math.floor(x / 60)}:${String(Math.round(x % 60)).padStart(2, '0')}`;
+  const words = data.parts.reduce((a, p) => a + countWords(p.speech), 0);
 
   const CHIPS = ['Mais fluido e explicativo', 'Mais curto', 'Gancho mais forte', 'Fala mais natural', 'Visual mais simples de gravar', 'CTA mais suave'];
   async function askRefine(feedback: string, previous?: { title: string; data: ScriptData }) {
@@ -230,7 +257,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   };
 
   return (
-    <div className={`vd-script${focusMode ? ' vd-focus' : ''}`}>
+    <div className={`vd-script${showNotes ? '' : ' vd-nonotes'}`}>
       {actErr && <div className="notice err" role="alert" style={{ marginBottom: 12 }}>{actErr}</div>}
       {save === 'error' && (
         <div className="notice err" role="alert" style={{ marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
@@ -239,21 +266,21 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
         </div>
       )}
       <input className="vd-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} aria-label="Título do roteiro" placeholder="Título do roteiro" />
-      <div className="vd-bar" role="toolbar" aria-label="Ferramentas do roteiro">
-        <div className="vd-bar-g">
+      <div className="vd-tbar" role="toolbar" aria-label="Ferramentas do roteiro">
+        <div className="vd-tbar-g">
           <button type="button" className="vd-tb" onClick={() => stepHist('back')} disabled={!canUndo} title="Desfazer (Ctrl+Z)" aria-label="Desfazer">↶<span>Desfazer</span></button>
           <button type="button" className="vd-tb" onClick={() => stepHist('fwd')} disabled={!canRedo} title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer">↷<span>Refazer</span></button>
         </div>
-        <div className="vd-bar-g">
+        <div className="vd-tbar-g">
           <button type="button" className="vd-tb" onClick={() => setRefine((o) => !o)} disabled={!hasKey} aria-expanded={refine} title="Pedir à IA um ajuste no roteiro inteiro (ou em um bloco)"><IconSpark /><span>Refinar com IA</span></button>
-          <button type="button" className={`vd-tb${focusMode ? ' on' : ''}`} onClick={() => setFocusMode((f) => !f)} aria-pressed={focusMode} title="Mostra só a fala, como um texto corrido">Aa<span>Só a fala</span></button>
+          <button type="button" className={`vd-tb${showNotes ? ' on' : ''}`} onClick={() => setShowNotes((f) => !f)} aria-pressed={showNotes} title="Mostra ao lado de cada parágrafo o texto na tela e o que gravar">Aa<span>Tela e visual</span></button>
           <button type="button" className="vd-tb" onClick={() => setPrompter(true)} title="Tela cheia para gravar lendo"><IconPlay /><span>Teleprompter</span></button>
         </div>
-        <div className="vd-bar-g">
+        <div className="vd-tbar-g">
           <button type="button" className="vd-tb" onClick={copy} title="Copia o roteiro completo"><IconCopy /><span>{copied ? 'Copiado!' : 'Copiar'}</span></button>
-          <button type="button" className="vd-tb" onClick={copySpeech} title="Copia só o texto da fala, um bloco por parágrafo (sem tela, visual, tempos nem legenda)"><IconCopy /><span>{copiedSpeech ? 'Fala copiada!' : 'Só a fala'}</span></button>
+          <button type="button" className="vd-tb" onClick={copySpeech} title="Copia só o texto da fala, um bloco por parágrafo (sem tela, visual, tempos nem legenda)"><IconCopy /><span>{copiedSpeech ? 'Fala copiada!' : 'Copiar fala'}</span></button>
         </div>
-        <div className="vd-bar-g vd-bar-end">
+        <div className="vd-tbar-g vd-tbar-end">
           <span className={`vd-save ${save}`} role="status">{save === 'saved' ? 'Salvo' : save === 'error' ? 'Erro ao salvar' : 'Salvando…'}</span>
           <select className="vd-stage-select" value={status} onChange={(e) => setStatus(e.target.value as Stage)} style={{ '--c': stageOf(status).color } as React.CSSProperties} aria-label="Etapa do vídeo">
             {STAGES.map((st) => <option key={st.id} value={st.id}>{st.label}</option>)}
@@ -277,7 +304,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
               <p className="muted">Diga o que mudar. A IA propõe a versão ajustada, você compara e só aplica se gostar (e pode desfazer depois).</p>
               <div className="vd-chips" role="group" aria-label="O que refinar">
                 <button type="button" className={`vd-chip${scope === null ? ' on' : ''}`} onClick={() => setScope(null)}>Roteiro inteiro</button>
-                {data.parts.map((p, k) => <button key={k} type="button" className={`vd-chip${scope === k ? ' on' : ''}`} onClick={() => setScope(k)}>{k + 1}. {p.name}</button>)}
+                {data.parts.map((p, k) => <button key={k} type="button" className={`vd-chip${scope === k ? ' on' : ''}`} onClick={() => setScope(k)}>{k + 1}. {p.speech.trim().slice(0, 22) || 'vazio'}…</button>)}
               </div>
               <textarea rows={3} value={fb} onChange={(e) => setFb(e.target.value)} maxLength={800} placeholder="Ex.: o gancho está fraco, comece com a dor; corte as frases longas; deixe a CTA mais natural…" />
               <div className="aim-chips pe-chips-row">{CHIPS.map((c) => <button type="button" key={c} onClick={() => setFb((t) => (t.trim() ? `${t.trim()}; ` : '') + c.toLowerCase())}>{c}</button>)}</div>
@@ -309,88 +336,70 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
       <div className="vd-meta big">{meta.formatName && <><span>{meta.formatName}</span><i>·</i></>}<span>{fmtSecs(total)}</span></div>
       {meta.angle && <p className="vd-angle"><b>Ideia:</b> {meta.angle}</p>}
 
-      <div className="card-surface vd-timing">
-        <PartsBar parts={data.parts} />
-        <div className={`vd-timing-msg ${timing}`}>
-          <b>~{fmtSecs(spoken)} de fala</b> para {fmtSecs(total)} de vídeo ·{' '}
-          {timing === 'ok' ? 'cabe no tempo.' : timing === 'over' ? 'passa do tempo: corte algumas palavras.' : 'sobra tempo: dá para falar um pouco mais.'}
-        </div>
-      </div>
+      <p className={`vd-count ${timing}`}>
+        <b>{words} palavras</b> · ~{fmtSecs(spoken)} de fala para {fmtSecs(total)} de vídeo ·{' '}
+        {timing === 'ok' ? 'cabe no tempo.' : timing === 'over' ? 'passa do tempo: corte algumas palavras.' : 'sobra tempo: dá para falar um pouco mais.'}
+      </p>
 
       {data.notes.length > 0 && (
         <div className="notice warn vd-notes"><b>Conferir antes de gravar</b><ul>{data.notes.map((n, i) => <li key={i}>{n}</li>)}</ul></div>
       )}
 
       <div className="vd-script-parts vd-doc">
-        {data.parts.map((p, i) => {
-          const w = countWords(p.speech), lim = wordsFor(p.seconds);
-          return (
-            <section key={i} className="vd-sp">
-              <div className="vd-sp-main">
-                <header>
-                  <span className="vd-num" style={{ background: PART_COLORS[i % PART_COLORS.length] }}>{i + 1}</span>
-                  <input className="vd-sp-name" value={p.name} maxLength={60} onChange={(e) => setPart(i, { name: e.target.value })} aria-label={`Nome do bloco ${i + 1}`} />
-                  <span className="vd-sp-time" title={fmtSecs(p.seconds)}>{mmss(starts[i])}–{mmss(starts[i] + p.seconds)}</span>
-                  <span className={`vd-words${w > lim * 1.15 ? ' over' : ''}`}>{w}/{lim} palavras</span>
-                  <span className="vd-sp-tools">
-                    <button type="button" className="vd-ib" onClick={() => movePart(i, i - 1)} disabled={i === 0} title="Subir este bloco" aria-label={`Subir o bloco ${p.name}`}>↑</button>
-                    <button type="button" className="vd-ib" onClick={() => movePart(i, i + 1)} disabled={i === data.parts.length - 1} title="Descer este bloco" aria-label={`Descer o bloco ${p.name}`}>↓</button>
-                    <button type="button" className="vd-ib danger" onClick={() => removePart(i)} disabled={data.parts.length <= 1} title="Apagar este bloco" aria-label={`Apagar o bloco ${p.name}`}>✕</button>
-                  </span>
-                  <button type="button" className="btn small ghost id-fai" onClick={() => setPr(pr?.i === i ? null : { i, fb: '', sec: p.seconds, busy: false, err: '', sugg: null, note: '' })} disabled={!hasKey || !p.speech.trim()} aria-expanded={pr?.i === i} title={!hasKey ? 'A IA não está configurada neste servidor' : `Refinar “${p.name}” com IA`}><IconSpark /> Refinar</button>
-                </header>
-                <Auto id={`s${i}`} className="vd-speech" value={p.speech} placeholder="Escreva a fala deste bloco…" onChange={(e) => setPart(i, { speech: e.target.value })} onSelect={onSelectSpeech(i)} onBlur={() => setTimeout(() => setSel((x) => (x && x.i === i ? null : x)), 250)} aria-label={`Fala: ${p.name}`} />
-                {sel?.i === i && hasKey && (
-                  <button type="button" className="vd-selbar" onMouseDown={(e) => e.preventDefault()} onClick={refineSelection}><IconSpark /> Refinar só o trecho selecionado</button>
-                )}
-              </div>
-              <div className="vd-sp-side">
-                <label htmlFor={`o${i}`}>Texto na tela</label>
-                <Auto id={`o${i}`} value={p.onScreen} maxLength={200} placeholder="—" onChange={(e) => setPart(i, { onScreen: e.target.value })} />
-                <label htmlFor={`v${i}`}>Visual / o que mostrar</label>
-                <Auto id={`v${i}`} value={p.visual} placeholder="—" onChange={(e) => setPart(i, { visual: e.target.value })} />
-              </div>
-              {pr?.i === i && (
-                <div className="id-fref vd-sp-ref">
-                  {pr.sugg === null ? (
-                    <>
-                      <textarea rows={2} autoFocus value={pr.fb} onChange={(e) => setPr({ ...pr, fb: e.target.value })} maxLength={800} placeholder={`O que mudar em “${p.name}”? Ex.: comece pela dor, corte as frases longas, deixe a fala mais natural…`} />
-                      <div className="vd-secs">
-                        <span>Duração deste bloco</span>
-                        <div className="vd-stepper">
-                          <button type="button" onClick={() => setPr({ ...pr, sec: Math.max(MIN_PART_SECONDS, pr.sec - 1) })} aria-label="Menos 1 segundo" disabled={pr.busy}>−</button>
-                          <input type="number" min={MIN_PART_SECONDS} max={MAX_PART_SECONDS} value={pr.sec} disabled={pr.busy} onChange={(e) => setPr({ ...pr, sec: Math.min(MAX_PART_SECONDS, Math.max(0, Math.round(Number(e.target.value)) || 0)) })} onBlur={() => setPr((x) => (x ? { ...x, sec: Math.max(MIN_PART_SECONDS, x.sec) } : x))} aria-label="Duração do bloco em segundos" /> <span>s</span>
-                          <button type="button" onClick={() => setPr({ ...pr, sec: Math.min(MAX_PART_SECONDS, pr.sec + 1) })} aria-label="Mais 1 segundo" disabled={pr.busy}>+</button>
-                        </div>
-                        <small className="muted">≈ {wordsFor(pr.sec)} palavras de fala{pr.sec !== p.seconds ? ` · era ${p.seconds} s (${pr.sec > p.seconds ? 'a fala cresce' : 'a fala encurta'})` : ''}</small>
-                      </div>
-                      <div className="aim-chips pe-chips-row">{PCHIPS.map((c) => <button type="button" key={c} onClick={() => setPr({ ...pr, fb: (pr.fb.trim() ? `${pr.fb.trim()}; ` : '') + c.toLowerCase() })}>{c}</button>)}</div>
-                    </>
-                  ) : (
-                    <div className="id-fdiff">
-                      {pr.note && <p className="pe-note">{pr.note}</p>}
-                      {partChanges(i).length === 0 ? <p className="muted">A IA não mudou nada nesta parte. Tente pedir de outro jeito.</p> : <>
-                        <p className="muted vd-legend">Como no controle de alterações: <ins>verde</ins> entra, <del>riscado</del> sai.</p>
-                        {partChanges(i).map((c) => <div key={c.label}><span>{c.label}</span><p className="vd-track"><Track before={c.before} after={c.after} /></p></div>)}
-                      </>}
-                      <textarea rows={2} value={pr.fb} onChange={(e) => setPr({ ...pr, fb: e.target.value })} maxLength={800} placeholder="Não é bem isso? Peça outro ajuste sobre esta sugestão…" />
-                    </div>
-                  )}
-                  {pr.err && <div className="notice err">{pr.err}</div>}
-                  {pr.busy && <div className="notice info" role="status">Refinando… leva cerca de 15 a 30 segundos.</div>}
-                  <div className="row-actions">
-                    {pr.sugg !== null && <button type="button" className="btn small primary" onClick={applyPart} disabled={partChanges(i).length === 0}>✓ Aplicar nesta parte</button>}
-                    <button type="button" className={`btn small${pr.sugg === null ? ' primary' : ''}`} onClick={askPart} disabled={pr.busy || (pr.fb.trim().length < 3 && pr.sec === p.seconds)}>{pr.busy ? 'Refinando…' : pr.sugg === null ? <><IconSpark /> Sugerir</> : 'Pedir outro ajuste'}</button>
-                    <button type="button" className="btn small ghost" onClick={() => setPr(null)}>{pr.sugg === null ? 'Cancelar' : 'Descartar'}</button>
-                  </div>
-                </div>
+        {data.parts.map((p, i) => (
+          <section key={i} className="vd-sp">
+            <div className="vd-sp-main">
+              <Auto id={`s${i}`} className="vd-speech" value={p.speech} placeholder={data.parts.length === 1 && i === 0 ? 'Escreva o roteiro…' : ''} onChange={(e) => editSpeech(i, e)} onKeyDown={(e) => keySpeech(i, e)} onSelect={onSelectSpeech(i)} onBlur={() => setTimeout(() => setSel((x) => (x && x.i === i ? null : x)), 250)} aria-label={`Parágrafo ${i + 1} da fala`} />
+              {sel?.i === i && hasKey && (
+                <button type="button" className="vd-selbar" onMouseDown={(e) => e.preventDefault()} onClick={refineSelection}><IconSpark /> Refinar só o trecho selecionado</button>
               )}
-              {i < data.parts.length - 1 || data.parts.length < MAX_PARTS ? (
-                <button type="button" className="vd-add" onClick={() => addPart(i)} disabled={data.parts.length >= MAX_PARTS} aria-label={`Adicionar bloco depois de ${p.name}`} title="Adicionar um bloco aqui"><span>+ Adicionar bloco</span></button>
-              ) : null}
-            </section>
-          );
-        })}
+            </div>
+            <div className={`vd-sp-side${!p.onScreen && !p.visual ? ' quiet' : ''}`}>
+              <label htmlFor={`o${i}`}>Texto na tela</label>
+              <Auto id={`o${i}`} value={p.onScreen} maxLength={200} onChange={(e) => setPart(i, { onScreen: e.target.value })} />
+              <label htmlFor={`v${i}`}>Visual</label>
+              <Auto id={`v${i}`} value={p.visual} onChange={(e) => setPart(i, { visual: e.target.value })} />
+            </div>
+            <span className="vd-sp-tools">
+              <button type="button" className="vd-ib" onClick={() => setPr(pr?.i === i ? null : { i, fb: '', sec: p.seconds, busy: false, err: '', sugg: null, note: '' })} disabled={!hasKey || !p.speech.trim()} aria-expanded={pr?.i === i} title={!hasKey ? 'A IA não está configurada neste servidor' : 'Refinar este parágrafo com IA'} aria-label={`Refinar o parágrafo ${i + 1} com IA`}><IconSpark /></button>
+            </span>
+            {pr?.i === i && (
+              <div className="id-fref vd-sp-ref">
+                {pr.sugg === null ? (
+                  <>
+                    <textarea rows={2} autoFocus value={pr.fb} onChange={(e) => setPr({ ...pr, fb: e.target.value })} maxLength={800} placeholder="O que mudar neste parágrafo? Ex.: comece pela dor, corte as frases longas, deixe a fala mais natural…" />
+                    <div className="vd-secs">
+                      <span>Duração deste trecho</span>
+                      <div className="vd-stepper">
+                        <button type="button" onClick={() => setPr({ ...pr, sec: Math.max(MIN_PART_SECONDS, pr.sec - 1) })} aria-label="Menos 1 segundo" disabled={pr.busy}>−</button>
+                        <input type="number" min={MIN_PART_SECONDS} max={MAX_PART_SECONDS} value={pr.sec} disabled={pr.busy} onChange={(e) => setPr({ ...pr, sec: Math.min(MAX_PART_SECONDS, Math.max(0, Math.round(Number(e.target.value)) || 0)) })} onBlur={() => setPr((x) => (x ? { ...x, sec: Math.max(MIN_PART_SECONDS, x.sec) } : x))} aria-label="Duração do trecho em segundos" /> <span>s</span>
+                        <button type="button" onClick={() => setPr({ ...pr, sec: Math.min(MAX_PART_SECONDS, pr.sec + 1) })} aria-label="Mais 1 segundo" disabled={pr.busy}>+</button>
+                      </div>
+                      <small className="muted">≈ {wordsFor(pr.sec)} palavras de fala{pr.sec !== p.seconds ? ` · era ${p.seconds} s (${pr.sec > p.seconds ? 'a fala cresce' : 'a fala encurta'})` : ''}</small>
+                    </div>
+                    <div className="aim-chips pe-chips-row">{PCHIPS.map((c) => <button type="button" key={c} onClick={() => setPr({ ...pr, fb: (pr.fb.trim() ? `${pr.fb.trim()}; ` : '') + c.toLowerCase() })}>{c}</button>)}</div>
+                  </>
+                ) : (
+                  <div className="id-fdiff">
+                    {pr.note && <p className="pe-note">{pr.note}</p>}
+                    {partChanges(i).length === 0 ? <p className="muted">A IA não mudou nada neste trecho. Tente pedir de outro jeito.</p> : <>
+                      <p className="muted vd-legend">Como no controle de alterações: <ins>verde</ins> entra, <del>riscado</del> sai.</p>
+                      {partChanges(i).map((c) => <div key={c.label}><span>{c.label}</span><p className="vd-track"><Track before={c.before} after={c.after} /></p></div>)}
+                    </>}
+                    <textarea rows={2} value={pr.fb} onChange={(e) => setPr({ ...pr, fb: e.target.value })} maxLength={800} placeholder="Não é bem isso? Peça outro ajuste sobre esta sugestão…" />
+                  </div>
+                )}
+                {pr.err && <div className="notice err">{pr.err}</div>}
+                {pr.busy && <div className="notice info" role="status">Refinando… leva cerca de 15 a 30 segundos.</div>}
+                <div className="row-actions">
+                  {pr.sugg !== null && <button type="button" className="btn small primary" onClick={applyPart} disabled={partChanges(i).length === 0}>✓ Aplicar neste trecho</button>}
+                  <button type="button" className={`btn small${pr.sugg === null ? ' primary' : ''}`} onClick={askPart} disabled={pr.busy || (pr.fb.trim().length < 3 && pr.sec === p.seconds)}>{pr.busy ? 'Refinando…' : pr.sugg === null ? <><IconSpark /> Sugerir</> : 'Pedir outro ajuste'}</button>
+                  <button type="button" className="btn small ghost" onClick={() => setPr(null)}>{pr.sugg === null ? 'Cancelar' : 'Descartar'}</button>
+                </div>
+              </div>
+            )}
+          </section>
+        ))}
       </div>
 
       {data.production && (data.production.rhythm || data.production.sources.length > 0 || data.production.shortVersion) && (
@@ -404,7 +413,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
 
       {data.markdown && (
         <details className="card-surface vd-orig">
-          <summary><b>Roteiro original da IA</b> <span className="muted">(o texto inteiro, como foi escrito; os blocos acima são uma cópia para editar)</span></summary>
+          <summary><b>Roteiro original da IA</b> <span className="muted">(o texto inteiro, como foi escrito; o texto acima é uma cópia para editar)</span></summary>
           <div className="row-actions" style={{ margin: '10px 0' }}><button type="button" className="btn small" onClick={() => { navigator.clipboard?.writeText(data.markdown!).catch(() => {}); }}>Copiar o texto original</button></div>
           <div className="vd-orig-text">{data.markdown}</div>
         </details>
@@ -532,16 +541,11 @@ export function Review({ title, data, sugg }: { title: string; data: ScriptData;
         {rows.map(({ p, k, c, start }) => (
           <section key={k} className="vd-sp">
             <div className="vd-sp-main">
-              <header>
-                <span className="vd-num" style={{ background: PART_COLORS[k % PART_COLORS.length] }}>{k + 1}</span>
-                <b>{p.name}</b>
-                <span className="vd-sp-time">{mmss(start)}–{mmss(start + p.seconds)}{c && c.seconds !== p.seconds ? ` (era ${c.seconds} s)` : ''}</span>
-              </header>
               <Field before={c?.speech ?? ''} after={p.speech} />
             </div>
             <div className="vd-sp-side">
               <Field label="Texto na tela" before={c?.onScreen ?? ''} after={p.onScreen} />
-              <Field label="Visual / o que mostrar" before={c?.visual ?? ''} after={p.visual} />
+              <Field label="Visual" before={c?.visual ?? ''} after={p.visual} />
             </div>
           </section>
         ))}
