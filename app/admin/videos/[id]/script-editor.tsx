@@ -58,6 +58,8 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   const spoken = data.parts.reduce((a, p) => a + speakSeconds(p.speech), 0);
   const ratio = spoken / meta.seconds;
   const timing = ratio > 1.12 ? 'over' : ratio < 0.7 ? 'under' : 'ok';
+  const starts = data.parts.reduce<number[]>((a, p, k) => [...a, k ? a[k - 1] + data.parts[k - 1].seconds : 0], []);
+  const mmss = (x: number) => `${Math.floor(x / 60)}:${String(Math.round(x % 60)).padStart(2, '0')}`;
 
   const CHIPS = ['Mais curto', 'Gancho mais forte', 'Fala mais natural', 'Visual mais simples de gravar', 'CTA mais suave'];
   async function askRefine(feedback: string, previous?: { title: string; data: ScriptData }) {
@@ -244,7 +246,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
               <header>
                 <span className="vd-num" style={{ background: PART_COLORS[i % PART_COLORS.length] }}>{i + 1}</span>
                 <b>{p.name}</b>
-                <span className="vd-sp-time">{fmtSecs(p.seconds)}</span>
+                <span className="vd-sp-time" title={fmtSecs(p.seconds)}>{mmss(starts[i])}–{mmss(starts[i] + p.seconds)}</span>
                 <span className={`vd-words${w > lim * 1.15 ? ' over' : ''}`}>{w}/{lim} palavras</span>
                 <button type="button" className="btn small ghost id-fai" onClick={() => setPr(pr?.i === i ? null : { i, fb: '', busy: false, err: '', sugg: null, note: '' })} disabled={!hasKey || !p.speech.trim()} aria-expanded={pr?.i === i} title={!hasKey ? 'A IA não está configurada neste servidor' : `Refinar “${p.name}” com IA`}><IconSpark /> Refinar</button>
               </header>
@@ -283,6 +285,15 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
           );
         })}
       </div>
+
+      {data.production && (data.production.rhythm || data.production.sources.length > 0 || data.production.shortVersion) && (
+        <section className="card-surface vd-prod">
+          <b>Produção</b>
+          {data.production.rhythm && <p><span className="muted">Ritmo e edição:</span> {data.production.rhythm}</p>}
+          {data.production.sources.length > 0 && <div><span className="muted">Fontes para o rodapé dos números:</span><ul>{data.production.sources.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
+          {data.production.shortVersion && <p><span className="muted">Versão de 30 s:</span> {data.production.shortVersion}</p>}
+        </section>
+      )}
 
       <div className="card-surface form-card vd-cap">
         <div className="id-fhead" style={{ marginBottom: 8 }}>

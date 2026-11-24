@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { fmtUsd } from '@/lib/ai/constants';
 import {
-  DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, ESTIMATED_COST_PLAN, MAX_CONTENT_CHARS, MAX_SECONDS, MAX_VIDEO_IDEAS, MIN_SECONDS,
+  AUTO_FORMAT, DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, ESTIMATED_COST_PLAN, MAX_CONTENT_CHARS, MAX_SECONDS, MAX_VIDEO_IDEAS, MIN_SECONDS,
   allocate, countWords, fmtSecs, wordsFor, type Platform, type VideoIdea, type VideoPart,
 } from '@/lib/video';
 import { IconBack, IconPlus, IconSpark, IconTrash } from '../../../icons';
@@ -14,16 +14,18 @@ type Format = { id: string; name: string; description: string; defaultSeconds: n
 type Item = { idea: VideoIdea; status: 'wait' | 'run' | 'done' | 'err'; id?: string; title?: string; error?: string };
 
 const CONCURRENCY = 3;
-const STEPS = ['Conteúdo e formato', 'Ideias', 'Roteiros'];
+const STEPS = ['Conteúdo', 'Ângulos (opcional)', 'Roteiro'];
 
-export function Wizard({ formats, hasKey, remaining, canEditFormats }: { formats: Format[]; hasKey: boolean; remaining: number; canEditFormats: boolean }) {
+export function Wizard({ formats: own, hasKey, remaining, canEditFormats }: { formats: Format[]; hasKey: boolean; remaining: number; canEditFormats: boolean }) {
+  // "A IA escolhe a estrutura" é o padrão; os formatos de partes fixas continuam como opção
+  const formats: Format[] = [{ ...AUTO_FORMAT, own: false }, ...own];
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [content, setContent] = useState('');
   const [formatId, setFormatId] = useState(formats[0]?.id ?? '');
   const format = formats.find((f) => f.id === formatId);
   const [seconds, setSeconds] = useState(Math.max(MIN_SECONDS, formats[0]?.defaultSeconds ?? 45));
   const platform: Platform = 'all'; // sem escolha de plataforma: o roteiro serve para Reels, TikTok e Shorts
-  const [count, setCount] = useState(3);
+  const [count, setCount] = useState(1);
   const [instructions, setInstructions] = useState('');
   const [ideas, setIdeas] = useState<VideoIdea[]>([]);
   const [items, setItems] = useState<Item[]>([]);
@@ -40,7 +42,6 @@ export function Wizard({ formats, hasKey, remaining, canEditFormats }: { formats
   const secs = format ? allocate(format.parts, seconds) : [];
   const maxCount = Math.min(MAX_VIDEO_IDEAS, remaining);
 
-  useEffect(() => { if (words > 0 && count === 3) setCount(Math.min(suggested, maxCount) || 1); /* sugere uma vez, ao colar */ }, [words > 0]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!running) return;
     const h = (e: BeforeUnloadEvent) => { e.preventDefault(); };
@@ -80,6 +81,13 @@ export function Wizard({ formats, hasKey, remaining, canEditFormats }: { formats
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, async () => { for (let n = queue.shift(); n; n = queue.shift()) await generateOne(n.i, n.idea); }));
     setRunning(false);
   }
+  /** Um roteiro: vai direto (a IA escolhe o recorte mais forte do conteúdo), sem a etapa de ângulos. */
+  function direct() {
+    batch.current = crypto.randomUUID();
+    const idea = { title: '', angle: '', points: [] };
+    setItems([{ idea, status: 'wait' }]); setStep(3);
+    runQueue([{ i: 0, idea }]);
+  }
   function start() {
     const good = ideas.filter((x) => x.title.trim());
     batch.current = crypto.randomUUID();
@@ -109,7 +117,7 @@ export function Wizard({ formats, hasKey, remaining, canEditFormats }: { formats
           <div className="card-surface form-card vd-content">
             <div className="field">
               <label htmlFor="vc">Conteúdo-fonte</label>
-              <textarea id="vc" rows={14} value={content} onChange={(e) => setContent(e.target.value)} placeholder="Cole aqui um artigo, uma transcrição de vídeo ou podcast, um roteiro longo ou anotações. Quanto mais rico o conteúdo, mais ideias diferentes a IA encontra." />
+              <textarea id="vc" rows={14} value={content} onChange={(e) => setContent(e.target.value)} placeholder="Cole aqui o material: dados, anotações, um artigo, uma transcrição ou só o tema com o que você quer dizer. Números e fontes que estiverem aqui podem entrar no vídeo." />
               <div className="vd-count"><span>{words.toLocaleString('pt-BR')} palavras</span>{words > 0 && <span>· sugerimos ~{suggested} {suggested === 1 ? 'roteiro' : 'roteiros'} para este texto</span>}{over && <span className="vd-err">· passa de {MAX_CONTENT_CHARS.toLocaleString('pt-BR')} caracteres; o excesso será ignorado</span>}</div>
             </div>
             <details className="vd-more">
@@ -124,9 +132,9 @@ export function Wizard({ formats, hasKey, remaining, canEditFormats }: { formats
               <div className="vd-formats">
                 {formats.map((f) => (
                   <button key={f.id} type="button" className={`vd-format${f.id === formatId ? ' on' : ''}`} onClick={() => pickFormat(f)} aria-pressed={f.id === formatId}>
-                    <b>{f.name}</b>
-                    <span>{f.parts.length} partes · {fmtSecs(f.defaultSeconds)}</span>
-                    <PartsBar parts={f.parts.map((p, i) => ({ name: p.name, seconds: allocate(f.parts, f.defaultSeconds)[i] }))} small />
+                    <b>{f.name}{!f.parts.length && <span className="pill dark vd-rec">recomendado</span>}</b>
+                    <span>{f.parts.length ? `${f.parts.length} partes · ${fmtSecs(f.defaultSeconds)}` : f.description}</span>
+                    {f.parts.length > 0 && <PartsBar parts={f.parts.map((p, i) => ({ name: p.name, seconds: allocate(f.parts, f.defaultSeconds)[i] }))} small />}
                   </button>
                 ))}
               </div>
@@ -149,11 +157,11 @@ export function Wizard({ formats, hasKey, remaining, canEditFormats }: { formats
                   <b>{Math.min(count, maxCount || 1)}</b>
                   <button type="button" onClick={() => setCount((n) => Math.min(maxCount, n + 1))} aria-label="Mais">+</button>
                 </div>
-                <small className="muted">Cada roteiro usa um ângulo diferente do conteúdo.</small>
+                <small className="muted">{count <= 1 ? 'Um roteiro direto, com o recorte mais forte do conteúdo.' : `A IA sugere ${count} ângulos diferentes do conteúdo para você aprovar antes.`}{count <= 1 && words > 700 ? ` Texto longo: dá para tirar ~${suggested} roteiros.` : ''}</small>
               </div>
             </div>
 
-            {format && (
+            {format && format.parts.length > 0 && (
               <div className="card-surface form-card vd-preview">
                 <div className="lbl">Como o vídeo vai ser dividido</div>
                 <PartsBar parts={format.parts.map((p, i) => ({ name: p.name, seconds: secs[i] }))} />
@@ -164,9 +172,9 @@ export function Wizard({ formats, hasKey, remaining, canEditFormats }: { formats
 
           {err && <div className="notice err">{err}</div>}
           <div className="gen-foot vd-foot">
-            <span className="muted">Sugerir as ideias custa ≈ {fmtUsd(ESTIMATED_COST_PLAN)}. Os roteiros só são gerados depois da sua aprovação.</span>
-            <button type="button" className="btn primary" onClick={() => plan()} disabled={busy || tooShort || !format || !hasKey || remaining <= 0}>
-              {busy ? 'Pensando nas ideias…' : <><IconSpark /> Sugerir ideias</>}
+            <span className="muted">{count <= 1 ? `Custa ≈ ${fmtUsd(ESTIMATED_COST_PER_SCRIPT)}. Você edita tudo depois.` : `Sugerir os ângulos custa ≈ ${fmtUsd(ESTIMATED_COST_PLAN)}. Os roteiros só são gerados depois da sua aprovação.`}</span>
+            <button type="button" className="btn primary" onClick={() => (count <= 1 ? direct() : plan())} disabled={busy || tooShort || !format || !hasKey || remaining <= 0}>
+              {busy ? 'Pensando nos ângulos…' : <><IconSpark /> {count <= 1 ? 'Escrever o roteiro' : `Sugerir ${count} ângulos`}</>}
             </button>
           </div>
         </div>
@@ -230,7 +238,7 @@ export function Wizard({ formats, hasKey, remaining, canEditFormats }: { formats
               <div key={i} className={`card-surface vd-result ${x.status}`}>
                 <span className={`vd-state ${x.status}`}>{x.status === 'done' ? '✓' : x.status === 'err' ? '!' : x.status === 'run' ? <i className="vd-spin" /> : i + 1}</span>
                 <div className="vd-result-body">
-                  <b>{x.title || x.idea.title}</b>
+                  <b>{x.title || x.idea.title || 'Roteiro'}</b>
                   <span className="muted">{x.status === 'wait' ? 'Na fila' : x.status === 'run' ? 'Escrevendo…' : x.status === 'done' ? 'Roteiro pronto' : x.error}</span>
                 </div>
                 {x.status === 'done' && <Link href={`/admin/videos/${x.id}`} className="btn small">Abrir</Link>}

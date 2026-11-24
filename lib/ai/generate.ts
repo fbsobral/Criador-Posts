@@ -81,6 +81,26 @@ export function sanitizeHtml(html: string): string {
 
 const clean = (s: unknown, max = 400) => (typeof s === 'string' ? s.trim().slice(0, max) : '');
 
+/* ---------- idioma do público ---------- */
+/** Variantes do português fora do Brasil, detectadas no perfil da marca (país ou cidade citados, ou pedido explícito nas regras). */
+const VARIANTS: { re: RegExp; name: string; vocab: string }[] = [
+  { re: /mo[çc]ambi|maputo|matola|nampula|quelimane|xai-?xai|inhambane/i, name: 'português de Moçambique', vocab: '"ensino secundário" (não "ensino médio"), "arranjar emprego", "telemóvel", "estudantes finalistas"' },
+  { re: /angol|luanda|benguela|huambo|lobito/i, name: 'português de Angola', vocab: '"ensino médio" é usado em Angola, "telemóvel", "arranjar emprego"' },
+  { re: /cabo verde|praia\b.*cabo|mindelo|guin[ée]-?bissau|bissau|s[ãa]o tom[ée]|timor|d[ií]li\b/i, name: 'português da África lusófona/Timor (norma europeia)', vocab: '"telemóvel", "arranjar emprego", "ensino secundário"' },
+  { re: /portugal|lisboa|coimbra|portugu[eê]s europeu|pt-pt/i, name: 'português europeu (de Portugal)', vocab: '"telemóvel", "arranjar emprego", "ensino secundário", "autocarro"' },
+];
+export function languageVariant(b: BrandProfile): { name: string; vocab: string } | null {
+  const text = [b.rules, b.audience, b.about, b.niche, b.brandName, b.voice].join(' ');
+  if (/portugu[eê]s do brasil|pt-br\b/i.test(b.rules)) return null; // pedido explícito pelo português do Brasil
+  return VARIANTS.find((v) => v.re.test(text)) ?? null;
+}
+/** Regra de idioma quando o público não é brasileiro. Vale sobre qualquer menção a "português do Brasil" no resto do prompt. */
+export function languageRule(b: BrandProfile): string {
+  const v = languageVariant(b);
+  if (!v) return '';
+  return `IDIOMA DO PÚBLICO (esta regra vale sobre qualquer menção a "português do Brasil" neste prompt): escreva em ${v.name}, como fala e lê o público desta marca. Use o vocabulário de lá (${v.vocab}) e evite marcas do português do Brasil: "a gente" como sujeito, "pra", "tá", "pegar ônibus", "celular", "ensino médio" (onde não se usa), gírias brasileiras. Na fala de vídeo, mantenha o tom de conversa, mas na forma de lá. Escreva como alguém DE DENTRO dessa comunidade ("aqui", "nos nossos bairros"), nunca como observador de fora ("lá", "por lá").`;
+}
+
 /* ---------- instruções ---------- */
 export function brandBlock(b: BrandProfile): string {
   const lines = [
@@ -89,7 +109,8 @@ export function brandBlock(b: BrandProfile): string {
   ].filter(([, v]) => v.trim());
   let out = lines.map(([k, v]) => `- ${k}: ${v.trim()}`).join('\n');
   if (b.examples.trim()) out += `\n\nEXEMPLOS DE POSTS DESTA MARCA (imite o estilo, não copie o conteúdo):\n${b.examples.trim()}`;
-  return out ? `IDENTIDADE DA MARCA\n${out}` : '';
+  const lang = languageRule(b);
+  return [out ? `IDENTIDADE DA MARCA\n${out}` : '', lang].filter(Boolean).join('\n\n');
 }
 
 const CAPTION_BASE = `LEGENDA ("caption")
@@ -110,7 +131,7 @@ Escreva também a legenda para publicar junto com o carrossel (padrão: Instagra
 /** Vícios de texto de IA que valem para carrossel, roteiro e artigo (vistos nos testes reais). */
 export const STYLE_TICS = `VÍCIOS DE TEXTO DE IA (evite; o leitor percebe na hora)
 - "Não é X, é Y" e variações ("O problema não é X, é Y", "Não é falta de X. É falta de Y", "não foi X, foi Y"): no máximo UMA vez na peça inteira (corpo e legenda juntos), no momento da virada. Nas outras vezes, afirme o Y direto.
-- Frases feitas: "muda tudo", "mudou tudo", "faz toda a diferença", "a boa notícia é que", "ninguém nasce sabendo", "o empurrão que faltava", "encurtar o caminho/a estrada", "sair da zona de conforto", "e aqui está o nó", "no fim das contas", "mais do que nunca".
+- Frases feitas: "muda tudo", "mudou tudo", "muda o jogo", "não é luxo", "encontrar seu propósito", "partir pra ação", "fazer a diferença", "faz toda a diferença", "a boa notícia é que", "ninguém nasce sabendo", "o empurrão que faltava", "encurtar o caminho/a estrada", "sair da zona de conforto", "e aqui está o nó", "no fim das contas", "mais do que nunca".
 - Não fale sobre o próprio texto nem sobre a estrutura dele ("são três razões", "cada uma de pé sozinha", "este post vai mostrar", "neste carrossel"). Mostre.
 - Isso inclui descrever as partes da solução como "peças", "frentes", "pilares" ou dizer que elas são independentes ou que "cada uma faz sentido sozinha".
 - Não copie frases dos campos do briefing ao pé da letra ("ver o bastão passado", "orgulho de se firmar", "responsabilidade de uns com os outros"): diga a mesma coisa com as palavras de quem lê, numa cena ou num fato.
@@ -121,7 +142,7 @@ export const STYLE_TICS = `VÍCIOS DE TEXTO DE IA (evite; o leitor percebe na ho
 - Não use os nomes internos do briefing: o nome da persona é um perfil de planejamento, não uma pessoa real nem um personagem (nunca escreva "Shelton" ou o nome que vier no perfil; fale com "você" ou crie um personagem genérico). Também não escreva "dor", "ganho", "desejo", "argumento", "guia" ou "enquadramento" como rótulos.`;
 
 const COMMON_RULES = `REGRAS GERAIS
-- Escreva em português do Brasil, salvo se o briefing estiver em outro idioma.
+- Escreva em português (do Brasil, salvo se houver "IDIOMA DO PÚBLICO" acima ou o briefing estiver em outro idioma).
 - NÃO invente fatos, números, estatísticas, datas, nomes ou fontes. Use apenas o que estiver no briefing ou em "FATOS PERMITIDOS". Se um dado seria necessário e não foi fornecido, escreva sem ele.
 - Qualquer afirmação factual que você incluir e que o revisor deva conferir antes de publicar deve ser listada em "to_verify" (frases curtas). Se não houver nenhuma, devolva lista vazia.
 - Respeite as regras e o tom de voz da marca. Evite clichês de IA ("mergulhe", "desvende", "no mundo de hoje").

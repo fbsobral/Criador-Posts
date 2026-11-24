@@ -26,7 +26,13 @@ export const ESTIMATED_COST_PLAN = 0.04;
 
 /** Texto de cada parte do roteiro gerado. */
 export type ScriptPart = { name: string; seconds: number; speech: string; onScreen: string; visual: string };
-export type ScriptData = { parts: ScriptPart[]; caption: string; hashtags: string[]; notes: string[] };
+/** Orientações de produção (roteiros com estrutura livre): ritmo de cortes, fontes dos números e como fazer a versão curta. */
+export type ScriptProduction = { rhythm: string; sources: string[]; shortVersion: string };
+export type ScriptData = { parts: ScriptPart[]; caption: string; hashtags: string[]; notes: string[]; production?: ScriptProduction };
+
+/** Formato virtual (não existe no banco): a IA escolhe a estrutura, os blocos e os tempos a partir do conteúdo. É o padrão. */
+export const AUTO_FORMAT_ID = 'auto';
+export const AUTO_FORMAT = { id: AUTO_FORMAT_ID, name: 'A IA escolhe a estrutura', description: 'Lê o conteúdo e escolhe a forma que melhor o conta: dados, lista rápida, história, mito x verdade…', defaultSeconds: 60, parts: [] as VideoPart[] };
 
 export type VideoIdea = { title: string; angle: string; points: string[] };
 
@@ -58,13 +64,21 @@ export const PART_COLORS = ['#F97335', '#FFB02E', '#1D9BF0', '#1F9D63', '#8B5CF6
 /** Roteiro em texto corrido (para copiar). */
 export function scriptToText(title: string, d: ScriptData): string {
   const lines = [title, ''];
+  let t = 0;
+  const mmss = (x: number) => `${Math.floor(x / 60)}:${String(Math.round(x % 60)).padStart(2, '0')}`;
   d.parts.forEach((p, i) => {
-    lines.push(`${i + 1}. ${p.name.toUpperCase()} (${fmtSecs(p.seconds)})`);
+    lines.push(`${i + 1}. ${p.name.toUpperCase()} · ${mmss(t)}–${mmss(t + p.seconds)} (${fmtSecs(p.seconds)})`);
+    t += p.seconds;
     if (p.speech) lines.push(`Fala: ${p.speech}`);
     if (p.onScreen) lines.push(`Texto na tela: ${p.onScreen}`);
     if (p.visual) lines.push(`Visual: ${p.visual}`);
     lines.push('');
   });
+  if (d.production) {
+    if (d.production.rhythm) lines.push('RITMO E EDIÇÃO', d.production.rhythm, '');
+    if (d.production.sources.length) lines.push('FONTES (rodapé dos números)', ...d.production.sources.map((x) => `- ${x}`), '');
+    if (d.production.shortVersion) lines.push('VERSÃO CURTA', d.production.shortVersion, '');
+  }
   if (d.caption) lines.push('LEGENDA', d.caption, '');
   if (d.hashtags.length) lines.push(d.hashtags.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' '));
   return lines.join('\n').trim();

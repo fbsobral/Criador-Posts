@@ -1383,3 +1383,9 @@ ul.id-ftext { padding-left: 20px; white-space: normal; } ul.id-ftext li { margin
 .inv-msg { margin: 6px 0 0; font-size: 12.5px; }
 .inv-msg.ok { color: #11724A; } .inv-msg.err { color: var(--danger); }
 .inv-link { margin-top: 6px; width: 100%; font-size: 12px; }
+
+/* Roteiro: orientações de produção */
+.vd-prod { padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; font-size: 14px; }
+.vd-prod ul { margin: 4px 0 0 18px; }
+
+.vd-rec { margin-left: 6px; font-size: 10.5px; vertical-align: 2px; }

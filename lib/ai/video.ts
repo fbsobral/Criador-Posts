@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODEL, AiError, STYLE_TICS, brandBlock, type BrandProfile } from './generate';
 import { MULTI_AUDIENCE } from './carousel';
-import { MAX_CONTENT_CHARS, PLATFORMS, allocate, wordsFor, type Platform, type ScriptData, type VideoIdea, type VideoPart } from '../video';
+import { MAX_CONTENT_CHARS, MAX_PARTS, PLATFORMS, allocate, countWords, wordsFor, type Platform, type ScriptData, type VideoIdea, type VideoPart } from '../video';
 
 const PLATFORM_GUIDE: Record<Platform, string> = {
   reels: 'Reels (Instagram): legenda curta com gancho na 1ª linha; 3 a 5 hashtags.',
@@ -18,6 +18,16 @@ const IDEAS_SCHEMA = {
       type: 'array',
       items: { type: 'object', additionalProperties: false, required: ['title', 'angle', 'points'], properties: { title: STR, angle: STR, points: { type: 'array', items: STR } } },
     },
+  },
+};
+// estrutura livre: a IA escolhe a forma (structure vem primeiro), os blocos e os tempos; produção e legenda vêm depois do roteiro pronto
+const FREE_SCRIPT_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['structure', 'title', 'parts', 'production', 'caption', 'hashtags', 'to_verify'],
+  properties: {
+    structure: STR, title: STR,
+    parts: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['name', 'seconds', 'speech', 'on_screen', 'visual'], properties: { name: STR, seconds: { type: 'integer' }, speech: STR, on_screen: STR, visual: STR } } },
+    production: { type: 'object', additionalProperties: false, required: ['rhythm', 'sources', 'short_version'], properties: { rhythm: STR, sources: { type: 'array', items: STR }, short_version: STR } },
+    caption: STR, hashtags: { type: 'array', items: STR }, to_verify: { type: 'array', items: STR },
   },
 };
 const SCRIPT_SCHEMA = {
@@ -54,7 +64,7 @@ export type VideoCommon = { content: string; format: VideoFormatInput; seconds: 
 /** Bloco comum às duas chamadas: identidade da marca + formato + conteúdo-fonte (o conteúdo vai em cache entre os roteiros do lote). */
 function systemBlocks(i: VideoCommon, role: string, extra: string): Anthropic.Beta.BetaTextBlockParam[] {
   const secs = allocate(i.format.parts, i.seconds);
-  const fmt = i.format.parts.map((p, k) =>
+  const fmt = !i.format.parts.length ? freeStructure(i.seconds) : i.format.parts.map((p, k) =>
     `PARTE ${k + 1} — ${p.name} (${secs[k]} s, no máximo ~${wordsFor(secs[k])} palavras de fala)\nInstruções: ${p.instruction.trim() || 'Sem instruções específicas.'}`).join('\n\n');
   const plat = PLATFORMS.find((p) => p.id === i.platform)?.label ?? 'Reels';
   const head = [
@@ -69,8 +79,24 @@ function systemBlocks(i: VideoCommon, role: string, extra: string): Anthropic.Be
   ];
 }
 
+/** Estrutura livre: a IA escolhe a forma a partir do conteúdo, em vez de preencher partes fixas. */
+function freeStructure(seconds: number) {
+  return `ESTRUTURA: VOCÊ ESCOLHE (não há partes fixas)
+Leia o conteúdo e escolha a forma que melhor o conta em ${seconds} s. Formas que funcionam (combine se fizer sentido):
+- DADOS QUE IMPACTAM: gancho com o dado mais forte → o problema em números → o que está por trás → virada → convite. Para conteúdo com estatísticas.
+- LISTA RÁPIDA: gancho → um item por bloco curto (3 a 6 s), com a palavra-chave do item na tela → fecho → convite. Para conteúdo que já é uma lista (barreiras, passos, erros, sinais, mitos).
+- HISTÓRIA: uma cena do conteúdo (ou exemplo claramente hipotético) → conflito → virada → o que muda → convite. Só quando o conteúdo tem ou pede uma pessoa e uma cena; não invente personagem para conteúdo de dados ou de lista.
+- MITO x VERDADE, ANTES x DEPOIS, PERGUNTA E RESPOSTA.
+Regras da estrutura:
+- De 4 a 8 blocos. Cada bloco tem um nome curto que diz o que ele faz (ex.: "Gancho", "O problema em números", "Barreira 1: direção", "Virada", "Convite"), os segundos e uma fala que caiba neles (~${WORDS_PER_SEC_TXT} palavras por segundo).
+- A soma dos segundos é ${seconds}. O gancho tem de 3 a 6 s. Os blocos têm o tamanho do que precisam dizer (não divida o tempo por igual).
+- "structure": antes dos blocos, em 1 ou 2 frases, a forma escolhida e por quê.
+- "production": "rhythm" = ritmo de cortes e de legendas na tela (ex.: corte a cada 3 a 5 s; legendas sempre visíveis, porque a maioria assiste sem som); "sources" = a fonte de cada número citado, como aparece no conteúdo (para o rodapé da tela; lista vazia se não houver número); "short_version" = como fazer a versão de 30 s (o que fica e o que sai).`;
+}
+const WORDS_PER_SEC_TXT = '2,5';
+
 const RULES = `REGRAS GERAIS
-- Português do Brasil, linguagem FALADA: frases curtas, ritmo de conversa, sem jargão e sem "leitura de texto". Escreva como a pessoa fala olhando para a câmera.
+- Português do público (do Brasil, salvo IDIOMA DO PÚBLICO), linguagem FALADA: frases curtas, ritmo de conversa, sem jargão e sem "leitura de texto". Escreva como a pessoa fala olhando para a câmera.
 - NÃO invente fatos, números, estatísticas, datas, nomes ou fontes. Use apenas o conteúdo-fonte. Liste em "to_verify" o que o revisor deve conferir antes de publicar (lista vazia se nada).
 - Respeite o tom de voz e as regras da marca. Evite clichês de IA e de vídeo ("fica comigo até o final", "você não vai acreditar").
 - Nunca peça para a pessoa "ler" algo que o texto na tela já diz: fala e tela se complementam.`;
@@ -107,48 +133,64 @@ TAREFA: PLANEJAR ${n} IDEIA(S)
   } catch (e) { return fail(e); }
 }
 
-/** Passo 2: escreve o roteiro de UMA ideia, parte por parte, seguindo as instruções de cada parte do formato. */
+/** Passo 2: escreve o roteiro de UMA ideia. Com estrutura livre (formato sem partes), a IA escolhe os blocos e os tempos; com formato fixo, segue as partes dele. */
 export async function generateVideoScript(i: VideoCommon & { idea: VideoIdea; /** Perfil da persona (texto) quando o roteiro nasce de uma ideia de conteúdo. */ personaBrief?: string; /** A ideia é para várias personas (público amplo): personaBrief traz todos os perfis. */ multiPersona?: boolean }): Promise<{ title: string; data: ScriptData; inputTokens: number; outputTokens: number }> {
+  const free = !i.format.parts.length;
   const secs = allocate(i.format.parts, i.seconds);
-  const toData = (parts: { speech: string; on_screen: string; visual: string }[], caption: string, hashtags: string[], notes: string[]): ScriptData => ({
-    parts: i.format.parts.map((fp, k) => ({ name: fp.name, seconds: secs[k], speech: clean(parts[k]?.speech, 1200), onScreen: clean(parts[k]?.on_screen, 160), visual: clean(parts[k]?.visual, 400) })),
-    caption: clean(caption, 1200), hashtags: hashtags.map((h) => clean(h, 40).replace(/^#/, '').replace(/\s+/g, '')).filter(Boolean).slice(0, 8),
-    notes: notes.map((n) => clean(n, 300)).filter(Boolean).slice(0, 10),
-  });
+  type RawPart = { name?: string; seconds?: number; speech: string; on_screen: string; visual: string };
+  const cleanTags = (h: string[]) => h.map((x) => clean(x, 40).replace(/^#/, '').replace(/\s+/g, '')).filter(Boolean).slice(0, 8);
+  const toData = (parts: RawPart[], caption: string, hashtags: string[], notes: string[], production?: { rhythm?: string; sources?: string[]; short_version?: string }): ScriptData => {
+    // estrutura livre: os tempos da IA viram pesos e são ajustados para somar exatamente a duração pedida
+    const list = free ? parts.slice(0, MAX_PARTS) : i.format.parts.map((_, k) => parts[k] ?? { speech: '', on_screen: '', visual: '' });
+    const s2 = free ? allocate(list.map((p) => ({ percent: Math.max(1, Number(p.seconds) || 1) })), i.seconds) : secs;
+    return {
+      parts: list.map((p, k) => ({ name: free ? clean(p.name, 40) || `Bloco ${k + 1}` : i.format.parts[k].name, seconds: s2[k], speech: clean(p.speech, 1200), onScreen: clean(p.on_screen, 160), visual: clean(p.visual, 400) })),
+      caption: clean(caption, 1200), hashtags: cleanTags(hashtags),
+      notes: notes.map((n) => clean(n, 300)).filter(Boolean).slice(0, 10),
+      ...(production ? { production: { rhythm: clean(production.rhythm, 400), sources: (production.sources ?? []).map((x) => clean(x, 200)).filter(Boolean).slice(0, 8), shortVersion: clean(production.short_version, 500) } } : {}),
+    };
+  };
   if (process.env.AI_MOCK === '1') {
     await new Promise((r) => setTimeout(r, 700 + Math.random() * 900));
     if (/erro/i.test(i.idea.title)) throw new AiError('Erro simulado (a ideia continha "erro").');
-    const parts = i.format.parts.map((p, k) => ({ speech: `Fala de exemplo da parte ${p.name.toLowerCase()} sobre ${i.idea.title.slice(0, 40)}.`.repeat(1), on_screen: `${p.name.toUpperCase()}`, visual: `Plano ${k + 1}: close no rosto, fundo neutro.` }));
-    return { title: i.idea.title.slice(0, 80), data: toData(parts, `Legenda de exemplo: ${i.idea.title}`, ['exemplo', 'conteudo'], ['Confira os dados citados antes de publicar.']), inputTokens: 2000, outputTokens: 900 };
+    const names = free ? ['Gancho', 'O problema', 'O que está por trás', 'Virada', 'Convite'] : i.format.parts.map((p) => p.name);
+    const parts = names.map((n, k) => ({ name: n, seconds: 10, speech: `Fala de exemplo do bloco ${n.toLowerCase()}.`, on_screen: n.toUpperCase(), visual: `Plano ${k + 1}: close no rosto, fundo neutro.` }));
+    return { title: (i.idea.title || 'Roteiro de exemplo').slice(0, 80), data: toData(parts, 'Legenda de exemplo.', ['exemplo'], ['Confira os dados citados antes de publicar.'], free ? { rhythm: 'Corte a cada 3 a 5 s.', sources: [], short_version: 'Gancho e convite.' } : undefined), inputTokens: 2000, outputTokens: 900 };
   }
   if (!process.env.ANTHROPIC_API_KEY) throw new AiError('ANTHROPIC_API_KEY não configurada no servidor.');
-  const role = 'Você é um roteirista sênior de vídeos curtos (Reels, TikTok e Shorts). Você escreve roteiros prontos para gravar, parte por parte, em JSON estrito.';
+  const role = free
+    ? 'Você é um roteirista sênior de vídeos curtos (Reels, TikTok e Shorts). Você lê o conteúdo, escolhe a estrutura que melhor o conta e escreve um roteiro pronto para gravar, bloco por bloco, com orientações de produção, em JSON estrito.'
+    : 'Você é um roteirista sênior de vídeos curtos (Reels, TikTok e Shorts). Você escreve roteiros prontos para gravar, parte por parte, em JSON estrito.';
   // conteúdo que nasce de uma ideia de conteúdo (com ou sem persona): a IA recebe o mapa dos campos da ideia
   const isIdea = !!i.personaBrief || /^IDEIA DE CONTE[ÚU]DO/i.test(i.content.trim());
   const extra = `${RULES}
 
 TAREFA: ESCREVER O ROTEIRO
-- "parts" deve ter EXATAMENTE ${i.format.parts.length} itens, na mesma ordem das partes do formato. Cada parte segue as instruções dela.
-- "speech": a fala daquela parte, dentro do limite de palavras indicado (não ultrapasse: o vídeo tem de caber em ${i.seconds} s). Se a parte for o gancho, a primeira frase precisa prender em até 3 segundos.
-- "on_screen": texto curto na tela (até 6 palavras, em caixa normal), ou "" se não houver.
-- "visual": o que aparece/acontece na tela naquele trecho (enquadramento, b-roll, gráfico, ação), concreto e fácil de gravar, em uma frase.
+${free
+    ? `- "parts": os blocos que você escolheu (veja ESTRUTURA), na ordem, cada um com "name", "seconds", "speech", "on_screen" e "visual". O vídeo tem de caber em ${i.seconds} s.`
+    : `- "parts" deve ter EXATAMENTE ${i.format.parts.length} itens, na mesma ordem das partes do formato. Cada parte segue as instruções dela.`}
+- "speech": a fala daquele trecho, dentro do limite de palavras (não ultrapasse: o vídeo tem de caber em ${i.seconds} s). A primeira frase do vídeo precisa prender em até 3 segundos.
+- "on_screen": texto curto na tela (até 6 palavras, em caixa normal; numa lista rápida, a palavra-chave do item), ou "" se não houver.
+- "visual": o que aparece/acontece na tela naquele trecho (enquadramento, b-roll, gráfico, número entrando, ação), concreto e fácil de gravar, em uma frase.
 - "title": título interno do vídeo (até 70 caracteres). "caption": legenda para publicar, escrita DEPOIS das partes: complementa a fala (não a repete) e a ÚLTIMA frase é o convite da parte final, com a mesma ação e o mesmo destinatário (uma legenda que termina sem pedir nada está errada). "hashtags": sem o "#".
-- FALA DE VERDADE: escreva como a pessoa fala olhando para a câmera, em português do Brasil do dia a dia: "a gente", "pra", "tá", frases de 4 a 12 palavras, uma ideia por frase, sem ponto e vírgula, sem parênteses e sem palavras de texto escrito ("ademais", "contudo", "visto que", "nesse sentido"). Leia em voz alta mentalmente: se travar, reescreva.
-- GANCHO: a primeira frase já é a cena ou a contradição (quem, onde, o que aconteceu). Nada de "Você sabia…?", "Deixa eu te contar", "Presta atenção", "E aí tudo muda" nem pergunta genérica.
-- CTA: a parte final pede UMA ação só. Se o conteúdo traz uma CTA (ex.: a CTA da ideia ou um pedido do material, como "precisamos de mentores"), use essa ação e esse destinatário, em fala natural, de forma DIRETA (quem pode ser mentor ouve "fala com a gente pra ser mentor", não "manda pra alguém"); a CTA padrão da marca só entra quando o conteúdo não pede nada. Não troque por "me segue", "deixa o like" ou "comenta aí". A legenda fecha com a MESMA ação e o mesmo verbo (se a fala diz "manda", a legenda não diz "marca").
-- PROGRESSÃO: cada parte traz informação nova. O contexto não repete o gancho, e nenhuma parte entrega antes da hora a revelação da virada ou da prova (se a prova revela que "a bronca era sobre o prazo", isso não aparece no contexto).
-- "on_screen" reforça a fala com outra informação curta (a palavra-chave, a contradição, o passo), não a mesma frase.
-- CONTINUIDADE: quem aparece na história é apresentado antes de ser retomado. Não escreva "os dois", "ele" ou "o mentor dele" sem antes ter mostrado quem é (ex.: "o mentor dele ligou à noite" só depois de dizer que ele tinha um mentor). Quem assiste não tem o conteúdo-fonte.
+- FALA DE VERDADE: escreva como a pessoa fala olhando para a câmera, no português do dia a dia do público (no Brasil: "a gente", "pra", "tá"; se houver IDIOMA DO PÚBLICO, a forma de lá): frases de 4 a 12 palavras, uma ideia por frase, sem ponto e vírgula, sem parênteses e sem palavras de texto escrito ("ademais", "contudo", "visto que", "nesse sentido"). Leia em voz alta mentalmente: se travar, reescreva.
+- GANCHO: a primeira frase já é o dado, a cena ou a contradição mais forte. Nada de "Deixa eu te contar", "Presta atenção", "E aí tudo muda" nem pergunta genérica (uma pergunta concreta depois do dado vale).
+- DADOS: os números do conteúdo-fonte são bem-vindos; use os que dão força ao vídeo (vários, se o vídeo é sobre dados). Diga cada número uma vez, explicando o que ele mede, e não apresente o mesmo dado de dois jeitos como se fossem dois (ex.: "1 em cada 3" e "32%" são o mesmo). Nunca invente número, fonte ou ano.
+- CTA: a parte final pede UMA ação só. Se o conteúdo traz uma CTA (ex.: a CTA da ideia ou um pedido do material, como "precisamos de mentores"), use essa ação e esse destinatário, em fala natural, de forma DIRETA; a CTA padrão da marca só entra quando o conteúdo não pede nada. Não troque por "me segue", "deixa o like" ou "comenta aí". A legenda fecha com a MESMA ação e o mesmo verbo.
+- PÚBLICO COERENTE: o convite fala com quem o vídeo vinha falando. Se o convite for para outro público (ex.: o vídeo fala dos jovens e o convite é para mentores), prepare isso antes, na virada ("quem já trabalha sabe…").
+- PROGRESSÃO: cada trecho traz informação nova. Nenhum trecho repete o anterior, e o texto na tela de um trecho não antecipa a fala do próximo.
+- "on_screen" reforça a fala com outra informação curta (a palavra-chave, o número, o passo), não a mesma frase.
+- CONTINUIDADE: quem aparece na história é apresentado antes de ser retomado. Quem assiste não tem o conteúdo-fonte.
 - UMA ação só no fim (fala e legenda): não some "manda pra alguém" com "fala com a gente".
 
 ${STYLE_TICS}${isIdea ? `
 
 COMO USAR A IDEIA DE CONTEÚDO (o conteúdo-fonte é uma ideia estruturada: dor, impacto, causa, guia, argumentos, ganho, desejo, CTA)
-- Distribua a história pelas partes do formato, com começo, meio e fim claros. Ex.: abertura = a dor em cena; partes do meio = o impacto, a causa explicada passo a passo e os argumentos (só os mais fortes, desenvolvidos; veja a regra abaixo); parte final = ganho, desejo e CTA. Se o formato tem poucas partes, comprima, mas preserve esse arco.
+- ${free ? 'Escolha a estrutura que melhor conta esta ideia e distribua por ela' : 'Distribua a história pelas partes do formato'}, com começo, meio e fim claros: a dor (cena ou dado), o impacto, a causa explicada em linguagem simples, os argumentos, o ganho e o desejo, e o convite (CTA). Se há poucos blocos, comprima, mas preserve esse arco.
 - DIDÁTICO: explique como para um amigo que não entende do assunto. Cada frase leva à próxima (porque, por isso, aí, então). Termo difícil: explique na hora ou troque.
-- OS ARGUMENTOS NO MEIO: os argumentos da ideia NÃO são um passo a passo: são razões que sustentam a solução da dor. Você NÃO precisa usar todos. Escolha o argumento (ou, no máximo, dois) mais forte e mais fácil de entender para quem assiste e DESENVOLVA-O como uma pequena história ligada à causa que acabou de explicar: mostre POR QUE ele sustenta a solução, com uma situação concreta (uma pessoa, um momento, o que ela faz e o que muda na prática), ligando as frases (por isso, então, assim, aí). NÃO enumere os argumentos em fila nem os transforme em lista de ações no infinitivo ("Começar…, ligar…, aproximar…"). Evite verbos vagos (aproximar, acompanhar, fortalecer, conectar, engajar) sem dizer o que acontece de verdade. Se der um exemplo que não está na ideia, apresente-o como exemplo ("imagina um jovem que…"), sem nomes reais, números nem datas.
+- OS ARGUMENTOS: são razões que sustentam a solução da dor, não um passo a passo, e você não precisa usar todos. Ou desenvolva o mais forte como uma pequena cena (uma pessoa, um momento, o que ela faz e o que muda), ou, numa lista rápida, um argumento por bloco; em qualquer caso, cada um diz algo concreto (o que acontece de verdade), nunca só uma palavra abstrata ou um verbo vago (aproximar, acompanhar, fortalecer, conectar, engajar). Exemplo que não está na ideia é apresentado como exemplo ("imagina um jovem que…"), sem nomes reais, números nem datas.
 - CONCRETO: nada de abstrações soltas (transparência, repasse, sistema, equidade). Mostre ações e situações do dia a dia de quem assiste, com as palavras que essa pessoa usa.
-- QUEM ASSISTE: com persona, fale com ela em segunda pessoa do começo ao fim ("você manda currículo toda manhã…"): a cena é a vida dela, não a de "um cara" ou "um jovem" que ela assiste de fora (o nome do perfil nunca aparece). Um exemplo em terceira pessoa só na prova, apresentado como exemplo. Sem persona ("público geral"), conte a cena em terceira pessoa ("um jovem que…") e, na parte final, fale direto com quem a CTA da ideia convoca (ex.: quem tem ou trabalha numa empresa).
+- QUEM ASSISTE: com persona, fale com ela em segunda pessoa do começo ao fim: a cena é a vida dela (o nome do perfil nunca aparece). Sem persona ("público geral"), fale com quem assiste ou conte a cena em terceira pessoa e, no fim, fale direto com quem a CTA da ideia convoca.
 - O GUIA é só bússola: não narre a metáfora do guia nem diga "valor" ou "enquadramento". Só use imagem que seja do universo de quem assiste.
 - NÃO invente números, valores nem datas: use só os que estão na ideia; sem dado, fale em termos qualitativos.` : ''}${i.personaBrief && i.multiPersona ? `
 
@@ -159,20 +201,30 @@ ${i.personaBrief}` : i.personaBrief ? `
 
 PERSONA QUE VAI ASSISTIR (fale com ela, no jeito dela):
 ${i.personaBrief}` : ''}`;
-  const ideaText = `IDEIA DESTE VÍDEO\nTítulo: ${i.idea.title}\nÂngulo: ${i.idea.angle}${i.idea.points.length ? `\nPontos a usar:\n${i.idea.points.map((p) => `- ${p}`).join('\n')}` : ''}`;
+  const ideaText = i.idea.title.trim()
+    ? `IDEIA DESTE VÍDEO\nTítulo: ${i.idea.title}\nÂngulo: ${i.idea.angle}${i.idea.points.length ? `\nPontos a usar:\n${i.idea.points.map((p) => `- ${p}`).join('\n')}` : ''}`
+    : 'IDEIA DESTE VÍDEO: não foi definida. Faça um vídeo só, com o recorte mais forte do conteúdo-fonte (o que mais faz quem assiste parar, entender e agir).';
   try {
     const res = await new Anthropic().beta.messages.create({
-      model: AI_MODEL, max_tokens: 8000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
+      model: AI_MODEL, max_tokens: 10000, betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default',
       system: systemBlocks(i, role, extra),
-      output_config: { effort: 'medium', format: { type: 'json_schema', schema: SCRIPT_SCHEMA } },
+      output_config: { effort: 'medium', format: { type: 'json_schema', schema: free ? FREE_SCRIPT_SCHEMA : SCRIPT_SCHEMA } },
       messages: [{ role: 'user', content: ideaText }],
     });
     if (res.stop_reason === 'refusal') throw new AiError('A IA recusou escrever este roteiro.');
     if (res.stop_reason === 'max_tokens') throw new AiError('A resposta ficou grande demais. Tente de novo.', true);
-    const raw = JSON.parse(textOf(res)) as { title?: string; parts?: { speech: string; on_screen: string; visual: string }[]; caption?: string; hashtags?: string[]; to_verify?: string[] };
+    const raw = JSON.parse(textOf(res)) as { structure?: string; title?: string; parts?: RawPart[]; production?: { rhythm?: string; sources?: string[]; short_version?: string }; caption?: string; hashtags?: string[]; to_verify?: string[] };
     if (!Array.isArray(raw.parts) || raw.parts.length < 1) throw new AiError('A IA devolveu um roteiro vazio.', true);
-    const notes = [...(raw.parts.length !== i.format.parts.length ? [`A IA devolveu ${raw.parts.length} partes e o formato tem ${i.format.parts.length}. Confira.`] : []), ...(raw.to_verify ?? []).map((t) => `Conferir: ${t}`)];
-    return { title: clean(raw.title, 80) || i.idea.title.slice(0, 80), data: toData(raw.parts, raw.caption ?? '', raw.hashtags ?? [], notes), ...usageOf(res.usage) };
+    const data = toData(raw.parts, raw.caption ?? '', raw.hashtags ?? [], [], free ? raw.production : undefined);
+    // palavras demais para o tempo de um bloco: avisa (o editor mostra a contagem)
+    const over = data.parts.filter((p) => countWords(p.speech) > wordsFor(p.seconds) + 2).map((p) => p.name);
+    data.notes = [
+      ...(free && clean(raw.structure, 300) ? [`Estrutura: ${clean(raw.structure, 300)}`] : []),
+      ...(!free && raw.parts.length !== i.format.parts.length ? [`A IA devolveu ${raw.parts.length} partes e o formato tem ${i.format.parts.length}. Confira.`] : []),
+      ...(over.length ? [`Fala acima do tempo em: ${over.join(', ')}. Encurte ou aumente a duração.`] : []),
+      ...(raw.to_verify ?? []).map((t) => `Conferir: ${t}`),
+    ].map((n) => clean(n, 320)).filter(Boolean).slice(0, 10);
+    return { title: clean(raw.title, 80) || i.idea.title.slice(0, 80) || 'Roteiro', data, ...usageOf(res.usage) };
   } catch (e) {
     if (e instanceof SyntaxError) throw new AiError('A IA devolveu uma resposta inválida.', true);
     return fail(e);
@@ -202,7 +254,7 @@ export async function refineVideoScript(i: RefineScriptInput): Promise<{ title: 
   const n = i.data.parts.length;
   const build = (parts: { speech: string; on_screen: string; visual: string }[], title: string, caption: string, hashtags: string[]): ScriptData => ({
     parts: i.data.parts.map((p, k) => (i.scope !== null && i.scope !== k ? p : { ...p, speech: clean(parts[k]?.speech, 1200), onScreen: clean(parts[k]?.on_screen, 160), visual: clean(parts[k]?.visual, 400) })),
-    caption: clean(caption, 1200) || i.data.caption, hashtags: hashtags.map((h) => clean(h, 40).replace(/^#/, '').replace(/\s+/g, '')).filter(Boolean).slice(0, 8), notes: i.data.notes,
+    caption: clean(caption, 1200) || i.data.caption, hashtags: hashtags.map((h) => clean(h, 40).replace(/^#/, '').replace(/\s+/g, '')).filter(Boolean).slice(0, 8), notes: i.data.notes, ...(i.data.production ? { production: i.data.production } : {}),
   });
   if (process.env.AI_MOCK === '1') {
     await new Promise((r) => setTimeout(r, 600));

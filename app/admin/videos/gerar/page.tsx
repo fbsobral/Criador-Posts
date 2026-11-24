@@ -22,7 +22,7 @@ export default async function GerarVideosPage() {
       <PageHead
         back={{ href: '/admin/videos', label: 'Roteiros de vídeo' }}
         title="Gerar roteiros"
-        description="Cole um conteúdo longo, escolha o formato e a duração. A IA sugere as ideias, você aprova, e ela escreve um roteiro para cada uma."
+        description="Cole o material e escolha a duração. A IA escolhe a melhor estrutura e escreve o roteiro pronto para gravar, com tempos, texto na tela e dicas de edição."
       />
       {profileEmpty && (
         <div className="notice info" style={{ marginBottom: 20 }}>

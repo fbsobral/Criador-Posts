@@ -6,7 +6,7 @@ import { actionErrorMessage } from '@/lib/action-error';
 import { fmtUsd } from '@/lib/ai/constants';
 import { IDEA_INSTRUCTIONS, ideaAngle, ideaBrief, ideaPoints, ideaTitle, type Idea } from '@/lib/idea';
 import { createPostFromIdea } from '@/lib/idea-actions';
-import { DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, MIN_SECONDS, fmtSecs, type Platform, type VideoPart } from '@/lib/video';
+import { AUTO_FORMAT, DURATION_PRESETS, ESTIMATED_COST_PER_SCRIPT, MIN_SECONDS, fmtSecs, type Platform, type VideoPart } from '@/lib/video';
 import { CAROUSEL_ANGLES, type CarouselAngleId } from '@/lib/ai/carousel-rules';
 import { IconSpark } from '../../icons';
 
@@ -14,11 +14,13 @@ export type VideoFormatLite = { id: string; name: string; description: string; d
 export type PostTemplateLite = { id: string; name: string; description: string; editor: string };
 
 /** Transforma uma ideia em roteiro de vídeo ou em post de imagem, já com a história da ideia como base. */
-export function IdeaConvertModal({ idea, mode, formats, templates, hasKey, onClose }: {
+export function IdeaConvertModal({ idea, mode, formats: own, templates, hasKey, onClose }: {
   idea: Idea; mode: 'script' | 'post'; formats: VideoFormatLite[]; templates: PostTemplateLite[]; hasKey: boolean; onClose: () => void;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  // "A IA escolhe a estrutura" vem primeiro e é o padrão; os formatos de partes fixas continuam como opção
+  const formats: VideoFormatLite[] = [{ id: AUTO_FORMAT.id, name: AUTO_FORMAT.name, description: AUTO_FORMAT.description, defaultSeconds: AUTO_FORMAT.defaultSeconds, parts: [] }, ...own];
   const [formatId, setFormatId] = useState(formats[0]?.id ?? '');
   const [seconds, setSeconds] = useState(Math.max(MIN_SECONDS, formats[0]?.defaultSeconds ?? 45));
   const platform: Platform = 'all'; // sem escolha de plataforma

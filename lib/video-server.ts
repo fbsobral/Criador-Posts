@@ -1,5 +1,6 @@
 import { and, count, eq, gte, isNull, or } from 'drizzle-orm';
 import { db } from '@/db';
+import { AUTO_FORMAT, AUTO_FORMAT_ID } from '@/lib/video';
 import { brandSettings, brands, videoFormats, videoScripts } from '@/db/schema';
 import type { BrandProfile } from '@/lib/ai/generate';
 import { MAX_SECONDS, MIN_SECONDS, PLATFORMS, type Platform } from '@/lib/video';
@@ -7,7 +8,9 @@ import { MAX_SECONDS, MIN_SECONDS, PLATFORMS, type Platform } from '@/lib/video'
 export const VIDEO_DAILY_LIMIT = Number(process.env.AI_VIDEO_DAILY_LIMIT) || 60;
 
 /** Formato da marca ou global. */
+/** Formato do roteiro. "auto" (o padrão) é o formato virtual da estrutura livre: sem partes, sem linha no banco (id nulo no roteiro). */
 export async function loadFormat(brandId: string, id: string) {
+  if (!id || id === AUTO_FORMAT_ID) return { ...AUTO_FORMAT, id: null as string | null, brandId: null, own: false };
   const [f] = await db.select().from(videoFormats).where(and(eq(videoFormats.id, id), or(isNull(videoFormats.brandId), eq(videoFormats.brandId, brandId))));
   return f ?? null;
 }

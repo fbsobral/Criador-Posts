@@ -20,12 +20,13 @@ export async function POST(req: Request) {
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const content = String(b?.content ?? '').trim();
   const idea = b?.idea as { title?: string; angle?: string; points?: unknown[] } | undefined;
-  if (content.length < 40 || !idea?.title?.trim()) return Response.json({ error: 'Faltou o conteúdo ou a ideia.' }, { status: 400 });
+  // sem ideia definida (fluxo direto), a IA escolhe o recorte mais forte do conteúdo
+  if (content.length < 40) return Response.json({ error: 'Faltou o conteúdo.' }, { status: 400 });
   const format = await loadFormat(c.brandId, String(b?.formatId ?? ''));
   if (!format) return Response.json({ error: 'Formato não encontrado.' }, { status: 400 });
   if ((await scriptsToday(c.brandId)) + 1 > VIDEO_DAILY_LIMIT) return Response.json({ error: `Limite diário da marca: ${VIDEO_DAILY_LIMIT} roteiros.` }, { status: 429 });
   const seconds = cleanSeconds(b?.seconds), platform = cleanPlatform(b?.platform);
-  const ideaClean = { title: String(idea.title).trim().slice(0, 140), angle: String(idea.angle ?? '').trim().slice(0, 500), points: (Array.isArray(idea.points) ? idea.points : []).map((p) => String(p).trim().slice(0, 240)).filter(Boolean).slice(0, 6) };
+  const ideaClean = { title: String(idea?.title ?? '').trim().slice(0, 140), angle: String(idea?.angle ?? '').trim().slice(0, 500), points: (Array.isArray(idea?.points) ? idea!.points! : []).map((p) => String(p).trim().slice(0, 240)).filter(Boolean).slice(0, 6) };
   // roteiro nascido de uma ideia de conteúdo: a IA recebe o perfil da persona (ou de todas, quando a ideia é para um público amplo)
   const persons = await loadPersonas(c.brandId, personaIdsFromBody(b));
   const profile = (p: (typeof persons)[number]) => `${personaBlock(p)}${p.data.quote ? `\nFrase típica: ${p.data.quote}` : ''}${p.data.channels.length ? `\nOnde está: ${p.data.channels.join('; ')}` : ''}`;

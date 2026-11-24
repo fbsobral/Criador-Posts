@@ -45,7 +45,7 @@ type VideoFormat = { name: string; parts: { id: string; name: string; instructio
 /** kind: de onde o conteúdo parte, como no app (ideia de conteúdo, tema livre ou material colado). */
 /** channels: a CTA padrão com canais por público, como a organização preencheria; expect: o canal que o texto deve citar. Sem channels, o texto não pode citar canal nenhum. */
 /** personas: público amplo (2+). gen: a ideia é gerada pela IA (como em "Gerar ideias com IA"), com este objetivo e território. */
-type Case = { name: string; kind: 'ideia' | 'tema' | 'material'; persona: Persona | null; personas?: Persona[]; gen?: { objective: string; territory: string; instructions: string }; territory: string; idea?: IdeaFields; text?: string; videoFormat: 'curto' | 'longo'; seconds: number; channels?: string; expect?: RegExp };
+type Case = { brand?: Partial<BrandProfile>; name: string; kind: 'ideia' | 'tema' | 'material'; persona: Persona | null; personas?: Persona[]; gen?: { objective: string; territory: string; instructions: string }; territory: string; idea?: IdeaFields; text?: string; videoFormat: 'curto' | 'longo' | 'auto'; seconds: number; channels?: string; expect?: RegExp };
 
 const SHELTON: Persona = {
   name: 'Shelton', tagline: 'Recém-formado que manda currículo todo dia e ouve que falta experiência', role: 'Jovem em busca do primeiro emprego',
@@ -159,6 +159,23 @@ const CASES: Case[] = [
     channels: 'Empresas parceiras: WhatsApp (11) 4000-0000. Quem quer ser mentor voluntário: formulário no link da bio. Jovens: mensagem no direct.', expect: /whats/i,
     gen: { objective: 'aproximar', territory: 'Primeiro emprego e empresas parceiras', instructions: '' },
   },
+  {
+    // material de uma organização moçambicana (dados com fonte e uma lista de barreiras): a IA deve escolher a estrutura sozinha e escrever no português de lá
+    name: 'mz-orientacao', kind: 'material', persona: null, territory: '', videoFormat: 'auto', seconds: 60,
+    brand: { niche: 'Orientação profissional e mentoria para jovens em Moçambique', audience: 'Jovens moçambicanos de 16 a 25 anos, a terminar ou recém-saídos do ensino secundário, e potenciais mentores', about: 'Organização moçambicana, de Maputo, que oferece orientação profissional e mentoria a jovens para escolherem e construírem a sua carreira. Lema: Dreams are not discussed.', cta: 'Enviar o vídeo a um jovem que precisa de orientação.' },
+    text: `Dados sobre a juventude em Moçambique:
+- Só 1 em cada 3 jovens conclui o ensino secundário (World Bank / UNESCO, 2023).
+- 65% dos jovens já tentaram arranjar emprego sem sucesso (Afrobarometer, 2025).
+- 30% dos jovens não estudam, não trabalham e não estão em formação (UN Women, 2022).
+
+As 4 barreiras que os jovens enfrentam depois da escola:
+- Direção: não sabem o que fazer depois do ensino secundário ou no início da universidade.
+- Clareza: falta clareza sobre os próprios talentos e sobre as possibilidades reais de carreira.
+- Decisão: têm medo de escolher errado e de se arrepender do caminho.
+- Foco: dificuldade para organizar o tempo e tirar os planos do papel.
+
+A D.C.T-Youths oferece orientação profissional e mentoria para ajudar os jovens a ter clareza e dar o primeiro passo.`,
+  },
 ];
 
 const whoOf = (c: Case) => (c.personas?.length ? c.personas : c.persona ? [c.persona] : []);
@@ -172,8 +189,8 @@ const TEASE = /(e a[ií] tudo muda|outro detalhe|tem um detalhe|aqui est[aá] o 
 const NOT_X_IS_Y = /(?<![\wà-ú])n[ãa]o (?:[ée]|foi|era)(?![\wà-ú])[^.!?;:]{1,70}[.,;]\s+(?:[ée]|foi|era)(?![\wà-ú])/gi;
 const tics = (t: string) => (t.match(NOT_X_IS_Y) ?? []).length;
 const personaLeak = (c: Case, t: string) => whoOf(c).some((p) => new RegExp(`\\b${p.name}\\b`).test(t));
-const CTA_END = /\b(mand\w*|fal\w*|convers[ae] com|cham\w*|envi\w*|compartilh\w*|marc\w*|escrev\w*|respond\w*|ser mentor)\b/i;
-const brandOf = (c: Case): BrandProfile => ({ ...brand, cta: c.channels ?? brand.cta, audience: whoOf(c).length ? '' : brand.audience });
+const CTA_END = /\b(preench\w*|inscrev\w*|mand\w*|fal\w*|convers[ae] com|cham\w*|envi\w*|compartilh\w*|marc\w*|escrev\w*|respond\w*|ser mentor)\b/i;
+const brandOf = (c: Case): BrandProfile => { const b = { ...brand, ...(c.brand ?? {}) }; return { ...b, cta: c.channels ?? b.cta, audience: whoOf(c).length ? '' : b.audience }; };
 const CHANNEL = /\b(direct|dm|whats\w*|link na bio|na bio|formul[áa]rio|telefone|site)\b/i;
 const channelCheck = (c: Case, t: string) => (c.expect ? flag(c.expect.test(t), 'Canal certo para o público', (t.match(CHANNEL) ?? ['nenhum'])[0]) : flag(!CHANNEL.test(t), 'Sem canal inventado', (t.match(CHANNEL) ?? ['nenhum'])[0]));
 /** Números e horas que não estão na fonte (idade, horário, prazo inventados). */
@@ -218,18 +235,19 @@ async function carrossel(c: Case) {
 }
 
 async function video(c: Case) {
-  const format = c.videoFormat === 'longo' ? LONG : SHORT;
-  const seconds = c.seconds, secs = allocate(format.parts, seconds);
+  const format = c.videoFormat === 'auto' || process.argv.includes('--auto') ? { name: 'A IA escolhe a estrutura', parts: [] } : c.videoFormat === 'longo' ? LONG : SHORT;
+  const seconds = c.seconds;
   // como no app: a ideia vira ideaBrief + IDEA_INSTRUCTIONS + persona; tema e material passam pelo plano de ideias, aqui simplificado em uma ideia direta
   const content = c.kind === 'ideia' ? ideaBrief(c.idea!, whoOf(c).map((p) => p.name).join(', '), c.territory) : c.text!;
   const idea = c.kind === 'ideia'
     ? { title: ideaTitle(c.idea!.pain), angle: ideaAngle(c.idea!), points: ideaPoints(c.idea!) }
-    : { title: c.kind === 'tema' ? c.text!.slice(0, 120) : 'O que os mentores aprenderam com a primeira semana de trabalho dos jovens', angle: c.kind === 'tema' ? 'Mostrar que pedir ajuda bem feito é sinal de profissionalismo, não de fraqueza.' : 'A maior dúvida do jovem no primeiro emprego não é técnica; uma mensagem do mentor na hora certa muda o desfecho.', points: [] as string[] };
+    : !format.parts.length ? { title: '', angle: '', points: [] as string[] } : { title: c.kind === 'tema' ? c.text!.slice(0, 120) : 'O que os mentores aprenderam com a primeira semana de trabalho dos jovens', angle: c.kind === 'tema' ? 'Mostrar que pedir ajuda bem feito é sinal de profissionalismo, não de fraqueza.' : 'A maior dúvida do jovem no primeiro emprego não é técnica; uma mensagem do mentor na hora certa muda o desfecho.', points: [] as string[] };
   const r = await generateVideoScript({ content, format, seconds, platform: 'all', instructions: c.kind === 'ideia' ? IDEA_INSTRUCTIONS : '', brand: brandOf(c), idea, personaBrief: whoOf(c).map((p) => personaBriefOf(p)).join('\n\n') || undefined, multiPersona: whoOf(c).length > 1 });
-  const body = r.data.parts.map((p, i) => `**${p.name}** (${secs[i]}s, máx ~${wordsFor(secs[i])} palavras · fala tem ${countWords(p.speech)})\n- Fala: ${p.speech}\n- Tela: ${p.onScreen}\n- Visual: ${p.visual}`).join('\n\n');
+  const body = r.data.parts.map((p, i) => `**${p.name}** (${r.data.parts[i].seconds}s, máx ~${wordsFor(r.data.parts[i].seconds)} palavras · fala tem ${countWords(p.speech)})\n- Fala: ${p.speech}\n- Tela: ${p.onScreen}\n- Visual: ${p.visual}`).join('\n\n');
   const all = r.data.parts.map((p) => p.speech).join(' ');
-  const checks = [...r.data.parts.map((p, i) => flag(countWords(p.speech) <= wordsFor(secs[i]) + 3, `${p.name} cabe no tempo`, `${countWords(p.speech)}/${wordsFor(secs[i])} palavras`)), flag(!CLICHES.test(all), 'Sem clichês'), flag(!TEASE.test(all), 'Sem ganchos vazios'), flag(!GENERIC_CTA.test(all), 'Sem CTA genérica'), flag(!CLICHES.test(r.data.caption), 'Legenda sem clichês'), flag(CTA_END.test(r.data.caption.trim().split('\n').filter(Boolean).pop() ?? ''), 'Legenda termina com a ação'), flag(tics(`${all} ${r.data.caption}`) <= 1, '"Não é X, é Y" no máximo 1x', `${tics(`${all} ${r.data.caption}`)}x`), flag(!personaLeak(c, `${all} ${r.data.caption}`), 'Sem o nome interno da persona'), channelCheck(c, `${all} ${r.data.caption}`), flag(!invented(c, `${all} ${r.data.caption}`).length, 'Sem número/horário inventado', invented(c, `${all} ${r.data.caption}`).join(', '))];
-  report(`video-${c.name}`, `# Roteiro · ${c.name} (${format.name}, ${seconds}s)\n\n**Título:** ${r.title}\n\n${body}\n\n## Legenda\n${r.data.caption}\n${r.data.hashtags.map((h) => `#${h}`).join(' ')}\n\n## Notas\n${r.data.notes.map((n) => `- ${n}`).join('\n')}\n\n## Checagens\n${checks.join('\n')}\n\n${track('vídeo', r.inputTokens, r.outputTokens)}\n`);
+  const checks = [...r.data.parts.map((p, i) => flag(countWords(p.speech) <= wordsFor(r.data.parts[i].seconds) + 3, `${p.name} cabe no tempo`, `${countWords(p.speech)}/${wordsFor(r.data.parts[i].seconds)} palavras`)), flag(!CLICHES.test(all), 'Sem clichês'), flag(!TEASE.test(all), 'Sem ganchos vazios'), flag(!GENERIC_CTA.test(all), 'Sem CTA genérica'), flag(!CLICHES.test(r.data.caption), 'Legenda sem clichês'), flag(CTA_END.test(r.data.caption.trim().split('\n').filter(Boolean).pop() ?? ''), 'Legenda termina com a ação'), flag(tics(`${all} ${r.data.caption}`) <= 1, '"Não é X, é Y" no máximo 1x', `${tics(`${all} ${r.data.caption}`)}x`), flag(!personaLeak(c, `${all} ${r.data.caption}`), 'Sem o nome interno da persona'), channelCheck(c, `${all} ${r.data.caption}`), flag(!invented(c, `${all} ${r.data.caption}`).length, 'Sem número/horário inventado', invented(c, `${all} ${r.data.caption}`).join(', '))];
+  const prod = r.data.production ? `\n\n## Produção\n- Ritmo: ${r.data.production.rhythm}\n- Fontes: ${r.data.production.sources.join(' · ') || '(nenhuma)'}\n- Versão curta: ${r.data.production.shortVersion}` : '';
+  report(`video-${c.name}`, `# Roteiro · ${c.name} (${format.name}, ${seconds}s)\n\n**Título:** ${r.title}\n\n${body}${prod}\n\n## Legenda\n${r.data.caption}\n${r.data.hashtags.map((h) => `#${h}`).join(' ')}\n\n## Notas\n${r.data.notes.map((n) => `- ${n}`).join('\n')}\n\n## Checagens\n${checks.join('\n')}\n\n${track('vídeo', r.inputTokens, r.outputTokens)}\n`);
 }
 
 // rótulos iguais aos do app (lib/substack-server.ts)
