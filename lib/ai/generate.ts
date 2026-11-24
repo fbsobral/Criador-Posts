@@ -122,7 +122,8 @@ export const CONTENT_RULES = `REGRAS DE CONTEÚDO
 - Use só os fatos do briefing, do material e do perfil da marca: não invente números, fontes, datas, nomes, citações nem detalhes de cena (idade, horário, lugar) que não estejam lá.
 - Canal de contato (direct, WhatsApp, link na bio, site…) só se estiver no perfil da marca; sem canal informado, a chamada sai sem canal ("fale com a gente").
 - Só afirme que a organização faz algo se estiver em "O que a organização faz" ou no material.
-- O nome da persona é um perfil interno: nunca o use no texto.`;
+- O nome da persona é um perfil interno: nunca o use no texto.
+- Não use a construção "não é X, é Y" (nem variações como "o problema não é X, é Y") nem anúncios como "a solução é simples:" ou "a verdade é que…": diga a ideia direto, afirmando o que ela é.`;
 
 const COMMON_RULES = `REGRAS GERAIS
 - Escreva em português (do Brasil, salvo se houver "IDIOMA DO PÚBLICO" acima ou o briefing estiver em outro idioma).
