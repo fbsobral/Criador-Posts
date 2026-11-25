@@ -313,10 +313,6 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
         {timing === 'ok' ? 'cabe no tempo.' : timing === 'over' ? 'passa do tempo: corte algumas palavras.' : 'sobra tempo: dá para falar um pouco mais.'}
       </p>
 
-      {data.notes.length > 0 && (
-        <div className="notice warn vd-notes"><b>Conferir antes de gravar</b><ul>{data.notes.map((n, i) => <li key={i}>{n}</li>)}</ul></div>
-      )}
-
       <div className="vd-page-wrap">
         <Doc texts={texts} onTexts={onTexts} onCaret={setCaretIdx} onSel={setSel} highlight={pr?.i ?? null} />
       </div>
