@@ -1524,3 +1524,33 @@ textarea[data-voice], input[data-voice] { padding-right: 40px; }
 .vd-note-row textarea { font-size: 13.5px; padding: 5px 9px; }
 @media (max-width: 900px) { .vd-page { padding: 26px 20px 48px; font-size: 17px; } .vd-dock { bottom: 8px; margin-left: -4px; margin-right: -4px; } .vd-dock-quote { display: none; } }
 .vd-tbar { flex-wrap: wrap !important; } .vd-tb, .vd-tb span { white-space: nowrap; }
+
+/* ===== revisão da página do roteiro: uma coluna só, ferramentas legíveis, apoio recolhido ===== */
+.vd-script { max-width: 840px; margin: 0 auto; }
+.vd-headrow { display: flex; align-items: center; gap: 14px; margin: 2px 0 6px; flex-wrap: wrap; }
+.vd-headrow .vd-title { flex: 1 1 320px; min-width: 0; margin: 0; width: auto; font-size: 30px; }
+.vd-headend { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.vd-tbar { margin: 0 0 6px; padding: 8px 4px; gap: 6px 10px; border-bottom: 0; background: color-mix(in srgb, var(--bg, #fff) 96%, transparent); }
+.vd-tbar-g + .vd-tbar-g { border-left: 0; padding-left: 0; }
+.vd-tb { color: var(--ink); font-size: 13.5px; border-radius: 9px; }
+.vd-tb.icon { width: 36px; justify-content: center; padding: 7px 0; font-size: 18px; border: 1px solid var(--line); background: #fff; }
+.vd-tb.ai { border: 1px solid #F3D3BF; background: #FFF7F1; color: #A8430E; } .vd-tb.ai:hover:not(:disabled) { background: #FFEBDD; color: #8F3507; }
+.vd-tb:disabled { opacity: .4; }
+.vd-copy summary.vd-tb { list-style: none; cursor: pointer; } .vd-copy summary::-webkit-details-marker { display: none; }
+.vd-more-menu.left { left: 0; right: auto; }
+.vd-count { margin: 0 2px 4px; font-size: 13px; }
+.vd-page-wrap { max-width: none; margin: 8px 0 22px; }
+.vd-page { padding: 52px 68px 90px; }
+.vd-dock, .vd-notes-card { max-width: none; }
+.vd-capbox { width: 100%; min-height: 76px; }
+.vd-cap .field label { display: block; margin-bottom: 6px; }
+.vd-support { margin: 0 0 20px; padding: 0; overflow: hidden; }
+.vd-support > summary { cursor: pointer; padding: 14px 20px; list-style: none; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; } .vd-support > summary::-webkit-details-marker { display: none; }
+.vd-support > summary::before { content: '▸'; color: var(--muted); } .vd-support[open] > summary::before { content: '▾'; }
+.vd-sup-i { padding: 2px 20px 14px 36px; } .vd-sup-i h4 { margin: 8px 0 4px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+.vd-sup-i p, .vd-sup-i li { margin: 0 0 4px; font-size: 13.5px; line-height: 1.55; color: var(--ink-2); } .vd-sup-i ul { margin: 0; padding-left: 18px; }
+.vd-sup-i .vd-orig-text { font-size: 13px; line-height: 1.6; white-space: pre-wrap; max-height: 320px; overflow: auto; color: var(--ink-2); background: var(--surface-2); border-radius: 10px; padding: 12px 14px; }
+@media (max-width: 900px) { .vd-headrow .vd-title { font-size: 23px; } .vd-headend { margin-left: 0; width: 100%; justify-content: space-between; } .vd-page { padding: 24px 18px 56px; } .vd-tb span { display: inline; } }
+details.vd-more { border: 0; background: transparent; box-shadow: none; padding: 0; margin: 0; } .vd-more summary { display: block; padding: 6px 10px; border: 0; background: transparent; box-shadow: none; }
+.vd-copy summary.vd-tb { display: inline-flex; font: inherit; font-size: 13.5px; font-weight: 600; padding: 7px 9px; color: var(--ink); } .vd-copy summary.vd-tb span { font-size: 13.5px; }
+.vd-cap { margin-bottom: 14px; } #tags.vd-capbox { min-height: 44px; }
