@@ -60,8 +60,7 @@ export function VoiceInput() {
 
   useEffect(() => {
     const w = window as unknown as { SpeechRecognition?: RecCtor; webkitSpeechRecognition?: RecCtor };
-    if (!(w.SpeechRecognition || w.webkitSpeechRecognition)) return;
-    setSupported(true);
+    setSupported(true); // o microfone aparece sempre; se o navegador não tem ditado, o clique explica
   }, []);
 
   const stop = () => {
@@ -73,7 +72,8 @@ export function VoiceInput() {
 
   const begin = (el: Field) => {
     const w = window as unknown as { SpeechRecognition?: RecCtor; webkitSpeechRecognition?: RecCtor };
-    const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition; if (!Ctor) return;
+    const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
+    if (!Ctor) { setMsg('Este navegador não oferece ditado por voz. Use o Chrome, o Edge ou o Safari atualizado.'); return; }
     stop(); setMsg('');
     const s0 = el.selectionStart ?? el.value.length, e0 = el.selectionEnd ?? s0;
     let before = el.value.slice(0, s0), after = el.value.slice(e0), caret = s0, quick = 0;
