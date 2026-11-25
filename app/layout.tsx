@@ -3,6 +3,7 @@ import localFont from 'next/font/local';
 import { ClerkProvider } from '@clerk/nextjs';
 import { ptBR } from '@clerk/localizations';
 import './globals.css';
+import { VoiceInput } from './voice-input';
 
 // Fontes hospedadas no projeto (variáveis, subconjunto latin): o build não depende de buscar o Google Fonts.
 const inter = localFont({ src: './fonts/inter-latin.woff2', weight: '100 900', variable: '--font-inter', display: 'swap' });
@@ -24,7 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       }}
     >
       <html lang="pt-BR" className={`${inter.variable} ${jakarta.variable}`}>
-        <body>{children}</body>
+        <body>{children}<VoiceInput /></body>
       </html>
     </ClerkProvider>
   );

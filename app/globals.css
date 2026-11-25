@@ -1494,3 +1494,13 @@ ul.id-ftext { padding-left: 20px; white-space: normal; } ul.id-ftext li { margin
 .vd-tbar { gap: 4px 8px; flex-wrap: nowrap; } .vd-tbar-g + .vd-tbar-g { padding-left: 8px; } .vd-tb { padding: 7px 7px; gap: 5px; }
 .vd-tbar details.vd-more { border: 0; background: transparent; box-shadow: none; padding: 0; margin: 0; } .vd-more summary { display: block; width: auto; height: auto; padding: 4px 10px; border: 0; background: transparent; box-shadow: none; }
 @media (max-width: 1100px) { .vd-tbar { flex-wrap: wrap; } }
+
+/* ===== ditado por voz (app/voice-input.tsx) ===== */
+.voice-wrap { position: fixed; z-index: 3000; width: 28px; height: 28px; }
+.voice-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line-2, #E2DDD0); background: #fff; color: var(--ink-2); display: grid; place-items: center; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.12); padding: 0; }
+.voice-btn:hover { color: var(--primary); border-color: var(--primary); }
+.voice-btn.on { background: #D92D20; border-color: #D92D20; color: #fff; animation: voicepulse 1.2s ease-out infinite; }
+@keyframes voicepulse { 0% { box-shadow: 0 0 0 0 rgba(217,45,32,.5); } 100% { box-shadow: 0 0 0 10px rgba(217,45,32,0); } }
+.voice-msg { position: absolute; right: 0; bottom: 34px; width: max-content; max-width: min(300px, 80vw); background: #1F1B14; color: #fff; font-size: 12.5px; line-height: 1.4; padding: 8px 10px; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+textarea[data-voice], input[data-voice] { padding-right: 40px; }
+@media (prefers-reduced-motion: reduce) { .voice-btn.on { animation: none; } }
