@@ -63,6 +63,71 @@ export function withPartSeconds(d: ScriptData, i: number, sec: unknown): { data:
   return { data: { ...d, parts: d.parts.map((p, k) => (k === i ? { ...p, seconds: to } : p)) }, from: cur.seconds, to };
 }
 
+/** Muda a duração total do vídeo, repartindo a diferença entre os blocos na proporção do tempo que cada um já tem. Devolve o roteiro novo e a mudança (de, para), ou null se o valor é inválido ou igual ao atual. */
+export function withTotalSeconds(d: ScriptData, sec: unknown): { data: ScriptData; from: number; to: number } | null {
+  const from = totalSeconds(d), to = Math.round(Number(sec));
+  const n = d.parts.length;
+  if (!n || !Number.isFinite(to) || to === from || to < n * MIN_PART_SECONDS || to > Math.min(MAX_SECONDS, n * MAX_PART_SECONDS)) return null;
+  const secs = d.parts.map((p) => Math.min(MAX_PART_SECONDS, Math.max(MIN_PART_SECONDS, Math.round((p.seconds / from) * to))));
+  // acerto fino: o arredondamento e os limites podem deixar a soma diferente do pedido
+  let diff = to - secs.reduce((a, x) => a + x, 0);
+  for (let guard = 0; diff !== 0 && guard < 400; guard++) {
+    const k = diff > 0 ? secs.reduce((b, x, i) => (x < MAX_PART_SECONDS && x <= secs[b] ? i : b), secs.findIndex((x) => x < MAX_PART_SECONDS)) : secs.reduce((b, x, i) => (x > MIN_PART_SECONDS && x >= secs[b] ? i : b), secs.findIndex((x) => x > MIN_PART_SECONDS));
+    if (k < 0) break;
+    secs[k] += diff > 0 ? 1 : -1; diff += diff > 0 ? -1 : 1;
+  }
+  return { data: { ...d, parts: d.parts.map((p, k) => ({ ...p, seconds: secs[k] })) }, from, to: secs.reduce((a, x) => a + x, 0) };
+}
+
+/**
+ * O editor mostra o roteiro como um texto único (um parágrafo por trecho). Quando a pessoa edita, esta função liga o texto novo aos trechos que já existem,
+ * para não perder tela, visual e tempo: parágrafos iguais mantêm o trecho; os editados herdam o trecho do mesmo lugar; parágrafo novo vira trecho novo
+ * (dividindo o tempo do trecho de onde saiu); parágrafos juntados somam o que tinham.
+ */
+export function reconcileParts(old: ScriptData['parts'], texts: string[]): ScriptData['parts'] {
+  const T = texts.length ? texts : [''];
+  const n = old.length, m = T.length;
+  const L: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = old[i].speech === T[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  type P = ScriptData['parts'][number];
+  const out: P[] = [];
+  let carry: P[] = [];
+  const absorb = (into: P, from: P[]): P => from.length ? {
+    ...into, seconds: Math.min(MAX_PART_SECONDS, into.seconds + from.reduce((a, x) => a + x.seconds, 0)),
+    onScreen: [into.onScreen, ...from.map((x) => x.onScreen)].filter(Boolean).join(' · ').slice(0, 200), visual: [into.visual, ...from.map((x) => x.visual)].filter(Boolean).join(' ').slice(0, 500),
+  } : into;
+  const push = (p: P) => { out.push(carry.length ? absorb(p, carry) : p); carry = []; };
+  const share = (sec: number, texts: string[]) => { const w = texts.map((x) => Math.max(1, countWords(x))), s = w.reduce((a, b) => a + b, 0); return w.map((x) => Math.min(MAX_PART_SECONDS, Math.max(MIN_PART_SECONDS, Math.round((sec * x) / s)))); };
+  const fresh = (speech: string, seconds: number): P => ({ name: 'Trecho', seconds, speech, onScreen: '', visual: '' });
+  const gap = (i: number, i2: number, j: number, j2: number) => {
+    const o = old.slice(i, i2), tt = T.slice(j, j2), k = Math.min(o.length, tt.length);
+    if (!tt.length) { carry.push(...o); return; }
+    for (let x = 0; x < k; x++) push({ ...o[x], speech: tt[x] });
+    if (tt.length > k) {
+      const extras = tt.slice(k);
+      if (k > 0) { // o último trecho emparelhado divide o tempo com os novos
+        const base = out[out.length - 1], s = share(base.seconds, [base.speech, ...extras]);
+        out[out.length - 1] = { ...base, seconds: s[0] };
+        extras.forEach((e, x) => out.push(fresh(e, s[x + 1])));
+      } else extras.forEach((e) => out.push(fresh(e, Math.min(MAX_PART_SECONDS, Math.max(MIN_PART_SECONDS, Math.round(countWords(e) / WORDS_PER_SEC))))));
+    } else if (o.length > k) carry.push(...o.slice(k));
+  };
+  let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (old[i].speech === T[j]) { push(old[i]); i++; j++; }
+    else {
+      // próximo ponto em que os dois textos voltam a coincidir
+      let ni = i, nj = j;
+      while (ni < n && nj < m && old[ni].speech !== T[nj]) { if (L[ni + 1][nj] >= L[ni][nj + 1]) ni++; else nj++; }
+      gap(i, ni, j, nj); i = ni; j = nj;
+    }
+  }
+  gap(i, n, j, m);
+  if (carry.length && out.length) out[out.length - 1] = absorb(out[out.length - 1], carry);
+  while (out.length > MAX_PARTS) { const b = out.pop()!, a = out.pop()!; out.push({ ...absorb(a, [b]), speech: `${a.speech} ${b.speech}`.trim() }); }
+  return out.length ? out : [fresh('', 10)];
+}
+
 export const wordsFor = (seconds: number) => Math.max(3, Math.round(seconds * WORDS_PER_SEC));
 export const countWords = (t: string) => (t.trim() ? t.trim().split(/\s+/).length : 0);
 /** Tempo estimado para falar o texto. */

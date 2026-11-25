@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { actionErrorMessage } from '@/lib/action-error';
 import { deleteScript, duplicateScript, saveScript } from '@/lib/video-actions';
-import { MAX_PARTS, MAX_PART_SECONDS, MIN_PART_SECONDS, STAGES, countWords, fmtSecs, scriptToText, speakSeconds, speechToText, stageOf, totalSeconds, wordsFor, type ScriptData, type Stage } from '@/lib/video';
+import { MAX_PARTS, MAX_PART_SECONDS, MAX_SECONDS, MIN_PART_SECONDS, STAGES, countWords, fmtSecs, reconcileParts, scriptToText, speakSeconds, speechToText, stageOf, totalSeconds, wordsFor, type ScriptData, type Stage } from '@/lib/video';
 import { IconCopy, IconPlay, IconSpark, IconTrash } from '../../../icons';
 import { wordDiff } from '@/lib/diff';
 
@@ -29,6 +29,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   const [fb2, setFb2] = useState('');
   const [rbusy, setRbusy] = useState(false);
   const [rerr, setRerr] = useState('');
+  const [tot, setTot] = useState<number | null>(null); // duração total pedida no refino do roteiro inteiro (null = a atual)
   const [sugg, setSugg] = useState<{ title: string; data: ScriptData; note: string } | null>(null);
   const [undo, setUndo] = useState<{ title: string; data: ScriptData } | null>(null);
   const first = useRef(true);
@@ -88,65 +89,23 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   }, [save]);
 
   const setPart = (i: number, patch: Partial<ScriptData['parts'][number]>) => setData((d) => ({ ...d, parts: d.parts.map((p, k) => (k === i ? { ...p, ...patch } : p)) }));
-  // o roteiro é um texto contínuo: cada parágrafo é um trecho. Enter divide, Backspace no início (ou Delete no fim) junta, colar texto com vários parágrafos cria os trechos.
-  const pend = useRef<{ i: number; off: number } | null>(null);
-  useEffect(() => {
-    const f = pend.current; if (!f) return; pend.current = null;
-    const el = document.getElementById(`s${f.i}`) as HTMLTextAreaElement | null;
-    if (el) { el.focus(); el.setSelectionRange(f.off, f.off); }
-  });
-  const editSpeech = (i: number, e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const v = e.target.value;
-    if (!v.includes('\n')) { setPart(i, { speech: v }); return; }
-    const caret = e.target.selectionStart;
-    const pieces: { t: string; s: number; e: number }[] = [];
-    if (v.startsWith('\n')) pieces.push({ t: '', s: 0, e: 0 });
-    for (const m of v.matchAll(/[^\n]+/g)) pieces.push({ t: m[0].trim(), s: m.index ?? 0, e: (m.index ?? 0) + m[0].length });
-    if (v.endsWith('\n') && pieces.length) pieces.push({ t: '', s: v.length, e: v.length });
-    if (!pieces.length) { setPart(i, { speech: '' }); return; }
-    let k = pieces.findIndex((x) => caret <= x.e); if (k < 0) k = pieces.length - 1;
-    const off = Math.max(0, Math.min(pieces[k].t.length, caret - pieces[k].s));
-    const room = MAX_PARTS - (data.parts.length - 1);
-    while (pieces.length > room) { const l = pieces.pop()!, q = pieces[pieces.length - 1]; q.t = `${q.t} ${l.t}`.trim(); if (k >= pieces.length) k = pieces.length - 1; }
-    const cur = data.parts[i], sum = pieces.reduce((a, x) => a + Math.max(1, countWords(x.t)), 0);
-    const made = pieces.map((x, n) => ({
-      name: n === 0 ? cur.name : 'Trecho', seconds: Math.min(MAX_PART_SECONDS, Math.max(MIN_PART_SECONDS, Math.round((cur.seconds * Math.max(1, countWords(x.t))) / sum))),
-      speech: x.t, onScreen: n === 0 ? cur.onScreen : '', visual: n === 0 ? cur.visual : '',
-    }));
-    pend.current = { i: i + k, off }; setPr(null); setSel(null);
-    setData((d) => ({ ...d, parts: [...d.parts.slice(0, i), ...made, ...d.parts.slice(i + 1)] }));
-  };
-  const joinParts = (i: number) => { // junta o trecho i+1 ao trecho i
-    const a = data.parts[i], b = data.parts[i + 1]; if (!a || !b) return;
-    const at = a.speech.trimEnd(), merged = b.speech.trim() ? `${at}${at ? ' ' : ''}${b.speech.trim()}` : at;
-    pend.current = { i, off: b.speech.trim() && at ? at.length + 1 : at.length }; setPr(null); setSel(null);
-    setData((d) => ({ ...d, parts: [...d.parts.slice(0, i), { ...a, speech: merged, seconds: Math.min(MAX_PART_SECONDS, a.seconds + b.seconds), onScreen: [a.onScreen, b.onScreen].filter(Boolean).join(' · ').slice(0, 200), visual: [a.visual, b.visual].filter(Boolean).join(' ').slice(0, 500) }, ...d.parts.slice(i + 2)] }));
-  };
-  const keySpeech = (i: number, e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    const el = e.currentTarget, collapsed = el.selectionStart === el.selectionEnd;
-    if (!collapsed || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
-    const go = (to: number, off: number | 'end') => { const n = document.getElementById(`s${to}`) as HTMLTextAreaElement | null; if (!n) return; e.preventDefault(); n.focus(); const o = off === 'end' ? n.value.length : off; n.setSelectionRange(o, o); };
-    if (e.key === 'Backspace' && el.selectionStart === 0 && i > 0) { e.preventDefault(); joinParts(i - 1); }
-    else if (e.key === 'Delete' && el.selectionStart === el.value.length && i < data.parts.length - 1) { e.preventDefault(); joinParts(i); }
-    else if (e.key === 'ArrowUp' && el.selectionStart === 0 && i > 0) go(i - 1, 'end');
-    else if (e.key === 'ArrowDown' && el.selectionStart === el.value.length && i < data.parts.length - 1) go(i + 1, 0);
-  };
-  // trecho selecionado na fala: vira um pedido de refino só daquele trecho
-  const [sel, setSel] = useState<{ i: number; text: string } | null>(null);
-  const [showNotes, setShowNotes] = useState(false); // tela e visual ficam escondidos: o roteiro aparece como texto corrido
-  const onSelectSpeech = (i: number) => (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-    const el = e.currentTarget, text = el.value.slice(el.selectionStart, el.selectionEnd).trim();
-    setSel(text.length >= 6 ? { i, text: text.slice(0, 400) } : null);
-  };
-  const refineSelection = () => {
-    if (!sel) return;
-    const p = data.parts[sel.i];
-    setPr({ i: sel.i, fb: `Reescreva SÓ este trecho da fala, mantendo o resto igual: “${sel.text}”. O que mudar: `, sec: p.seconds, busy: false, err: '', sugg: null, note: '' });
+  // o roteiro é uma página de texto único: cada parágrafo é um trecho (ver Doc). Tela, visual e tempo de cada trecho seguem junto, mesmo quando se divide ou junta parágrafos.
+  const [caretIdx, setCaretIdx] = useState<number | null>(null); // parágrafo onde está o cursor
+  const [sel, setSel] = useState<{ i: number; text: string; x: number; y: number } | null>(null); // trecho selecionado
+  const [showNotes, setShowNotes] = useState(false);
+  const texts = data.parts.map((p) => p.speech);
+  const onTexts = useCallback((next: string[]) => setData((d) => ({ ...d, parts: reconcileParts(d.parts, next) })), []);
+  const openPara = (i: number, quote?: string) => {
+    const p = data.parts[i]; if (!p) return;
+    setPr({ i, fb: quote ? `Reescreva SÓ este trecho, mantendo o resto igual: “${quote}”. O que mudar: ` : '', sec: p.seconds, busy: false, err: '', sugg: null, note: '' });
     setSel(null);
   };
+  const nParts = data.parts.length;
+  useEffect(() => { setPr(null); }, [nParts]); // dividir ou juntar parágrafos muda os números: fecha o painel de refino aberto
   const spoken = data.parts.reduce((a, p) => a + speakSeconds(p.speech), 0);
   const total = totalSeconds(data) || meta.seconds; // o vídeo dura a soma dos blocos
   const ratio = spoken / total;
+  const durChanged = scope === null && tot !== null && tot !== total;
   const timing = ratio > 1.12 ? 'over' : ratio < 0.7 ? 'under' : 'ok';
   const words = data.parts.reduce((a, p) => a + countWords(p.speech), 0);
 
@@ -154,7 +113,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   async function askRefine(feedback: string, previous?: { title: string; data: ScriptData }) {
     setRbusy(true); setRerr('');
     try {
-      const r = await fetch('/api/videos/refine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, title, current: data, feedback, scope, previous }) });
+      const r = await fetch('/api/videos/refine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, title, current: data, feedback, scope, previous, totalSeconds: scope === null && tot !== null && tot !== total ? tot : undefined }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Não foi possível refinar o roteiro.');
       setSugg(j); setFb2('');
@@ -170,7 +129,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
     setPr({ ...pr, busy: true, err: '' });
     try {
       const previous = prev ? { title, data: { ...data, parts: data.parts.map((p, k) => (k === i ? { ...p, ...prev } : p)) } } : undefined;
-      const r = await fetch('/api/videos/refine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, title, current: data, feedback: pr.fb.trim() || 'Ajuste a fala para a nova duração.', scope: i, partSeconds: pr.sec, previous }) });
+      const r = await fetch('/api/videos/refine', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, title, current: data, feedback: pr.fb.trim(), scope: i, previous }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Não foi possível refinar esta parte.');
       const np = (j.data as ScriptData).parts[i];
@@ -230,7 +189,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   const applyRefined = () => {
     if (!sugg) return;
     setUndo({ title, data }); setTitle(sugg.title); setData(sugg.data); saveNow(sugg.title, sugg.data);
-    setSugg(null); setRefine(false); setFb(''); setFirstFb(''); setScope(null);
+    setSugg(null); setRefine(false); setFb(''); setFirstFb(''); setScope(null); setTot(null);
   };
   const undoRefine = () => { if (!undo) return; setTitle(undo.title); setData(undo.data); saveNow(undo.title, undo.data); setUndo(null); };
 
@@ -257,7 +216,7 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   };
 
   return (
-    <div className={`vd-script${showNotes ? '' : ' vd-nonotes'}`}>
+    <div className={'vd-script'}>
       {actErr && <div className="notice err" role="alert" style={{ marginBottom: 12 }}>{actErr}</div>}
       {save === 'error' && (
         <div className="notice err" role="alert" style={{ marginBottom: 12, display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
@@ -272,8 +231,9 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
           <button type="button" className="vd-tb" onClick={() => stepHist('fwd')} disabled={!canRedo} title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer">↷<span>Refazer</span></button>
         </div>
         <div className="vd-tbar-g">
-          <button type="button" className="vd-tb" onClick={() => setRefine((o) => !o)} disabled={!hasKey} aria-expanded={refine} title="Pedir à IA um ajuste no roteiro inteiro (ou em um bloco)"><IconSpark /><span>Refinar com IA</span></button>
-          <button type="button" className={`vd-tb${showNotes ? ' on' : ''}`} onClick={() => setShowNotes((f) => !f)} aria-pressed={showNotes} title="Mostra ao lado de cada parágrafo o texto na tela e o que gravar">Aa<span>Tela e visual</span></button>
+          <button type="button" className="vd-tb" onClick={() => openPara(caretIdx ?? 0)} disabled={!hasKey || caretIdx === null || !data.parts[caretIdx]?.speech.trim()} title="Clique em um parágrafo e peça um ajuste só nele (ou selecione um trecho)"><IconSpark /><span>Refinar parágrafo</span></button>
+          <button type="button" className="vd-tb" onClick={() => setRefine((o) => !o)} disabled={!hasKey} aria-expanded={refine} title="Pedir à IA um ajuste no roteiro inteiro, inclusive na duração do vídeo"><IconSpark /><span>Refinar roteiro</span></button>
+          <button type="button" className={`vd-tb${showNotes ? ' on' : ''}`} onClick={() => setShowNotes((f) => !f)} aria-pressed={showNotes} title="Mostra, parágrafo por parágrafo, o texto na tela e o que gravar">Aa<span>Tela e visual</span></button>
           <button type="button" className="vd-tb" onClick={() => setPrompter(true)} title="Tela cheia para gravar lendo"><IconPlay /><span>Teleprompter</span></button>
         </div>
         <div className="vd-tbar-g">
@@ -307,14 +267,26 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
                 {data.parts.map((p, k) => <button key={k} type="button" className={`vd-chip${scope === k ? ' on' : ''}`} onClick={() => setScope(k)}>{k + 1}. {p.speech.trim().slice(0, 22) || 'vazio'}…</button>)}
               </div>
               <textarea rows={3} value={fb} onChange={(e) => setFb(e.target.value)} maxLength={800} placeholder="Ex.: o gancho está fraco, comece com a dor; corte as frases longas; deixe a CTA mais natural…" />
+              {scope === null && (
+                <div className="vd-secs">
+                  <span>Duração do vídeo</span>
+                  <div className="vd-stepper">
+                    <button type="button" onClick={() => setTot(Math.max(data.parts.length * MIN_PART_SECONDS, (tot ?? total) - 5))} aria-label="Menos 5 segundos" disabled={rbusy}>−</button>
+                    <input type="number" min={data.parts.length * MIN_PART_SECONDS} max={Math.min(MAX_SECONDS, data.parts.length * MAX_PART_SECONDS)} value={tot ?? total} disabled={rbusy} onChange={(e) => setTot(Math.min(MAX_SECONDS, Math.max(0, Math.round(Number(e.target.value)) || 0)))} onBlur={() => setTot((x) => (x === null ? x : Math.max(data.parts.length * MIN_PART_SECONDS, x)))} aria-label="Duração total do vídeo em segundos" /> <span>s</span>
+                    <button type="button" onClick={() => setTot(Math.min(MAX_SECONDS, Math.min(data.parts.length * MAX_PART_SECONDS, (tot ?? total) + 5)))} aria-label="Mais 5 segundos" disabled={rbusy}>+</button>
+                  </div>
+                  <small className="muted">{durChanged ? `era ${fmtSecs(total)} · ${(tot ?? total) > total ? 'a fala cresce' : 'a fala encurta'}, na proporção de cada trecho · ` : ''}≈ {wordsFor(tot ?? total)} palavras de fala no total</small>
+                </div>
+              )}
               <div className="aim-chips pe-chips-row">{CHIPS.map((c) => <button type="button" key={c} onClick={() => setFb((t) => (t.trim() ? `${t.trim()}; ` : '') + c.toLowerCase())}>{c}</button>)}</div>
               {rerr && <div className="notice err">{rerr}</div>}
               {rbusy && <div className="notice info" role="status">Refinando o roteiro… leva cerca de 15 a 40 segundos.</div>}
-              <button type="button" className="btn primary" onClick={() => { setFirstFb(fb.trim()); askRefine(fb); }} disabled={rbusy || fb.trim().length < 3}>{rbusy ? 'Refinando…' : <><IconSpark /> Sugerir refinamento</>}</button>
+              <button type="button" className="btn primary" onClick={() => { const f = fb.trim() || 'Ajuste o roteiro para a nova duração.'; setFirstFb(f); askRefine(f); }} disabled={rbusy || (fb.trim().length < 3 && !durChanged)}>{rbusy ? 'Refinando…' : <><IconSpark /> Sugerir refinamento</>}</button>
             </>
           ) : (
             <>
               {sugg.note && <p className="pe-note">{sugg.note}</p>}
+              {totalSeconds(sugg.data) !== total && <p className="vd-newdur">Duração do vídeo: <s>{fmtSecs(total)}</s> → <b>{fmtSecs(totalSeconds(sugg.data))}</b></p>}
               {changes.length === 0 ? <p className="muted">A IA não mudou nada. Tente pedir de outro jeito.</p> : (
                 <Review title={title} data={data} sugg={sugg} />
               )}
@@ -345,62 +317,59 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
         <div className="notice warn vd-notes"><b>Conferir antes de gravar</b><ul>{data.notes.map((n, i) => <li key={i}>{n}</li>)}</ul></div>
       )}
 
-      <div className="vd-script-parts vd-doc">
-        {data.parts.map((p, i) => (
-          <section key={i} className="vd-sp">
-            <div className="vd-sp-main">
-              <Auto id={`s${i}`} className="vd-speech" value={p.speech} placeholder={data.parts.length === 1 && i === 0 ? 'Escreva o roteiro…' : ''} onChange={(e) => editSpeech(i, e)} onKeyDown={(e) => keySpeech(i, e)} onSelect={onSelectSpeech(i)} onBlur={() => setTimeout(() => setSel((x) => (x && x.i === i ? null : x)), 250)} aria-label={`Parágrafo ${i + 1} da fala`} />
-              {sel?.i === i && hasKey && (
-                <button type="button" className="vd-selbar" onMouseDown={(e) => e.preventDefault()} onClick={refineSelection}><IconSpark /> Refinar só o trecho selecionado</button>
-              )}
-            </div>
-            <div className={`vd-sp-side${!p.onScreen && !p.visual ? ' quiet' : ''}`}>
+      <div className="vd-page-wrap">
+        <Doc texts={texts} onTexts={onTexts} onCaret={setCaretIdx} onSel={setSel} highlight={pr?.i ?? null} />
+      </div>
+      {sel && hasKey && !pr && (
+        <button type="button" className="vd-selbar vd-selfloat" style={{ left: sel.x, top: sel.y }} onMouseDown={(e) => e.preventDefault()} onClick={() => openPara(sel.i, sel.text)}><IconSpark /> Refinar este trecho</button>
+      )}
+
+      {showNotes && (
+        <section className="card-surface vd-notes-card">
+          <b>Tela e visual</b>
+          <p className="muted">O que aparece escrito na tela e o que mostrar, parágrafo por parágrafo.</p>
+          {data.parts.map((p, i) => (
+            <div key={i} className="vd-note-row">
+              <span className="vd-note-ref">{i + 1}. “{p.speech.trim().slice(0, 48) || 'vazio'}{p.speech.trim().length > 48 ? '…' : ''}”</span>
               <label htmlFor={`o${i}`}>Texto na tela</label>
-              <Auto id={`o${i}`} value={p.onScreen} maxLength={200} onChange={(e) => setPart(i, { onScreen: e.target.value })} />
+              <Auto id={`o${i}`} value={p.onScreen} maxLength={200} placeholder="—" onChange={(e) => setPart(i, { onScreen: e.target.value })} />
               <label htmlFor={`v${i}`}>Visual</label>
-              <Auto id={`v${i}`} value={p.visual} onChange={(e) => setPart(i, { visual: e.target.value })} />
+              <Auto id={`v${i}`} value={p.visual} placeholder="—" onChange={(e) => setPart(i, { visual: e.target.value })} />
             </div>
-            <span className="vd-sp-tools">
-              <button type="button" className="vd-ib" onClick={() => setPr(pr?.i === i ? null : { i, fb: '', sec: p.seconds, busy: false, err: '', sugg: null, note: '' })} disabled={!hasKey || !p.speech.trim()} aria-expanded={pr?.i === i} title={!hasKey ? 'A IA não está configurada neste servidor' : 'Refinar este parágrafo com IA'} aria-label={`Refinar o parágrafo ${i + 1} com IA`}><IconSpark /></button>
-            </span>
-            {pr?.i === i && (
-              <div className="id-fref vd-sp-ref">
-                {pr.sugg === null ? (
-                  <>
-                    <textarea rows={2} autoFocus value={pr.fb} onChange={(e) => setPr({ ...pr, fb: e.target.value })} maxLength={800} placeholder="O que mudar neste parágrafo? Ex.: comece pela dor, corte as frases longas, deixe a fala mais natural…" />
-                    <div className="vd-secs">
-                      <span>Duração deste trecho</span>
-                      <div className="vd-stepper">
-                        <button type="button" onClick={() => setPr({ ...pr, sec: Math.max(MIN_PART_SECONDS, pr.sec - 1) })} aria-label="Menos 1 segundo" disabled={pr.busy}>−</button>
-                        <input type="number" min={MIN_PART_SECONDS} max={MAX_PART_SECONDS} value={pr.sec} disabled={pr.busy} onChange={(e) => setPr({ ...pr, sec: Math.min(MAX_PART_SECONDS, Math.max(0, Math.round(Number(e.target.value)) || 0)) })} onBlur={() => setPr((x) => (x ? { ...x, sec: Math.max(MIN_PART_SECONDS, x.sec) } : x))} aria-label="Duração do trecho em segundos" /> <span>s</span>
-                        <button type="button" onClick={() => setPr({ ...pr, sec: Math.min(MAX_PART_SECONDS, pr.sec + 1) })} aria-label="Mais 1 segundo" disabled={pr.busy}>+</button>
-                      </div>
-                      <small className="muted">≈ {wordsFor(pr.sec)} palavras de fala{pr.sec !== p.seconds ? ` · era ${p.seconds} s (${pr.sec > p.seconds ? 'a fala cresce' : 'a fala encurta'})` : ''}</small>
-                    </div>
-                    <div className="aim-chips pe-chips-row">{PCHIPS.map((c) => <button type="button" key={c} onClick={() => setPr({ ...pr, fb: (pr.fb.trim() ? `${pr.fb.trim()}; ` : '') + c.toLowerCase() })}>{c}</button>)}</div>
-                  </>
-                ) : (
-                  <div className="id-fdiff">
-                    {pr.note && <p className="pe-note">{pr.note}</p>}
-                    {partChanges(i).length === 0 ? <p className="muted">A IA não mudou nada neste trecho. Tente pedir de outro jeito.</p> : <>
-                      <p className="muted vd-legend">Como no controle de alterações: <ins>verde</ins> entra, <del>riscado</del> sai.</p>
-                      {partChanges(i).map((c) => <div key={c.label}><span>{c.label}</span><p className="vd-track"><Track before={c.before} after={c.after} /></p></div>)}
-                    </>}
-                    <textarea rows={2} value={pr.fb} onChange={(e) => setPr({ ...pr, fb: e.target.value })} maxLength={800} placeholder="Não é bem isso? Peça outro ajuste sobre esta sugestão…" />
-                  </div>
-                )}
-                {pr.err && <div className="notice err">{pr.err}</div>}
-                {pr.busy && <div className="notice info" role="status">Refinando… leva cerca de 15 a 30 segundos.</div>}
-                <div className="row-actions">
-                  {pr.sugg !== null && <button type="button" className="btn small primary" onClick={applyPart} disabled={partChanges(i).length === 0}>✓ Aplicar neste trecho</button>}
-                  <button type="button" className={`btn small${pr.sugg === null ? ' primary' : ''}`} onClick={askPart} disabled={pr.busy || (pr.fb.trim().length < 3 && pr.sec === p.seconds)}>{pr.busy ? 'Refinando…' : pr.sugg === null ? <><IconSpark /> Sugerir</> : 'Pedir outro ajuste'}</button>
-                  <button type="button" className="btn small ghost" onClick={() => setPr(null)}>{pr.sugg === null ? 'Cancelar' : 'Descartar'}</button>
-                </div>
+          ))}
+        </section>
+      )}
+
+      {pr && data.parts[pr.i] && (() => {
+        const i = pr.i, p = data.parts[i];
+        return (
+          <div className="vd-dock id-fref" role="region" aria-label="Refinar parágrafo com IA">
+            <div className="vd-dock-head"><b>Refinar o parágrafo {i + 1}</b><span className="vd-dock-quote">“{p.speech.trim().slice(0, 90)}{p.speech.trim().length > 90 ? '…' : ''}”</span><button type="button" className="btn small ghost" onClick={() => setPr(null)}>✕</button></div>
+            {pr.sugg === null ? (
+              <>
+                <textarea rows={2} autoFocus value={pr.fb} onChange={(e) => setPr({ ...pr, fb: e.target.value })} maxLength={800} placeholder="O que mudar neste parágrafo? Ex.: comece pela dor, corte as frases longas, deixe a fala mais natural…" />
+                <div className="aim-chips pe-chips-row">{PCHIPS.map((c) => <button type="button" key={c} onClick={() => setPr({ ...pr, fb: (pr.fb.trim() ? `${pr.fb.trim()}; ` : '') + c.toLowerCase() })}>{c}</button>)}</div>
+              </>
+            ) : (
+              <div className="id-fdiff">
+                {pr.note && <p className="pe-note">{pr.note}</p>}
+                {partChanges(i).length === 0 ? <p className="muted">A IA não mudou nada neste trecho. Tente pedir de outro jeito.</p> : <>
+                  <p className="muted vd-legend">Como no controle de alterações: <ins>verde</ins> entra, <del>riscado</del> sai.</p>
+                  {partChanges(i).map((c) => <div key={c.label}><span>{c.label}</span><p className="vd-track"><Track before={c.before} after={c.after} /></p></div>)}
+                </>}
+                <textarea rows={2} value={pr.fb} onChange={(e) => setPr({ ...pr, fb: e.target.value })} maxLength={800} placeholder="Não é bem isso? Peça outro ajuste sobre esta sugestão…" />
               </div>
             )}
-          </section>
-        ))}
-      </div>
+            {pr.err && <div className="notice err">{pr.err}</div>}
+            {pr.busy && <div className="notice info" role="status">Refinando… leva cerca de 15 a 30 segundos.</div>}
+            <div className="row-actions">
+              {pr.sugg !== null && <button type="button" className="btn small primary" onClick={applyPart} disabled={partChanges(i).length === 0}>✓ Aplicar neste trecho</button>}
+              <button type="button" className={`btn small${pr.sugg === null ? ' primary' : ''}`} onClick={askPart} disabled={pr.busy || pr.fb.trim().length < 3}>{pr.busy ? 'Refinando…' : pr.sugg === null ? <><IconSpark /> Sugerir</> : 'Pedir outro ajuste'}</button>
+              <button type="button" className="btn small ghost" onClick={() => setPr(null)}>{pr.sugg === null ? 'Cancelar' : 'Descartar'}</button>
+            </div>
+          </div>
+        );
+      })()}
 
       {data.production && (data.production.rhythm || data.production.sources.length > 0 || data.production.shortVersion) && (
         <section className="card-surface vd-prod">
@@ -509,6 +478,74 @@ function Teleprompter({ parts, onClose }: { parts: ScriptData['parts']; onClose:
   );
 }
 
+
+/**
+ * A página do roteiro: um único texto editável, como num editor de texto. Cada parágrafo é um trecho do roteiro.
+ * Dá para clicar em qualquer ponto, selecionar entre parágrafos, navegar com as setas, e Enter/Backspace/colar funcionam como esperado.
+ * O texto vive no próprio campo editável (sem React por dentro, para o cursor não pular): só se refaz quando o roteiro muda por fora (desfazer, refinar com IA).
+ */
+function Doc({ texts, onTexts, onCaret, onSel, highlight }: { texts: string[]; onTexts: (t: string[]) => void; onCaret: (i: number | null) => void; onSel: (s: { i: number; text: string; x: number; y: number } | null) => void; highlight: number | null }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const shown = useRef<string[] | null>(null);
+  const mkP = (t: string) => { const p = document.createElement('p'); if (t) p.textContent = t; else p.appendChild(document.createElement('br')); return p; };
+  useIsoLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    const s = shown.current;
+    if (s && s.length === texts.length && s.every((t, k) => t === texts[k])) return;
+    el.replaceChildren(...texts.map(mkP)); shown.current = [...texts];
+  }, [texts]);
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    [...el.children].forEach((c, k) => c.classList.toggle('vd-p-on', k === highlight));
+  });
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch { /* navegador sem suporte */ }
+    const paraOf = (n: Node | null) => { while (n && n.parentNode !== el) n = n.parentNode; return n ? [...el.children].indexOf(n as Element) : -1; };
+    const onSelection = () => {
+      const s = window.getSelection();
+      if (!s || !s.rangeCount || !el.contains(s.getRangeAt(0).commonAncestorContainer)) { onSel(null); return; }
+      const r = s.getRangeAt(0), idx = paraOf(s.anchorNode);
+      if (idx >= 0) onCaret(idx);
+      const text = s.toString().trim();
+      if (s.isCollapsed || text.length < 6) { onSel(null); return; }
+      const b = r.getBoundingClientRect();
+      if (b.bottom < 0 || b.top > window.innerHeight) { onSel(null); return; }
+      onSel({ i: Math.max(0, paraOf(r.startContainer)), text: text.slice(0, 400), x: Math.min(Math.max(b.left + b.width / 2, 90), window.innerWidth - 90), y: Math.max(b.top, 56) });
+    };
+    const noFormat = (e: Event) => { if (String((e as InputEvent).inputType).startsWith('format')) e.preventDefault(); };
+    const onPaste = (e: ClipboardEvent) => { // cola só o texto, um parágrafo por linha
+      e.preventDefault();
+      const lines = (e.clipboardData?.getData('text/plain') ?? '').replace(/\r/g, '').split('\n').map((l) => l.trim()).filter(Boolean);
+      lines.forEach((l, k) => { if (k) document.execCommand('insertParagraph'); document.execCommand('insertText', false, l); });
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); document.execCommand('insertParagraph'); } };
+    const onDown = (e: MouseEvent) => { // clicar na margem ou abaixo do texto leva o cursor para o fim
+      if (e.target !== el) return;
+      const last = el.lastElementChild; if (!last) return;
+      e.preventDefault(); el.focus();
+      const r = document.createRange(); r.selectNodeContents(last); r.collapse(false);
+      const s = window.getSelection(); s?.removeAllRanges(); s?.addRange(r);
+    };
+    document.addEventListener('selectionchange', onSelection);
+    window.addEventListener('scroll', onSelection, true); window.addEventListener('resize', onSelection);
+    el.addEventListener('beforeinput', noFormat); el.addEventListener('paste', onPaste); el.addEventListener('keydown', onKey); el.addEventListener('mousedown', onDown);
+    return () => {
+      document.removeEventListener('selectionchange', onSelection);
+      window.removeEventListener('scroll', onSelection, true); window.removeEventListener('resize', onSelection);
+      el.removeEventListener('beforeinput', noFormat); el.removeEventListener('paste', onPaste); el.removeEventListener('keydown', onKey); el.removeEventListener('mousedown', onDown);
+    };
+  }, [onCaret, onSel]);
+  const read = () => {
+    const el = ref.current; if (!el) return;
+    const out: string[] = [];
+    el.childNodes.forEach((n) => { if (n.nodeType === 1) out.push(n.textContent ?? ''); else if (n.nodeType === 3 && (n.textContent ?? '').trim()) out.push(n.textContent ?? ''); });
+    const next = out.length ? out : [''];
+    shown.current = next; onTexts(next);
+  };
+  const empty = texts.length === 1 && !texts[0].trim();
+  return <div ref={ref} className={`vd-page${empty ? ' empty' : ''}`} contentEditable suppressContentEditableWarning role="textbox" aria-multiline="true" aria-label="Fala do roteiro: um parágrafo por trecho" spellCheck lang="pt-BR" onInput={read} />;
+}
 
 /** Caixa de texto que cresce com o conteúdo (sem barra de rolagem dentro dela), para ler o roteiro como um todo. */
 const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
