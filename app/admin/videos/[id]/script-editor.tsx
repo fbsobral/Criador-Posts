@@ -93,6 +93,9 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
   const [caretIdx, setCaretIdx] = useState<number | null>(null); // parágrafo onde está o cursor
   const [sel, setSel] = useState<{ i: number; text: string; x: number; y: number } | null>(null); // trecho selecionado
   const [showNotes, setShowNotes] = useState(false);
+  const [tagTxt, setTagTxt] = useState(() => initial.hashtags.map((h) => `#${h}`).join(' ')); // texto das hashtags como a pessoa digita (a lista no roteiro é derivada dele)
+  const tagsOf = (s: string) => s.split(/[\s,]+/).map((x) => x.replace(/^#+/, '')).filter(Boolean).join(' ');
+  useEffect(() => { if (tagsOf(tagTxt) !== data.hashtags.join(' ')) setTagTxt(data.hashtags.map((h) => `#${h}`).join(' ')); }, [data.hashtags]); // eslint-disable-line react-hooks/exhaustive-deps
   const texts = data.parts.map((p) => p.speech);
   const onTexts = useCallback((next: string[]) => setData((d) => ({ ...d, parts: reconcileParts(d.parts, next) })), []);
   const openPara = (i: number, quote?: string) => {
@@ -100,6 +103,10 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
     setPr({ i, fb: quote ? `Reescreva SÓ este trecho, mantendo o resto igual: “${quote}”. O que mudar: ` : '', sec: p.seconds, busy: false, err: '', sugg: null, note: '' });
     setSel(null);
   };
+  useEffect(() => { // menus "⋯" e "Copiar": fecham ao clicar fora ou numa opção
+    const h = (e: MouseEvent) => document.querySelectorAll('.vd-script details.vd-more[open]').forEach((d) => { const inItem = (e.target as Element)?.closest?.('.vd-more-menu button'); if (inItem || !d.contains(e.target as Node)) d.removeAttribute('open'); });
+    document.addEventListener('click', h); return () => document.removeEventListener('click', h);
+  }, []);
   const nParts = data.parts.length;
   useEffect(() => { setPr(null); }, [nParts]); // dividir ou juntar parágrafos muda os números: fecha o painel de refino aberto
   const spoken = data.parts.reduce((a, p) => a + speakSeconds(p.speech), 0);
@@ -224,23 +231,9 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
           <button type="button" className="btn small" onClick={flush}>Tentar de novo</button>
         </div>
       )}
-      <input className="vd-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} aria-label="Título do roteiro" placeholder="Título do roteiro" />
-      <div className="vd-tbar" role="toolbar" aria-label="Ferramentas do roteiro">
-        <div className="vd-tbar-g">
-          <button type="button" className="vd-tb" onClick={() => stepHist('back')} disabled={!canUndo} title="Desfazer (Ctrl+Z)" aria-label="Desfazer">↶<span>Desfazer</span></button>
-          <button type="button" className="vd-tb" onClick={() => stepHist('fwd')} disabled={!canRedo} title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer">↷<span>Refazer</span></button>
-        </div>
-        <div className="vd-tbar-g">
-          <button type="button" className="vd-tb" onClick={() => openPara(caretIdx ?? 0)} disabled={!hasKey || caretIdx === null || !data.parts[caretIdx]?.speech.trim()} title="Clique em um parágrafo e peça um ajuste só nele (ou selecione um trecho)"><IconSpark /><span>Refinar parágrafo</span></button>
-          <button type="button" className="vd-tb" onClick={() => setRefine((o) => !o)} disabled={!hasKey} aria-expanded={refine} title="Pedir à IA um ajuste no roteiro inteiro, inclusive na duração do vídeo"><IconSpark /><span>Refinar roteiro</span></button>
-          <button type="button" className={`vd-tb${showNotes ? ' on' : ''}`} onClick={() => setShowNotes((f) => !f)} aria-pressed={showNotes} title="Mostra, parágrafo por parágrafo, o texto na tela e o que gravar">Aa<span>Tela e visual</span></button>
-          <button type="button" className="vd-tb" onClick={() => setPrompter(true)} title="Tela cheia para gravar lendo"><IconPlay /><span>Teleprompter</span></button>
-        </div>
-        <div className="vd-tbar-g">
-          <button type="button" className="vd-tb" onClick={copy} title="Copia o roteiro completo"><IconCopy /><span>{copied ? 'Copiado!' : 'Copiar'}</span></button>
-          <button type="button" className="vd-tb" onClick={copySpeech} title="Copia só o texto da fala, um bloco por parágrafo (sem tela, visual, tempos nem legenda)"><IconCopy /><span>{copiedSpeech ? 'Fala copiada!' : 'Copiar fala'}</span></button>
-        </div>
-        <div className="vd-tbar-g vd-tbar-end">
+      <div className="vd-headrow">
+        <input className="vd-title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} aria-label="Título do roteiro" placeholder="Título do roteiro" />
+        <div className="vd-headend">
           <span className={`vd-save ${save}`} role="status">{save === 'saved' ? 'Salvo' : save === 'error' ? 'Erro ao salvar' : 'Salvando…'}</span>
           <select className="vd-stage-select" value={status} onChange={(e) => setStatus(e.target.value as Stage)} style={{ '--c': stageOf(status).color } as React.CSSProperties} aria-label="Etapa do vídeo">
             {STAGES.map((st) => <option key={st.id} value={st.id}>{st.label}</option>)}
@@ -254,6 +247,32 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
           </details>
         </div>
       </div>
+      {meta.angle && <p className="vd-angle"><b>Ideia:</b> {meta.angle}</p>}
+      <div className="vd-tbar" role="toolbar" aria-label="Ferramentas do roteiro">
+        <div className="vd-tbar-g">
+          <button type="button" className="vd-tb icon" onClick={() => stepHist('back')} disabled={!canUndo} title="Desfazer (Ctrl+Z)" aria-label="Desfazer">↶</button>
+          <button type="button" className="vd-tb icon" onClick={() => stepHist('fwd')} disabled={!canRedo} title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer">↷</button>
+        </div>
+        <div className="vd-tbar-g">
+          <button type="button" className="vd-tb ai" onClick={() => openPara(caretIdx ?? data.parts.findIndex((p) => p.speech.trim()))} disabled={!hasKey || !data.parts.some((p) => p.speech.trim())} title={caretIdx === null ? 'Clique em um parágrafo e peça um ajuste só nele (ou selecione um trecho)' : `Pedir à IA um ajuste só no parágrafo ${caretIdx + 1}`}><IconSpark /><span>Refinar parágrafo</span></button>
+          <button type="button" className="vd-tb ai" onClick={() => setRefine((o) => !o)} disabled={!hasKey} aria-expanded={refine} title="Pedir à IA um ajuste no roteiro inteiro, inclusive na duração do vídeo"><IconSpark /><span>Refinar roteiro</span></button>
+        </div>
+        <div className="vd-tbar-g">
+          <button type="button" className={`vd-tb${showNotes ? ' on' : ''}`} onClick={() => setShowNotes((f) => !f)} aria-pressed={showNotes} title="Mostra, parágrafo por parágrafo, o texto na tela e o que gravar"><span>Tela e visual</span></button>
+          <button type="button" className="vd-tb" onClick={() => setPrompter(true)} title="Tela cheia para gravar lendo"><IconPlay /><span>Teleprompter</span></button>
+          <details className="vd-more vd-copy">
+            <summary className="vd-tb"><IconCopy /><span>{copied || copiedSpeech ? 'Copiado!' : 'Copiar'} ▾</span></summary>
+            <div className="vd-more-menu left">
+              <button type="button" onClick={copy}>Copiar o roteiro completo</button>
+              <button type="button" onClick={copySpeech}>Copiar só a fala</button>
+            </div>
+          </details>
+        </div>
+      </div>
+      <p className={`vd-count ${timing}`}>
+        <b>{words} palavras</b> · ~{fmtSecs(spoken)} de fala · vídeo de {fmtSecs(total)} ·{' '}
+        {timing === 'ok' ? 'cabe no tempo.' : timing === 'over' ? 'passa do tempo: corte algumas palavras.' : 'sobra tempo: dá para falar um pouco mais.'}
+      </p>
 
       {undo && <div className="notice info vd-undo">Refinamento aplicado e salvo. <button type="button" className="btn small" onClick={undoRefine}>↶ Desfazer</button></div>}
       {refine && (
@@ -304,14 +323,6 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
           )}
         </div>
       )}
-
-      <div className="vd-meta big">{meta.formatName && <><span>{meta.formatName}</span><i>·</i></>}<span>{fmtSecs(total)}</span></div>
-      {meta.angle && <p className="vd-angle"><b>Ideia:</b> {meta.angle}</p>}
-
-      <p className={`vd-count ${timing}`}>
-        <b>{words} palavras</b> · ~{fmtSecs(spoken)} de fala para {fmtSecs(total)} de vídeo ·{' '}
-        {timing === 'ok' ? 'cabe no tempo.' : timing === 'over' ? 'passa do tempo: corte algumas palavras.' : 'sobra tempo: dá para falar um pouco mais.'}
-      </p>
 
       <div className="vd-page-wrap">
         <Doc texts={texts} onTexts={onTexts} onCaret={setCaretIdx} onSel={setSel} highlight={pr?.i ?? null} />
@@ -367,23 +378,6 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
         );
       })()}
 
-      {data.production && (data.production.rhythm || data.production.sources.length > 0 || data.production.shortVersion) && (
-        <section className="card-surface vd-prod">
-          <b>Produção</b>
-          {data.production.rhythm && <p><span className="muted">Ritmo e edição:</span> {data.production.rhythm}</p>}
-          {data.production.sources.length > 0 && <div><span className="muted">Fontes para o rodapé dos números:</span><ul>{data.production.sources.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
-          {data.production.shortVersion && <p><span className="muted">Versão de 30 s:</span> {data.production.shortVersion}</p>}
-        </section>
-      )}
-
-      {data.markdown && (
-        <details className="card-surface vd-orig">
-          <summary><b>Roteiro original da IA</b> <span className="muted">(o texto inteiro, como foi escrito; o texto acima é uma cópia para editar)</span></summary>
-          <div className="row-actions" style={{ margin: '10px 0' }}><button type="button" className="btn small" onClick={() => { navigator.clipboard?.writeText(data.markdown!).catch(() => {}); }}>Copiar o texto original</button></div>
-          <div className="vd-orig-text">{data.markdown}</div>
-        </details>
-      )}
-
       <div className="card-surface form-card vd-cap">
         <div className="id-fhead" style={{ marginBottom: 8 }}>
           <b style={{ fontFamily: 'var(--font-head)', fontSize: 15 }}>Legenda e hashtags</b>
@@ -417,10 +411,25 @@ export function ScriptEditor({ id, initialTitle, initialStatus, data: initial, m
             </div>
           </div>
         )}
-        <div className="field"><label htmlFor="cap">Legenda</label><textarea id="cap" rows={3} value={data.caption} onChange={(e) => setData((d) => ({ ...d, caption: e.target.value }))} maxLength={2200} /></div>
+        <div className="field"><label htmlFor="cap">Legenda <span className="muted">· {data.caption.length}/2200</span></label><Auto id="cap" className="vd-capbox" value={data.caption} onChange={(e) => setData((d) => ({ ...d, caption: e.target.value }))} maxLength={2200} placeholder="Texto que acompanha o vídeo na hora de publicar" /></div>
         <div className="field"><label htmlFor="tags">Hashtags <span className="muted">(separadas por espaço)</span></label>
-          <input id="tags" value={data.hashtags.map((h) => `#${h}`).join(' ')} onChange={(e) => setData((d) => ({ ...d, hashtags: e.target.value.split(/[\s,]+/).map((h) => h.replace(/^#+/, '')).filter(Boolean) }))} /></div>
+          <Auto id="tags" className="vd-capbox" value={tagTxt} placeholder="#exemplo #outra" onChange={(e) => { setTagTxt(e.target.value); const h = e.target.value.split(/[\s,]+/).map((x) => x.replace(/^#+/, '')).filter(Boolean); setData((d) => ({ ...d, hashtags: h })); }} /></div>
       </div>
+
+      {(data.production && (data.production.rhythm || data.production.sources.length > 0 || data.production.shortVersion)) || data.markdown ? (
+        <details className="card-surface vd-support">
+          <summary><b>Apoio à gravação</b> <span className="muted">ritmo de edição, fontes e o texto original da IA</span></summary>
+          {data.production?.rhythm && <div className="vd-sup-i"><h4>Ritmo e edição</h4><p>{data.production.rhythm}</p></div>}
+          {data.production && data.production.sources.length > 0 && <div className="vd-sup-i"><h4>Fontes para o rodapé dos números</h4><ul>{data.production.sources.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
+          {data.production?.shortVersion && <div className="vd-sup-i"><h4>Versão de 30 s</h4><p>{data.production.shortVersion}</p></div>}
+          {data.markdown && (
+            <div className="vd-sup-i">
+              <h4>Roteiro original da IA <button type="button" className="btn small ghost" onClick={() => { navigator.clipboard?.writeText(data.markdown!).catch(() => {}); }}>Copiar</button></h4>
+              <div className="vd-orig-text">{data.markdown}</div>
+            </div>
+          )}
+        </details>
+      ) : null}
 
       {prompter && <Teleprompter parts={data.parts} onClose={() => setPrompter(false)} />}
     </div>
