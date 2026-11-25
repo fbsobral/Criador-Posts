@@ -1504,3 +1504,23 @@ ul.id-ftext { padding-left: 20px; white-space: normal; } ul.id-ftext li { margin
 .voice-msg { position: absolute; right: 0; bottom: 34px; width: max-content; max-width: min(300px, 80vw); background: #1F1B14; color: #fff; font-size: 12.5px; line-height: 1.4; padding: 8px 10px; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 textarea[data-voice], input[data-voice] { padding-right: 40px; }
 @media (prefers-reduced-motion: reduce) { .voice-btn.on { animation: none; } }
+.vd-newdur { margin: 4px 0 8px; font-size: 13.5px; } .vd-newdur s { color: var(--muted); } .vd-newdur b { color: var(--primary); }
+.voice-msg.ask { background: #3B3426; }
+
+/* ===== a página do roteiro: um texto só, como num editor de texto ===== */
+.vd-page-wrap { background: #fff; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.06); max-width: 820px; margin: 10px auto 22px; }
+.vd-page { outline: none; padding: 56px 76px 80px; min-height: 58vh; font-size: 18px; line-height: 1.75; color: var(--ink); caret-color: var(--primary); cursor: text; white-space: pre-wrap; overflow-wrap: anywhere; }
+.vd-page p { margin: 0 0 .85em; padding: 0; min-height: 1.75em; }
+.vd-page p.vd-p-on { background: #FFF6E5; box-shadow: -10px 0 0 #FFF6E5, 10px 0 0 #FFF6E5; border-radius: 3px; }
+.vd-page.empty p:first-child::before { content: 'Escreva ou cole o roteiro aqui…'; color: var(--muted); position: absolute; pointer-events: none; }
+.vd-page ::selection { background: #FFD9BF; }
+.vd-selfloat { position: fixed; z-index: 2500; transform: translate(-50%, calc(-100% - 8px)); box-shadow: 0 4px 14px rgba(0,0,0,.18); background: #fff; }
+.vd-dock { position: sticky; bottom: 12px; z-index: 25; max-width: 820px; margin: 0 auto 16px; background: #fff; border: 1.5px solid var(--primary); border-radius: 14px; box-shadow: 0 10px 34px rgba(0,0,0,.2); padding: 12px 14px 14px; max-height: 72vh; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+.vd-dock-head { display: flex; align-items: center; gap: 10px; } .vd-dock-head b { font-family: var(--font-head); font-size: 14.5px; white-space: nowrap; } .vd-dock-quote { flex: 1; min-width: 0; color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vd-dock textarea { width: 100%; }
+.vd-notes-card { max-width: 820px; margin: 0 auto 20px; padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; }
+.vd-note-row { display: flex; flex-direction: column; gap: 3px; padding: 10px 0; border-top: 1px solid var(--line); } .vd-note-row:first-of-type { border-top: 0; }
+.vd-note-ref { font-size: 13px; font-weight: 600; color: var(--ink-2); } .vd-note-row label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.vd-note-row textarea { font-size: 13.5px; padding: 5px 9px; }
+@media (max-width: 900px) { .vd-page { padding: 26px 20px 48px; font-size: 17px; } .vd-dock { bottom: 8px; margin-left: -4px; margin-right: -4px; } .vd-dock-quote { display: none; } }
+.vd-tbar { flex-wrap: wrap !important; } .vd-tb, .vd-tb span { white-space: nowrap; }

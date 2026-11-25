@@ -4,7 +4,7 @@ import { videoScripts } from '@/db/schema';
 import { getCtx } from '@/lib/ctx';
 import { AiError } from '@/lib/ai/generate';
 import { refineVideoScript } from '@/lib/ai/video';
-import { MAX_PARTS, MAX_PART_SECONDS, MIN_PART_SECONDS, totalSeconds, withPartSeconds, wordsFor, type ScriptData } from '@/lib/video';
+import { MAX_PARTS, MAX_PART_SECONDS, MIN_PART_SECONDS, totalSeconds, withPartSeconds, withTotalSeconds, wordsFor, type ScriptData } from '@/lib/video';
 import { cleanPlatform, loadBrandProfile } from '@/lib/video-server';
 import { TOO_MANY, rateLimit } from '@/lib/rate-limit';
 
@@ -45,6 +45,13 @@ export async function POST(req: Request) {
   const scope: number | 'caption' | null = b?.scope === 'caption' ? 'caption' : Number.isInteger(b?.scope) && Number(b?.scope) >= 0 && Number(b?.scope) < current.parts.length ? Number(b?.scope) : null;
   // duração do bloco escolhida pelo usuário: vale para o pedido (limite de palavras) e é avisada à IA
   let ask = feedback;
+  // duração total do vídeo (só no refino do roteiro inteiro): os blocos ganham ou perdem tempo na proporção
+  const tot = scope === null ? withTotalSeconds(current, b?.totalSeconds) : null;
+  if (tot) {
+    current = tot.data;
+    if (previousData) previousData = withTotalSeconds(previousData, tot.to)?.data ?? previousData;
+    ask = `${feedback}\nO vídeo todo passa de ${tot.from} s para ${tot.to} s: ${tot.to > tot.from ? 'desenvolva a fala para ocupar o tempo novo' : 'enxugue a fala para caber no tempo novo'} (no máximo ${wordsFor(tot.to)} palavras no total, respeitando o limite de cada parte).`;
+  }
   const chg = typeof scope === 'number' ? withPartSeconds(current, scope, b?.partSeconds) : null;
   if (chg && typeof scope === 'number') {
     current = chg.data;
